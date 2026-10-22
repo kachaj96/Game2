@@ -43,7 +43,7 @@ await tapCell(5, 4); assert.deepEqual(await page.$$eval('#foe .r', (e) => e.map(
 // 7. wybór Żaru wraca na stronę 1, podgląd nie zdradza odporności na ogień, po trafieniu -20% jest odkryte
 await page.locator('#next').tap(); await page.locator('#slot-szron').waitFor(); assert.equal(await page.evaluate(() => window.__game.page), 1);
 await page.locator('#prev').tap(); await page.locator('#slot-zar').tap(); assert.equal(await page.evaluate(() => window.__game.page), 0);
-await tapCell(5, 4); card = await page.locator('#card').textContent(); assert.match(card, /odporność nieznana/); assert.match(await page.locator('#foe').textContent(), /\?/);
+await tapCell(5, 4); card = await page.locator('#card').textContent(); assert.match(card, /odporność nieznana/); assert.equal(await page.locator('#foe').isVisible(), false, 'z wybranym czarem dotknięcie wroga nie otwiera karty wroga');
 await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-pasek.png') });
 await tapCell(5, 4); await page.waitForFunction(() => window.__game.state.result === 'victory' || !window.__game.busy, null, { timeout: 15000 });
 s = await S(); assert.equal(s.known.e1.fire, -20, 'odkryta słabość na ogień'); assert.equal(s.known.e1.water, 0);

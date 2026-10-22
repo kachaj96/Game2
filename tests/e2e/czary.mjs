@@ -98,4 +98,18 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-odpychanie.png') });
 }
 assert.deepEqual(errors, [], 'błędy strony');
+
+// --- limit czasu tury: pasek na przycisku, po upływie tura kończy się sama ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 860, height: 340 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  await page.goto('http://127.0.0.1:8112/www/walka.html?scenario=cast&time=3'); await page.waitForFunction(() => window.__game);
+  assert.match(await page.locator('#tm').textContent(), /^\d s$/, 'licznik sekund na przycisku');
+  const t0 = await page.evaluate(() => window.__game.timeLeft); assert.ok(t0 <= 3 && t0 > 1.5, `czas ${t0}`);
+  await page.waitForFunction(() => window.__game.state.turn.round === 2 && !window.__game.busy, null, { timeout: 15000 });
+  assert.equal(await page.evaluate(() => window.__game.state.units.find((u) => u.id === 'h').pa), 6, 'po automatycznym końcu tury PA odnowione');
+  // czas stoi, gdy to nie twoja tura (animacja przeciwnika): nowa tura zaczyna się od pełnego limitu
+  assert.ok((await page.evaluate(() => window.__game.timeLeft)) > 1.5, 'limit odnowiony na nową turę');
+  await ctx.close();
+}
 await browser.close(); server.close(); console.log('e2e czary: OK');

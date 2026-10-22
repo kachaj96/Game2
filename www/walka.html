@@ -6,8 +6,17 @@ html,body{margin:0;height:100%;background:#0c1210;color:#e8f0d0;font:15px system
 #app{position:fixed;inset:0}
 canvas#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 .pill{position:absolute;background:rgba(10,14,8,.8);border-radius:12px;padding:8px 12px}
-#hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;display:flex;gap:14px;pointer-events:none}
-#msg{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));max-width:42vw;color:#c6d6a6;font-size:13px;text-align:right;pointer-events:none}
+#top{position:absolute;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+#top .pill{position:static}
+#hud{font-weight:700;display:flex;gap:10px;font-size:14px;white-space:nowrap}
+#turns{display:flex;align-items:center;gap:4px;padding:5px 7px}
+#turns:empty{display:none}
+.chip{width:38px;height:38px;flex:none;border-radius:50%;border:2px solid #888;padding:0;background:#241a1c;position:relative;pointer-events:auto;touch-action:manipulation;overflow:hidden}
+.chip canvas{width:100%;height:100%;display:block}
+.chip.ally{border-color:#4a8cff}.chip.foe{border-color:#e04848}
+.chip.cur{border-color:#ffe066;box-shadow:0 0 9px #ffe066;transform:scale(1.15);margin:0 4px}
+.sep{width:2px;height:26px;background:#8a7a58;margin:0 3px;border-radius:1px}
+#msg{flex:1;min-width:120px;color:#c6d6a6;font-size:12.5px;text-align:right}
 #msg:empty{display:none}
 #foe{left:max(8px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));display:none;min-width:150px;pointer-events:none}
 #foe b{display:block;margin-bottom:4px}
@@ -24,7 +33,9 @@ canvas#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;disp
 .pg:disabled{opacity:.3}
 #pgi{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:12px;color:#a89878}
 button{font-family:inherit}
-#end{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:min(170px,26vw);height:calc(var(--s) + 12px);border:0;border-radius:14px;background:#3b6a2a;color:#fff;font:700 16px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.4);touch-action:manipulation}
+#end{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;background:linear-gradient(90deg,#3b6a2a var(--p,100%),#2a3a24 var(--p,100%));position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:min(170px,26vw);height:calc(var(--s) + 12px);border:0;border-radius:14px;background:#3b6a2a;color:#fff;font:700 16px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.4);touch-action:manipulation}
+#end.low{background:linear-gradient(90deg,#b4401c var(--p,100%),#3a2420 var(--p,100%))}
+#end small{font:600 13px system-ui;opacity:.85;min-height:15px}
 #end:disabled{background:#2a3324;color:#6a7a5a;box-shadow:none}
   :root{--s:54px}
   #bar{left:auto;right:max(10px,env(safe-area-inset-right));transform:none;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 66px);display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"slots slots" "prev next";gap:6px;padding:8px}
@@ -37,12 +48,11 @@ button{font-family:inherit}
 #banner button{background:#b4501c;width:220px;height:58px;border:0;border-radius:14px;color:#fff;font:700 17px system-ui}
 </style></head><body><div id="app">
 <canvas id="c"></canvas>
-<div id="hud" class="pill"><span id="who">Walka</span><span id="pts"></span></div>
-<div id="msg" class="pill"></div>
+<div id="top"><div id="hud" class="pill"><span id="who">Walka</span><span id="pts"></span></div><div id="turns" class="pill"></div><div id="msg" class="pill"></div></div>
 <div id="foe" class="pill"></div>
 <div id="card" class="pill"></div>
 <div id="bar"><span id="pgi"></span><button class="pg" id="prev" aria-label="Poprzednia strona">‹</button><div id="slots"></div><button class="pg" id="next" aria-label="Następna strona">›</button></div>
-<button id="end">Koniec tury</button>
+<button id="end"><span id="endt">Koniec tury</span><small id="tm"></small></button>
 <div id="rotate">Obróć telefon do poziomu</div>
 <div id="banner"><span id="bt"></span><button id="again">Jeszcze raz</button></div></div>
 <script type="module">
@@ -74,16 +84,17 @@ let view={s:1,ox:0,oy:0};
 const guard=(id,x,y,seed,arch='straznik')=>spawn(arch,id,x,y,{role:'warrior',seed});
 const hero=(x,y)=>SAVED?unitFromCharacter(SAVED,{seed:3,x,y,initiative:99,name:SAVED.name},{allowDev:ALL}):({id:'h',team:'gracz',name:'Ty',classId:HERO,seed:3,x,y,initiative:99,...(ALL?{spells:[...CLASSES[HERO].spells,...DEV_SPELLS].map(s=>({id:s.id,level:1}))}:{})});
 const SCEN={
-  default:{blocked:[{x:3,y:2},{x:4,y:2},{x:2,y:4},{x:4,y:4},{x:0,y:3}],units:[hero(1,5),guard('e1',5,1,9),guard('e2',5,3,21,'popielny')]},
+  default:{zone:(x,y)=>x<=1,blocked:[{x:3,y:2},{x:4,y:2},{x:2,y:4},{x:4,y:4},{x:0,y:3}],units:[hero(1,5),guard('e1',5,1,9),guard('e2',5,3,21,'popielny')]},
   cast:{blocked:[],units:[hero(2,4),guard('e1',5,4,9)]},
   wall:{blocked:[{x:3,y:4}],units:[hero(1,4),guard('e1',5,4,9)]},
   push:{blocked:[{x:6,y:4}],units:[hero(2,4),guard('e1',4,4,9)]},
 };
+const TURN_TIME=Number(Q.get('time')??30);let phase='fight',ZONE=null,turnLeft=0,timerKey='',lastTm='';
 let state,look,facing,lastPos,preview=null,selSpell=null,anim=null,busy=false,pendingResult=null,floats=[],shake=new Map(),page=0,inspect=null,swiped=false;
-function newGame(){const sc=SCEN[scenario]||SCEN.default;state=createState({cols:7,rows:7,seed:42,blocked:sc.blocked,units:sc.units});
+function newGame(){const sc=SCEN[scenario]||SCEN.default;ZONE=sc.zone||null;phase=ZONE?'place':'fight';timerKey='';turnLeft=TURN_TIME;state=createState({cols:7,rows:7,seed:42,blocked:sc.blocked,units:sc.units});
   look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec(HERO,SAVED?{...SAVED.look,seed:3}:{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):genCharacter(u.seed,u.role)]));
   facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
-  preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
+  preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say(phase==='place'?'Wybierz pole startowe na niebieskich kaflach, potem dotknij "Zaczynamy".':'Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
 const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół
 // stopy postaci stoją tak, by środek kręgu (2 px pod stopami) wypadał dokładnie w środku kafla
 const FEET=-2;
@@ -104,7 +115,7 @@ const toCss=(wx,wy)=>{const r=cv.getBoundingClientRect();return[(view.ox+wx*view
 const say=t=>$('msg').textContent=t;
 const me=()=>unitById(state,'h');
 const spellList=()=>me().spells.map(k=>({k,def:findSpellDef(me().classId,k.id),sd:spellData(me(),k.id)}));
-const mineNow=()=>currentUnit(state).team==='gracz'&&!busy&&!state.result;
+const mineNow=()=>phase==='fight'&&currentUnit(state).team==='gracz'&&!busy&&!state.result;
 function slotInfo(it){const h=me(),d=it.sd.data,id=it.k.id,cd=h.cooldowns[id]||0,impl=implemented(d),noPa=h.pa<d.pa,lim=(h.casts[id]||0)>=d.perTurn,mine=mineNow();
   const ready=mine&&impl&&!noPa&&cd===0&&!lim;
   const st=!impl?'soon':cd>0?`cooldown:${cd}`:lim?'limit':noPa?'noPa':mine?'ready':'wait';
@@ -127,7 +138,7 @@ $('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);
 
 function chipCanvas(el){const c=document.createElement('canvas');c.width=c.height=60;drawSpellIcon(c.getContext('2d'),{id:'none',element:el},30,30,56);return c}
 function renderFoe(){
-  const box=$('foe');const tgt=preview&&preview.kind==='cast'?state.units.find(q=>q.hp>0&&q.x===preview.x&&q.y===preview.y):inspect&&state.units.find(q=>q.id===inspect&&q.hp>0);
+  const box=$('foe');const tgt=selSpell?null:inspect&&state.units.find(q=>q.id===inspect&&q.hp>0);
   if(!tgt){box.style.display='none';return}
   const kn=state.known[tgt.id]||{};box.style.display='block';box.innerHTML=`<b>${tgt.name||tgt.id} ${tgt.hp}/${tgt.maxHp}</b><div class="rs"></div>`;
   for(const e of ['earth','fire','water','air','neutral']){const r=document.createElement('div');r.className='r';r.dataset.el=e;r.append(chipCanvas(e));const v=document.createElement('span');
@@ -141,9 +152,17 @@ function renderCard(){
     if(kn!==undefined){const [a,b]=damageRangeVs(h,d,def.element,t);dm=`obrażenia ${a}-${b} (odporność ${kn>0?'+':''}${kn}%)`}else dm+=' (odporność nieznana)';}
   box.style.display='block';box.innerHTML=`<b style="color:${COL[def.element]}">${def.name}</b> <span style="color:${COL[def.element]}">(${el.name})</span> · ${d.pa} PA · zasięg ${d.min}-${d.max}${d.line?' w linii':''}${d.los?', widoczność':''}${d.cd?` · odnowienie ${d.cd}`:''}<br>${dm}${d.push?` · odpycha o ${d.push}`:''}`;
 }
+function portrait(c,u){const s=look.get(u.id),g2=c.getContext('2d'),K=2.9*c.width/58;g2.fillStyle='#241a1c';g2.fillRect(0,0,c.width,c.height);drawCharacter(g2,c.width/2,c.height*.52+35*s.sc*K,{...s,sc:s.sc*K,hat:null},DIRS.SE)}
+// kolejność tur: od jednostki, która gra teraz, po kolei; kreska oddziela tych, którzy zagrają dopiero w następnej rundzie
+function renderTurns(){
+  const box=$('turns');box.innerHTML='';const ord=state.order.filter(id=>{const u=unitById(state,id);return u&&u.hp>0});if(!ord.length)return;
+  const cur=state.order[state.turn.index],start=Math.max(0,ord.indexOf(cur)),rot=[...ord.slice(start),...ord.slice(0,start)];
+  rot.forEach((id,i)=>{if(i===rot.length-start&&start>0){const d=document.createElement('span');d.className='sep';d.title='następna runda';box.append(d)}
+    const u=unitById(state,id),b=document.createElement('button'),c=document.createElement('canvas');c.width=c.height=76;b.className='chip '+(u.team==='gracz'?'ally':'foe')+(i===0?' cur':'');b.id='turn-'+id;b.setAttribute('aria-label',u.name||id);b.title=`${i+1}. ${u.name||id}`;b.append(c);portrait(c,u);
+    b.onclick=()=>{if(selSpell)return;inspect=id;preview=null;say(`${u.name||id}: ${u.hp}/${u.maxHp} życia.`);hud()};box.append(b)})}
 function hud(){const u=currentUnit(state),h=me();
-  $('who').textContent=`Runda ${state.turn.round}: ${u.name}`;$('pts').textContent=`Życie ${h.hp}/${h.maxHp}   PM ${h.pm}/${h.maxPm}   PA ${h.pa}/${h.maxPa}`;
-  $('end').disabled=!mineNow();renderBar();renderCard();renderFoe();resizeSoon()}
+  $('who').textContent=`Runda ${state.turn.round}`;$('pts').textContent=`Życie ${h.hp}/${h.maxHp} · PA ${h.pa}/${h.maxPa} · PM ${h.pm}/${h.maxPm}`;
+  $('end').disabled=phase==='place'?false:!mineNow();$('endt').textContent=phase==='place'?'Zaczynamy':'Koniec tury';renderTurns();renderBar();renderCard();renderFoe();resizeSoon()}
 let rs=0,sig='';function resizeSoon(){if(rs)return;rs=setTimeout(()=>{rs=0;const b=$('bar').getBoundingClientRect(),n=Math.round(b.width)+'x'+Math.round(b.height);if(n!==sig){sig=n;resize()}},0)}
 function pickSpell(id){
   if(busy||state.result)return;const it=spellList().find(x=>x.k.id===id),inf=slotInfo(it);
@@ -170,15 +189,21 @@ function addFloat(c,h){const mark=h.kind==='spell'?(h.resist<0?' ▲':h.resist>=
 function afterAnim(){
   busy=false;for(const u of state.units)lastPos.set(u.id,{x:u.x,y:u.y});
   if(pendingResult){showResult();return}
-  const u=currentUnit(state);hud();
+  const u=currentUnit(state),key=`${state.turn.round}:${state.turn.index}`;if(key!==timerKey){timerKey=key;turnLeft=TURN_TIME}hud();
   if(u.team==='wrog'){busy=true;hud();setTimeout(()=>{const r=act(chooseCommand(state));if(!r)busy=false;else if(!anim)afterAnim();hud()},380)}
   else say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.');
 }
+function startFight(){phase='fight';selSpell=null;preview=null;inspect=null;say('Walka się zaczyna.');afterAnim()}
+function endTurn(){const u=currentUnit(state);if(u.team!=='gracz')return;selSpell=null;inspect=null;if(act({type:'endTurn',unit:u.id})&&!anim)afterAnim()}
 function showResult(){busy=true;$('bt').textContent=pendingResult==='victory'?'Zwycięstwo':'Porażka';$('banner').style.display='flex';hud()}
 $('again').onclick=newGame;
 
 function tap(sx,sy){
-  if(busy||state.result)return;const u=currentUnit(state);if(u.team!=='gracz')return;
+  if(busy||state.result)return;
+  if(phase==='place'){const c=grid.cellAt(sx,sy);if(!c)return;const foe=state.units.find(q=>q.hp>0&&q.team==='wrog'&&q.x===c.x&&q.y===c.y);
+    if(foe){inspect=foe.id;hud();return}inspect=null;
+    const h=me(),free=ZONE(c.x,c.y)&&!gridOf(state).isBlocked(c.x,c.y)&&!state.units.some(q=>q.hp>0&&q.id!==h.id&&q.x===c.x&&q.y===c.y);
+    if(free){h.x=c.x;h.y=c.y;lastPos.set(h.id,{x:c.x,y:c.y});say('Pole startowe wybrane. Dotknij "Zaczynamy" albo zmień pole.')}else say('Tu nie możesz zacząć. Wybierz niebieski kafel.');hud();return}const u=currentUnit(state);if(u.team!=='gracz')return;
   const c=grid.cellAt(sx,sy);if(!c){preview=null;hud();return}
   const foe=state.units.find(q=>q.hp>0&&q.team==='wrog'&&q.x===c.x&&q.y===c.y);
   if(selSpell){
@@ -196,7 +221,7 @@ function tap(sx,sy){
   hud();
 }
 cv.addEventListener('pointerdown',e=>{const [wx,wy]=toWorld(e.clientX,e.clientY);tap(wx,wy);e.preventDefault()});
-$('end').addEventListener('click',()=>{if(busy||state.result)return;const u=currentUnit(state);if(u.team!=='gracz')return;selSpell=null;inspect=null;if(act({type:'endTurn',unit:u.id})&&!anim)afterAnim()});
+$('end').addEventListener('click',()=>{if(busy||state.result)return;if(phase==='place'){startFight();return}endTurn()});
 
 function visual(u){
   const lp=lastPos.get(u.id);
@@ -221,7 +246,13 @@ function frame(now){
   floats=floats.filter(f=>(f.t+=dt)<1.1);for(const [k,v] of shake)if(v+dt>.35)shake.delete(k);else shake.set(k,v+dt);
   g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);g.drawImage(bg,0,0);
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
+  const show=phase==='fight'&&TURN_TIME>0&&mineNow();
+  if(show){turnLeft-=dt;if(turnLeft<=0){turnLeft=0;say('Czas minął.');endTurn()}}
+  const txt=show?Math.ceil(turnLeft)+' s':'';if(txt!==lastTm){lastTm=txt;$('tm').textContent=txt}
+  $('end').style.setProperty('--p',show?Math.round(turnLeft/TURN_TIME*100)+'%':'100%');$('end').classList.toggle('low',show&&turnLeft<=5);
   const cur=currentUnit(state),overlay=[],mine=mineNow();
+  if(phase==='place'){const gr=gridOf(state),zc=[];for(let y=0;y<7;y++)for(let x=0;x<7;x++)if(ZONE(x,y)&&!gr.isBlocked(x,y)&&!state.units.some(q=>q.hp>0&&q.team==='wrog'&&q.x===x&&q.y===y))zc.push({x,y});
+    fillCells(g,grid,zc,'rgba(90,150,255,.36)');for(const c of zc)drawCellOutline(g,grid,c.x,c.y,'rgba(170,210,255,.75)',1.4);drawCellOutline(g,grid,me().x,me().y,'#ffe066',3)}
   if(mine&&selSpell){const {t,inRange,hidden,blockers,ec}=rangeCells(cur,selSpell);
     fillCells(g,grid,inRange,ec+'44');fillCells(g,grid,t,ec+'88');for(const c of t)drawCellOutline(g,grid,c.x,c.y,ec,1.8);
     // pola zasłonięte (tam nie trafisz) i pola, które zasłaniają widok
@@ -250,6 +281,6 @@ function frame(now){
 function crossCell(x,y,col){const [t,r,b,l]=grid.corners(x,y),k=0.34,m=(a,b2)=>[a[0]+(b2[0]-a[0])*k,a[1]+(b2[1]-a[1])*k],n=(a,b2)=>[a[0]+(b2[0]-a[0])*(1-k),a[1]+(b2[1]-a[1])*(1-k)];g.strokeStyle=col;g.lineWidth=2;g.lineCap='round';g.beginPath();g.moveTo(...m(t,b));g.lineTo(...n(t,b));g.moveTo(...m(l,r));g.lineTo(...n(l,r));g.stroke()}
 function label(c,text,col){g.font='bold 15px system-ui';g.textAlign='center';const w=g.measureText(text).width+14;g.fillStyle='rgba(20,20,10,.88)';g.beginPath();g.roundRect(c[0]-w/2,c[1]-52,w,22,8);g.fill();g.fillStyle=col;g.fillText(text,c[0],c[1]-36)}
 newGame();resize();requestAnimationFrame(frame);
-window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,ringCenter:(id)=>{const u=unitById(state,id),v=visual(u);return[v.x,v.y+FEET+2]},
+window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,get phase(){return phase},get timeLeft(){return turnLeft},ringCenter:(id)=>{const u=unitById(state,id),v=visual(u);return[v.x,v.y+FEET+2]},
   targets:(id)=>validTargets(state,'h',id),range:(id)=>rangeCells(me(),id),cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
 </script></body></html>

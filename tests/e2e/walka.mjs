@@ -28,6 +28,18 @@ assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [1, 5, 3], '
 
 // 0. postacie i ich kręgi stoją dokładnie w środku kafla
 for (const [id, cx, cy] of [['h', 1, 5], ['e1', 5, 1]]) { const [rx, ry] = await page.evaluate(([id, cx, cy]) => { const g = window.__game, r = g.ringCenter(id), c = g.grid.center(cx, cy); return [r[0] - c[0], r[1] - c[1]]; }, [id, cx, cy]); assert.ok(Math.abs(rx) < 0.5 && Math.abs(ry) < 0.5, `${id}: środek kręgu odchylony o ${rx},${ry} od środka kafla`); }
+// 0b. przed walką wybierasz pole startowe w niebieskiej strefie, a walka rusza dopiero po "Zaczynamy"
+assert.equal(await page.evaluate(() => window.__game.phase), 'place'); assert.equal((await page.locator('#end').textContent()).trim().startsWith('Zaczynamy'), true);
+await tapCell(4, 5); s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y], [1, 5], 'poza strefą: bez zmiany'); assert.match(await page.locator('#msg').textContent(), /nie możesz zacząć/i);
+await tapCell(0, 3); s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y], [1, 5], 'ściana: bez zmiany');
+await tapCell(0, 6); s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y], [0, 6], 'strefa: postać stoi na wybranym polu');
+const rc = await page.evaluate(() => { const g = window.__game, r = g.ringCenter('h'), c = g.grid.center(0, 6); return [r[0] - c[0], r[1] - c[1]]; }); assert.ok(Math.abs(rc[0]) < 0.5 && Math.abs(rc[1]) < 0.5, 'krąg na nowym polu');
+await tapCell(1, 5); s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y], [1, 5], 'zmiana pola startowego');
+assert.equal(await page.locator('#end').isEnabled(), true); assert.equal(await page.evaluate(() => window.__game.state.turn.round), 1);
+await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-start.png') });
+await page.click('#end'); await page.waitForFunction(() => window.__game.phase === 'fight');
+// 0c. kolejność tur: portrety w kolejności inicjatywy, pierwszy to ten, kto gra teraz
+{ const ord = await page.$$eval('#turns .chip', (e) => e.map((x) => ({ id: x.id, cur: x.classList.contains('cur'), team: x.classList.contains('ally') ? 'a' : 'f' }))); assert.deepEqual(ord.map((x) => x.id), ['turn-h', 'turn-e1', 'turn-e2']); assert.deepEqual(ord.map((x) => x.cur), [true, false, false]); assert.deepEqual(ord.map((x) => x.team), ['a', 'f', 'f']); }
 // 1. pierwsze dotknięcie tylko pokazuje podgląd: stan gry się nie zmienia
 await tapCell(3, 5);
 let pv = await page.evaluate(() => window.__game.preview);
@@ -64,6 +76,8 @@ const after = ['e1', 'e2'].map((id) => dist(unit(s, id), unit(s, 'h')));
 assert.ok(after[0] < before[0] && after[1] < before[1], `przeciwnicy podeszli: ${before} -> ${after}`);
 assert.ok(await page.locator('#end').isEnabled());
 
+// 5b. po turze gracza kolejka się obraca: gracz jest na końcu, kreska oddziela następną rundę
+{ const t = await page.$$eval('#turns .chip', (e) => e.map((x) => x.id)); assert.deepEqual(t, ['turn-h', 'turn-e1', 'turn-e2']); }
 // 6. element dotykowy ma sensowny rozmiar (min. 48 px wysokości)
 const btn = await page.locator('#end').boundingBox(); assert.ok(btn.height >= 48, `przycisk ${btn.height}px`);
 assert.deepEqual(errors, [], 'błędy strony');
