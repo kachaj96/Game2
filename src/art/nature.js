@@ -134,12 +134,12 @@ export const TREES = { oak, pine, birch, deadTree };
 // Teren: rozmyte plamy, kępki trawy, kwiatki i kamyki. Bez widocznych kafli, siatkę dokłada tryb walki.
 export function ground(g, W, H, seed, opt = {}) {
   const r = rng(seed * 59 + 1), { lg, blob } = kit(g), b = opt.biome || 'summer';
-  const hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 130 }[b], dark = b === 'dark';
-  g.fillStyle = lg(0, 0, 0, H, hsl(hue, 0.55, dark ? 0.34 : 0.56), hsl(hue, 0.52, dark ? 0.26 : 0.46)); g.fillRect(0, 0, W, H);
+  const hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 36 }[b], dark = b === 'dark';
+  g.fillStyle = lg(0, 0, 0, H, hsl(hue, dark ? 0.3 : 0.55, dark ? 0.3 : 0.56), hsl(hue, dark ? 0.28 : 0.52, dark ? 0.2 : 0.46)); g.fillRect(0, 0, W, H);
   for (let i = 0; i < W * H / 9000; i++) blob(r() * W, r() * H, r.range(30, 90), r.range(12, 34), r() < 0.5 ? hsl(hue + 8, 0.6, dark ? 0.42 : 0.66) : hsl(hue - 6, 0.5, dark ? 0.2 : 0.38), 0.2);
 }
 export function tufts(g, W, H, seed, n, avoid, opt = {}) {
-  const r = rng(seed * 61 + 7), { ln } = kit(g), b = opt.biome || 'summer', hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 130 }[b];
+  const r = rng(seed * 61 + 7), { ln } = kit(g), b = opt.biome || 'summer', hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 60 }[b];
   for (let i = 0; i < n; i++) { const x = r() * W, y = r() * H; if (avoid && avoid(x, y)) continue; const c = r() < 0.5 ? hsl(hue, 0.5, 0.34) : hsl(hue + 8, 0.6, 0.7), s = r.range(0.8, 1.3); for (const dx of [-3, 0, 3]) ln([[x + dx * s, y], [x + dx * s * 1.6 + (r() - 0.5) * 3, y - 7 * s * r.range(0.7, 1.3)]], 1.4, c); }
 }
 

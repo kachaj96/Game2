@@ -33,8 +33,8 @@ canvas#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;disp
 .pg:disabled{opacity:.3}
 #pgi{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:12px;color:#a89878}
 button{font-family:inherit}
-#end{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;background:linear-gradient(90deg,#3b6a2a var(--p,100%),#2a3a24 var(--p,100%));position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:min(170px,26vw);height:calc(var(--s) + 12px);border:6px solid #b08a3a;border-image:var(--f-on) 16/6px stretch;border-radius:0;background:#3b6a2a;color:#fff;font:700 16px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.4);touch-action:manipulation}
-#end.low{background:linear-gradient(90deg,#b4401c var(--p,100%),#3a2420 var(--p,100%))}
+#end{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;background:linear-gradient(90deg,#7a2418 var(--p,100%),#2a1a18 var(--p,100%));position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:min(170px,26vw);height:calc(var(--s) + 12px);border:6px solid #b08a3a;border-image:var(--f-on) 16/6px stretch;border-radius:0;color:#f0e6d0;font:700 16px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.4);touch-action:manipulation}
+#end.low{background:linear-gradient(90deg,#c0301a var(--p,100%),#3a1a16 var(--p,100%))}
 #end small{font:600 13px system-ui;opacity:.85;min-height:15px}
 #end:disabled{background:#2a3324;color:#6a7a5a;box-shadow:none}
   :root{--s:54px}
@@ -63,7 +63,7 @@ import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
 import {heroSpec} from '../src/art/classes.js';
 import {drawGridLines,fillCells,drawCellOutline} from '../src/art/gridview.js';
 import * as N from '../src/art/nature.js';
-import {grave,ashCloud} from '../src/art/props.js';
+import {grave,ashCloud,bloodSplat,bones,crack} from '../src/art/props.js';
 import {applyMood,glow} from '../src/art/mood.js';
 import {drawSpellIcon} from '../src/art/spellicons.js';
 import {createState,currentUnit,unitById,gridOf,occupied} from '../src/game/state.js';
@@ -77,7 +77,7 @@ import {loadCharacter} from '../src/game/save.js';
 import {unitFromCharacter,learnSpell,toggleEquipped} from '../src/game/progression.js';
 
 const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
-const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'noc',scenario=Q.get('scenario')||'default',ALL=Q.get('spells')==='all',PAGE=6;
+const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'grit',scenario=Q.get('scenario')||'default',ALL=Q.get('spells')==='all',PAGE=6;
 // zapisana postać z kreatora i karty postaci (pomijana, gdy podano ?hero=)
 let SAVED=Q.get('hero')?null:loadCharacter();if(SAVED&&ALL)for(const sp of DEV_SPELLS)SAVED=toggleEquipped(learnSpell(SAVED,sp.id),sp.id);
 const HERO=SAVED?SAVED.classId:(Q.get('hero')||'zalobnik');
@@ -105,7 +105,9 @@ const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:
 const bg=document.createElement('canvas');
 function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');
   N.ground(b,bg.width,bg.height,7,{biome:'dark'});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400),null,{biome:'dark'});
-  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawGridLines(b,grid,'rgba(255,255,255,.22)')}
+  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawGridLines(b,grid,'rgba(220,200,170,.22)');
+  // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
+  for(let y=0;y<7;y++)for(let x=0;x<7;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h===0)bloodSplat(b,c[0]+4,c[1],.9,x*7+y);else if(h===1)bones(b,c[0]-3,c[1]+1,.9,x*5+y);else if(h===2||h===3)crack(b,c[0],c[1]+1,.9,x+y*9)}}
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr));
   const bar=$('bar').getBoundingClientRect(),topPad=14*dpr,botPad=14*dpr,rightPad=(bar.width+22)*dpr;
   const availW=cv.width-rightPad,availH=cv.height-botPad-topPad,s=Math.min(availW/WORLD.w,availH/WORLD.h);
@@ -271,7 +273,7 @@ function frame(now){
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
   for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
     items.push({d:v.gx+v.gy+.5,f:()=>drawCharacter(g,v.x+sh,v.y+FEET,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring:u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)'})});
-    overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80+FEET-8;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#4ad04a':'#e04848';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
+    overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80+FEET-8;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#7ab048':'#b02424';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
       if(u.id===cur.id&&!busy&&!state.result){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
       if(u.team==='gracz')glow(g,v.x+8,v.y-50+FEET-8,34,'255,150,70',.55)})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());

@@ -56,8 +56,10 @@ const drapePath = (g, hr, hy) => { g.beginPath(); g.moveTo(-hr - 1, hy - 1); g.b
 const lockPath = (g, hr, hy, sd) => { g.beginPath(); g.moveTo(sd * (hr + 0.4), hy - 3); g.bezierCurveTo(sd * (hr + 3.6), hy + 2, sd * (hr + 3.2), hy + 9, sd * (hr + 1.2), hy + 14); g.quadraticCurveTo(sd * (hr - 1.6), hy + 12.5, sd * (hr - 2.8), hy - 1); g.closePath(); };
 
 // kształty głowy: szerokość, szerokość żuchwy, wysokość (podbródek) i szerokość podbródka
+// głowa nieco mniejsza i oczy drobniejsze: mniej kreskówkowo, bardziej surowo
+const HEAD = 0.92;
 export const FACE_SHAPES = { round: { fw: 1, jw: 0.95, ch: 1, cw: 0.22 }, square: { fw: 1.03, jw: 1.02, ch: 1.02, cw: 0.62 }, heart: { fw: 1.03, jw: 0.72, ch: 1.1, cw: 0.12 }, long: { fw: 0.92, jw: 0.86, ch: 1.2, cw: 0.3 }, wide: { fw: 1.1, jw: 1.05, ch: 0.92, cw: 0.5 } };
-export const EYE_TYPES = { round: { rx: 1.9, ry: 2.5, gap: 3.3 }, narrow: { rx: 2.2, ry: 1.5, gap: 3.5 }, wide: { rx: 2.3, ry: 2.9, gap: 3.7 }, sleepy: { rx: 1.9, ry: 2.2, gap: 3.1, lid: true } };
+export const EYE_TYPES = { round: { rx: 1.5, ry: 1.9, gap: 3 }, narrow: { rx: 1.9, ry: 1.2, gap: 3.2 }, wide: { rx: 1.8, ry: 2.2, gap: 3.4 }, sleepy: { rx: 1.5, ry: 1.7, gap: 2.8, lid: true } };
 export const NOSES = ['dot', 'long', 'wide', 'hook'], MOUTHS = ['smile', 'flat', 'smirk', 'open', 'full'];
 const headPath = (g, hr, hy, S) => {
   const rx = hr * S.fw, jw = hr * S.jw, cw = hr * S.cw, yb = hy + hr * S.ch, yj = hy + hr * S.ch * 0.78;
@@ -103,7 +105,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   if (sp.cloak && !back) poly([[-shw - 1.5, -27 + bob], [shw + 1.5, -27 + bob], [hw + 5, -4], [-hw - 5, -4]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, -0.16)), 1.8);
   if (sp.pack === 'quiver' && !back) { poly([[shw - 2, -22 + bob], [shw + 4, -26 + bob], [shw + 7, -34 + bob], [shw + 1, -30 + bob]], '#7a4a26', 1.5); for (let i = 0; i < 3; i++) ln([[shw + 3 + i, -31 + bob - i], [shw + 5 + i, -37 + bob - i]], 1.2, '#e8e0c8'); }
   if (!back && !(sp.hat && sp.hat.kind === 'hood') && (sp.hairStyle === 'long' || sp.hairStyle === 'braids')) {
-    const hr0 = 8.6 * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy0 = -35 - (sp.headS - 1) * 8; g.save(); g.translate(0, bob); drapePath(g, hr0, hy0);
+    const hr0 = 8.6 * HEAD * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy0 = -35 - (sp.headS - 1) * 8; g.save(); g.translate(0, bob); drapePath(g, hr0, hy0);
     g.fillStyle = lg(0, hy0 - hr0, 0, hy0 + hr0, shade(sp.hair, 0.1), shade(sp.hair, -0.12)); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke(); g.restore();
   }
   if (!dressy) { drawLeg(-3, L1); drawLeg(3, L2); }
@@ -168,7 +170,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   if (sp.shield) { const [hx, hy] = hand(-1); poly([[hx - 8.5, hy - 12], [hx + 3, hy - 12], [hx + 3, hy - 1], [hx - 2.7, hy + 6], [hx - 8.5, hy - 1]], lg(hx - 8, 0, hx + 3, 0, shade(base, 0.12), shade(base, -0.1)), 1.8); ln([[hx - 2.7, hy - 12], [hx - 2.7, hy + 5]], 1.3, shade(O_.metal || '#c8a23a', 0.05)); ln([[hx - 8, hy - 5], [hx + 2.5, hy - 5]], 1.3, shade(O_.metal || '#c8a23a', 0.05)); }
   held(1);
   // --- głowa ---
-  const hr = 8.6 * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy = -35 - (sp.headS - 1) * 8, hx0 = 0;
+  const hr = 8.6 * HEAD * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy = -35 - (sp.headS - 1) * 8, hx0 = 0;
   const hairCol = sp.hair, hairDk = shade(hairCol, -0.12), hairLt = shade(hairCol, 0.1);
   const hair = (pts, lw = 1.6) => poly(pts, lg(0, hy - hr, 0, hy + hr, hairLt, hairDk), lw);
   const fillHair = () => { g.fillStyle = lg(0, hy - hr, 0, hy + hr, hairLt, hairDk); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.lineJoin = 'round'; g.stroke(); };
@@ -196,7 +198,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
     const F = sp.face || {}, EY = EYE_TYPES[F.eyes] || EYE_TYPES.round, ey = hy + 0.2, bt = F.bt || (fm ? 1 : 1.4);
     for (const sd of [-1, 1]) {
       const ex = sd * EY.gap + fshift;
-      ell(ex, ey, EY.rx, EY.ry, '#fff', 0.8); circ(ex + 0.2 * (fshift > 0 ? 1 : 0), ey + 0.2, Math.min(1.7, EY.ry * 0.62), sp.eye, 0); circ(ex + 0.3, ey + 0.2, 0.8, '#16100c', 0); circ(ex + 0.9, ey - 0.7, 0.55, '#fff', 0);
+      ell(ex, ey, EY.rx, EY.ry, '#d8d0c0', 0.8); circ(ex + 0.2 * (fshift > 0 ? 1 : 0), ey + 0.2, Math.min(1.3, EY.ry * 0.7), sp.eye, 0); circ(ex + 0.3, ey + 0.2, 0.8, '#16100c', 0); circ(ex + 0.9, ey - 0.7, 0.55, '#fff', 0);
       if (EY.lid) ln([[ex - EY.rx - 0.2, ey - EY.ry * 0.15], [ex + EY.rx + 0.2, ey - EY.ry * 0.15]], 1.5, shade(sp.skin, -0.3));
       if (fm) ln([[ex + sd * EY.rx * 0.6, ey - EY.ry * 0.7], [ex + sd * (EY.rx + 1.6), ey - EY.ry - 0.9]], 1.1, '#1a1210');
       const by = ey - EY.ry - 1.1;
@@ -210,7 +212,8 @@ export function drawCharacter(g, x, y, sp, o = {}) {
     if (F.scar) ln([[fshift + 2.6, hy - 3.4], [fshift + 5, hy + 3.2]], 1.3, 'rgba(150,50,50,.8)');
     if (F.freckles) for (const [fx, fy] of [[-5, 3], [-3.4, 4.2], [4, 4.2], [5.6, 3], [2.6, 3.2]]) circ(fx + fshift, hy + fy, 0.6, 'rgba(150,80,40,.7)', 0);
     if (F.mole) circ(fshift + 3.4, hy + 4.8, 0.7, '#3a2418', 0);
-    if (sp.role === 'child' || sp.female) { blob(-5 + fshift, hy + 3.2, 1.8, 1.1, '#ff7a6a', 0.3); blob(5 + fshift, hy + 3.2, 1.8, 1.1, '#ff7a6a', 0.3); }
+    if (sp.role === 'child') { blob(-5 + fshift, hy + 3.2, 1.8, 1.1, '#ff7a6a', 0.3); blob(5 + fshift, hy + 3.2, 1.8, 1.1, '#ff7a6a', 0.3); }
+    else { blob(-3.5 + fshift, hy + 4.4, 3.6, 2.2, '#000', 0.1); blob(3.5 + fshift, hy + 4.4, 3.6, 2.2, '#000', 0.1); ln([[-hr * 0.7 + fshift, hy + 1.6], [-hr * 0.4 + fshift, hy + 3.4]], 0.8, 'rgba(60,30,20,.35)'); }
     const my = hy + 5.4, mc = fm ? '#a8302a' : '#6a2a1a', mw = F.mouth === 'full' ? 1.8 : 1.1;
     if (fm) ell(fshift, my + 0.5, 2.5, 1.3, 'rgba(190,70,64,.55)', 0);
     if (F.mouth === 'flat') ln([[fshift - 2, my + 0.4], [fshift + 2, my + 0.4]], mw, mc);

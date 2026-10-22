@@ -47,7 +47,7 @@ function smooth(g, pts, fill, lw = 1.9) {
   const n = pts.length, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], m0 = mid(pts[n - 1], pts[0]);
   g.beginPath(); g.moveTo(m0[0], m0[1]);
   for (let i = 0; i < n; i++) { const m = mid(pts[i], pts[(i + 1) % n]); g.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]); }
-  g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (lw) { g.lineWidth = lw; g.strokeStyle = '#3a2414'; g.lineJoin = 'round'; g.stroke(); }
+  g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (lw) { g.lineWidth = lw; g.strokeStyle = '#150c08'; g.lineJoin = 'round'; g.stroke(); }
 }
 
 export function drawKopacz(g, x, y, sp, o = {}) {
@@ -64,7 +64,7 @@ export function drawKopacz(g, x, y, sp, o = {}) {
   for (const sg of [-1, 1]) {
     const lx = sg * bw * 0.5, st = sg * step * 0.3, hip = [lx, -11 + bob * 0.3], knee = [lx + sg * 4.2 + st * 0.4, -6], foot = [lx + sg * 1.5 + st, -1.4];
     const col = sg < 0 ? P.dark : P.mid;
-    ln([hip, knee, foot], bw * 0.62 + 2.4, '#3a2414'); ln([hip, knee, foot], bw * 0.62, col);
+    ln([hip, knee, foot], bw * 0.62 + 2.4, '#150c08'); ln([hip, knee, foot], bw * 0.62, col);
     ln([[knee[0] - 1.2, knee[1] - 2.4], [knee[0] + 1.6, knee[1] - 1]], 1, P.light);
     ell(foot[0] + sg * 0.8, foot[1] + 0.2, bw * 0.34, 2.5, P.dark, 1.5);
     for (let i = -1; i <= 1; i++) ln([[foot[0] + sg * 0.8 + i * bw * 0.22, foot[1] + 1.4], [foot[0] + sg * 0.8 + i * bw * 0.28, foot[1] + 3.8]], 1.4, P.bone);
@@ -113,9 +113,9 @@ export function drawKopacz(g, x, y, sp, o = {}) {
   const arms = () => {
     for (const sg of [-1, 1]) {
       const sx = sg * bw * sp.sh * 0.92, sy = top + 4, sw = step * sg * 0.35, hx = sg * (bw * sp.sh + 4.5), hy = sy + sp.arm + sw;
-      ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 6.6, '#3a2414'); ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 4.6, sg < 0 ? P.light : P.mid);
+      ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 6.6, '#150c08'); ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 4.6, sg < 0 ? P.light : P.mid);
       circ(hx, hy, 3, sg < 0 ? P.light : P.mid, 1.5);
-      for (let i = 0; i < sp.claws; i++) { const a = (i / Math.max(1, sp.claws - 1) - 0.5) * 1.1 + sg * 0.15, tx = hx + Math.sin(a) * sp.clawLen, ty = hy + Math.cos(a) * sp.clawLen; ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 3.1, '#3a2414'); ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 1.5, P.bone); }
+      for (let i = 0; i < sp.claws; i++) { const a = (i / Math.max(1, sp.claws - 1) - 0.5) * 1.1 + sg * 0.15, tx = hx + Math.sin(a) * sp.clawLen, ty = hy + Math.cos(a) * sp.clawLen; ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 3.1, '#150c08'); ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 1.5, P.bone); }
     }
   };
   if (back) { head(); body(); arms(); } else { body(); head(); arms(); }

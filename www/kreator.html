@@ -54,7 +54,7 @@ h2{margin:0 0 6px;font:700 12px system-ui;letter-spacing:.09em;text-transform:up
 import {heroSpec,CLASS_IDS,CLASS_SLOTS,CLASS_LOOKS,SKIN_TONES,HAIR_COLORS,HAIR_NAMES,facesFor,HAIR_BY_GENDER,SWATCHES,COLOR_SLOTS,randomHeroOpts,randomName} from '../src/art/classes.js';
 import {drawCharacter,DIRS} from '../src/art/characters.js';
 import {CLASSES,ORIGINS,TRAITS,MAX_TRAITS,startStats} from '../src/game/classdata.js';
-import {glow} from '../src/art/mood.js';
+import {glow,applyMood} from '../src/art/mood.js';
 import {installFrames,drawLock} from '../src/art/ui.js';
 import {newCharacter} from '../src/game/progression.js';
 import {saveCharacter} from '../src/game/save.js';
@@ -142,7 +142,7 @@ function scene(W,H,now){
   g.beginPath();g.ellipse(cx,fy+2,sc*15,sc*4.4,0,0,7);g.lineWidth=1.2;g.strokeStyle=col;g.stroke();
   drawCharacter(g,cx,fy,{...sp,sc:sp.sc*sc},{...dirOpt(),t:st.walk?(now/700)%1:undefined});
 }
-function frame(now){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);scene(cv.width,cv.height,now);requestAnimationFrame(frame)}
+function frame(now){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);scene(cv.width,cv.height,now);applyMood(g,cv.width,cv.height,'gritLekki');requestAnimationFrame(frame)}
 fit();render();requestAnimationFrame(frame);
 window.__kreator={get state(){return st},get hero(){return window.__hero||null},spec};
 </script></body></html>

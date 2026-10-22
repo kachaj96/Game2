@@ -6,13 +6,16 @@ export function toHsl(hex) {
   if (d) { S = L > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); H = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H *= 60; }
   return [H, S, L];
 }
-export function hsl(h, s, l) {
+// Surowość: wszystkie kolory generowane przez hsl() są przygaszone i przyciemnione (bliżej Diablo niż bajki). 1 = bez zmian.
+export const GRIT = { sat: 0.66, light: 0.88 };
+export const hsl = (h, s, l) => hslRaw(h, s * GRIT.sat, l * GRIT.light);
+export function hslRaw(h, s, l) {
   h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
   const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
   const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return '#' + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
 }
-export const shade = (hex, dl, ds = 0) => { const [h, s, l] = toHsl(hex); return hsl(h, s + ds, l + dl); };
+export const shade = (hex, dl, ds = 0) => { const [h, s, l] = toHsl(hex); return hslRaw(h, s + ds, l + dl); };
 export function mix(a, b, t) {
   const p = (x) => { x = x.replace('#', ''); return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16)); };
   const A = p(a), B = p(b);

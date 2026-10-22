@@ -109,4 +109,26 @@ export function ashCloud(g, x, y, sc = 1, seed = 1) {
   for (let i = 0; i < 7; i++) { const a = r() * 6.28, d = r() * 11 * sc; blob(x + Math.cos(a) * d * 1.3, y - 12 * sc + Math.sin(a) * d * 0.7 - i * 2, (9 + r() * 6) * sc, (6 + r() * 4) * sc, r() < 0.5 ? '#8a8a92' : '#6a6a72', 0.5); }
   for (let i = 0; i < 4; i++) blob(x + (r() - 0.5) * 26 * sc, y - 16 * sc - r() * 10 * sc, (5 + r() * 4) * sc, (4 + r() * 3) * sc, '#b8b8c0', 0.35);
 }
-export const PROPS = { ashCloud, grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
+// ślady na ziemi: leżą płasko w osiach izometrii (spłaszczone elipsy), żeby arena wyglądała na używaną
+export function bloodSplat(g, x, y, sc = 1, seed = 1) {
+  const { blob, ln } = kit(g), r = rng(seed * 31 + 7);
+  blob(x, y, r.range(12, 20) * sc, r.range(5, 9) * sc, '#3a0c0c', 0.55);
+  for (let i = 0; i < 6; i++) { const a = r() * 6.28, d = r.range(8, 22) * sc; blob(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.5, r.range(1.2, 3.6) * sc, r.range(0.7, 1.8) * sc, '#4a1010', 0.6); }
+  for (let i = 0; i < 3; i++) { const a = r() * 6.28, d = r.range(10, 18) * sc; ln([[x, y], [x + Math.cos(a) * d, y + Math.sin(a) * d * 0.5]], r.range(0.8, 1.6), 'rgba(70,12,12,.5)'); }
+  blob(x - 2 * sc, y - 1, 7 * sc, 2.6 * sc, '#6a1818', 0.35);
+}
+export function bones(g, x, y, sc = 1, seed = 1) {
+  const { ln, ell, poly, blob } = kit(g), r = rng(seed * 17 + 3), bone = '#cbbfa4', dk = '#7a705c';
+  blob(x + 1, y + 1, 12 * sc, 3.6 * sc, '#000', 0.25);
+  for (let i = 0; i < 3; i++) { const a = r.range(-0.5, 0.5) + i * 1.1, l = r.range(7, 11) * sc, cx = x + r.range(-4, 4) * sc, cy = y + r.range(-1, 1) * sc, dx = Math.cos(a) * l, dy = Math.sin(a) * l * 0.5; ln([[cx - dx, cy - dy], [cx + dx, cy + dy]], 3.4 * sc, OUT); ln([[cx - dx, cy - dy], [cx + dx, cy + dy]], 2 * sc, bone); ell(cx + dx, cy + dy, 2 * sc, 1.4 * sc, bone, 1); ell(cx - dx, cy - dy, 2 * sc, 1.4 * sc, bone, 1); }
+  const sx = x + r.range(-5, 5) * sc, sy = y - 1;
+  ell(sx, sy - 2 * sc, 5 * sc, 4.2 * sc, bone, 1.6); poly([[sx - 2.6 * sc, sy + 1 * sc], [sx + 2.6 * sc, sy + 1 * sc], [sx + 1.8 * sc, sy + 3.6 * sc], [sx - 1.8 * sc, sy + 3.6 * sc]], dk, 1.2);
+  ell(sx - 1.8 * sc, sy - 2.2 * sc, 1.3 * sc, 1.5 * sc, '#1a1210', 0); ell(sx + 1.8 * sc, sy - 2.2 * sc, 1.3 * sc, 1.5 * sc, '#1a1210', 0);
+}
+export function crack(g, x, y, sc = 1, seed = 1) {
+  const { ln } = kit(g), r = rng(seed * 23 + 5);
+  let px = x - 10 * sc, py = y;
+  const pts = [[px, py]]; for (let i = 0; i < 6; i++) { px += r.range(3, 6) * sc; py += r.range(-2.2, 2.2) * sc * 0.6; pts.push([px, py]); if (r() < 0.4) ln([[px, py], [px + r.range(-4, 4) * sc, py + r.range(2, 5) * sc * 0.5]], 0.9, 'rgba(0,0,0,.55)'); }
+  ln(pts, 1.6, 'rgba(0,0,0,.6)'); ln(pts.map(([a, b]) => [a + 0.6, b + 0.8]), 0.7, 'rgba(255,255,255,.12)');
+}
+export const PROPS = { bloodSplat, bones, crack, ashCloud, grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
