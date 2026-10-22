@@ -45,7 +45,7 @@ await tap('right'); assert.equal((await S()).dir, 1); await tap('left'); await t
 await tap('go'); const hero = await page.evaluate(() => window.__kreator.hero);
 assert.equal(hero.name, 'Wiera'); assert.equal(hero.classId, 'zalobnik'); assert.equal(hero.origin, 'uczen'); assert.deepEqual(hero.traits, ['szybki', 'cichy']);
 assert.deepEqual([hero.stats.pa, hero.stats.pm], [6, 3]);
-assert.equal(hero.stats.hp, 38 - 4); assert.equal(hero.stats.initiative, 28 + 5); assert.equal(hero.stats.agility, 3); assert.equal(hero.stats.power, -2); assert.equal(hero.stats.spellPoints, 1);
+assert.equal(hero.stats.hp, 38 - 4); assert.equal(hero.stats.initiative, 28 + 5); assert.equal(hero.stats.air, 4); assert.equal(hero.stats.fire, -4); assert.equal(hero.stats.spellPoints, 1);
 assert.equal(hero.look.role, 'mage'); assert.equal(JSON.parse(JSON.stringify(hero)).look.hat.kind, 'veilhat', 'wygląd klasy przetrwał zapis');
 // 9. przewijanie panelu nie wraca na górę po wyborze (regresja)
 await page.evaluate(() => { document.getElementById('opts').scrollTop = 400; }); const top0 = await page.evaluate(() => document.getElementById('opts').scrollTop);

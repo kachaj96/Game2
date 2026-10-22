@@ -6,12 +6,13 @@ export function createState({ cols, rows, blocked = [], units, seed = 1 }) {
   const grid = new IsoGrid(cols, rows); grid.blockCells(blocked);
   const us = units.map((u) => {
     const cls = CLASSES[u.classId], maxHp = u.maxHp ?? cls?.stats.hp ?? 20;
-    const out = { maxHp, maxPm: 3, maxPa: 6, initiative: cls?.stats.initiative ?? 0, stats: { strength: 0, agility: 0, power: 0, endurance: 0 }, cooldowns: {}, casts: {}, ...u };
+    const out = { maxHp, maxPm: 3, maxPa: 6, initiative: cls?.stats.initiative ?? 0, cooldowns: {}, casts: {}, ...u };
+    out.stats = { earth: 0, fire: 0, water: 0, air: 0, power: 0, flat: 0, ...u.stats }; out.resist = { earth: 0, fire: 0, water: 0, air: 0, neutral: 0, ...u.resist };
     out.spells = u.spells ?? cls?.spells.map((s) => ({ id: s.id, level: 1 })) ?? [];
     out.hp = u.hp ?? out.maxHp; out.pm = out.maxPm; out.pa = out.maxPa; return out;
   });
   const order = [...us].sort((a, b) => b.initiative - a.initiative || (a.id < b.id ? -1 : 1)).map((u) => u.id);
-  return { cols, rows, blocked: [...grid.blocked].sort((a, b) => a - b), units: us, order, turn: { index: 0, round: 1 }, seed, rolls: 0, graves: [], clouds: [], result: null, log: [] };
+  return { cols, rows, blocked: [...grid.blocked].sort((a, b) => a - b), units: us, order, turn: { index: 0, round: 1 }, seed, rolls: 0, graves: [], clouds: [], known: {}, result: null, log: [] };
 }
 export const gridOf = (state) => { const g = new IsoGrid(state.cols, state.rows); for (const k of state.blocked) g.blocked.add(k); return g; };
 export const unitById = (state, id) => state.units.find((u) => u.id === id) || null;

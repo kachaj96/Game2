@@ -67,12 +67,12 @@ function build(){
   o.append(el('h2',{textContent:'Przeszłość'}));
   ORIGINS.forEach((x,i)=>{const b=el('button',{className:'org'+(st.origin===i?' on':''),id:'org-'+i},[el('b',{textContent:x.name}),el('span',{textContent:x.story}),el('i',{textContent:x.bonusText})]);b.onclick=()=>{st.origin=i;render()};o.append(b)});
   o.append(el('h2',{textContent:`Cechy (wybierz ${MAX_TRAITS}), każda ma plus i skazę`}));o.append(el('div',{id:'msg'}));
-  const tr=el('div',{className:'row'});TRAITS.forEach(t=>{const on=st.traits.includes(t.id);const fmt=d=>Object.entries(d).map(([k,v])=>`${v>0?'+':''}${v} ${({hp:'życia',initiative:'inicjatywy',strength:'siły',agility:'zręczności',power:'mocy',endurance:'wytrzymałości'})[k]}`).join(', ');
+  const tr=el('div',{className:'row'});TRAITS.forEach(t=>{const on=st.traits.includes(t.id);const fmt=d=>Object.entries(d).map(([k,v])=>`${v>0?'+':''}${v} ${({hp:'życia',initiative:'inicjatywy',earth:'mocy Ziemi',fire:'mocy Ognia',water:'mocy Wody',air:'mocy Powietrza',resistAll:'odporności'})[k]}`).join(', ');
     const b=el('button',{className:'btn chip'+(on?' on':''),id:'tr-'+t.id},[document.createTextNode(t.name),el('small',{textContent:`${fmt(t.plus)}; ${fmt(t.minus)}`})]);
     b.onclick=()=>{if(on)st.traits=st.traits.filter(x=>x!==t.id);else if(st.traits.length>=MAX_TRAITS){$('msg').textContent=`Maksymalnie ${MAX_TRAITS} cechy. Odznacz jedną.`;return}else st.traits=[...st.traits,t.id];render()};tr.append(b)});o.append(tr);
   const s=startStats(st.classId,ORIGINS[st.origin].id,st.traits),c=CLASSES[st.classId];
   o.append(el('h2',{textContent:'Podsumowanie'}));
-  const sm=el('div',{id:'sum'});sm.innerHTML=`<b>${st.name||'Bezimienny'}</b>, ${c.name}<br>Życie <b>${s.hp}</b> · PA <b>${s.pa}</b> · PM <b>${s.pm}</b> · Inicjatywa <b>${s.initiative}</b><br>Siła ${s.strength} · Zręczność ${s.agility} · Moc ${s.power} · Wytrzymałość ${s.endurance}${s.spellPoints?` · Punkty czaru ${s.spellPoints}`:''}<br>Czary: ${c.spells.map(x=>x.name).join(', ')}`;o.append(sm);
+  const sm=el('div',{id:'sum'});sm.innerHTML=`<b>${st.name||'Bezimienny'}</b>, ${c.name}<br>Życie <b>${s.hp}</b> · PA <b>${s.pa}</b> · PM <b>${s.pm}</b> · Inicjatywa <b>${s.initiative}</b><br>Moc: Ziemia ${s.earth} · Ogień ${s.fire} · Woda ${s.water} · Powietrze ${s.air} · Odporność ${s.resist.earth}%${s.spellPoints?` · Punkty czaru ${s.spellPoints}`:''}<br>Czary: ${c.spells.map(x=>x.name).join(', ')}`;o.append(sm);
   const go=el('button',{className:'btn go',textContent:'Zejdź do areny',id:'go'});go.style.marginTop='12px';go.onclick=()=>{window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};$('msg').textContent='';sm.innerHTML+='<br><b style="color:var(--ember)">Bohater zapisany.</b>';console.log(JSON.stringify(window.__hero))};o.append(go);
   o.scrollTop=keep;
 }

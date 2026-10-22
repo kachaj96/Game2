@@ -1,6 +1,6 @@
 # Plan: żywioły, odporności, statystyki, ikony i pasek czarów
 
-**Status: PROPOZYCJA do akceptacji.** Nic z tego poza koncepcją ikon i polem `element` w danych czarów nie jest jeszcze w grze. Koncept ikon: `www/ikony.html`, zrzut `docs/podglad/ikony.png`.
+**Status: ZATWIERDZONY (22.10.2026), w budowie.** Decyzje: cztery żywioły plus neutralny, Witalność i moce żywiołów, skróty ze stronami z Księgą Czarów, odporności odkrywane w trakcie (pokazywane po pierwszym trafieniu danym żywiołem). Koncept ikon: `www/ikony.html`, zrzut `docs/podglad/ikony.png`.
 
 ## 1. Co zmienia się dla gracza
 

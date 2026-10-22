@@ -21,8 +21,19 @@ const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 // licznik rzutów w stanie: ten sam stan i komendy zawsze dają te same wyniki
 export function rollInt(state, lo, hi) { const v = rng(state.seed * 9973 + state.rolls * 7 + 1)(); state.rolls++; return lo + Math.floor(v * (hi - lo + 1)); }
-export const damageBonus = (unit) => (1 + ((unit.stats?.[CLASSES[unit.classId]?.stats.main] || 0) / 100)) * (unit.damageScale ?? 1);
-export const damageRange = (unit, data) => [Math.floor(data.dmg[0] * damageBonus(unit)), Math.floor(data.dmg[1] * damageBonus(unit))];
+// ---- żywioły i odporności ----
+// obrażenia = floor(rzut x (1 + (cecha żywiołu + moc ogólna)/100) x skala) + obrażenia stałe; potem x (1 - odporność%/100), minimum 0.
+// Zwykłe (neutralne) nie korzystają z cechy żywiołu, tylko z mocy ogólnej. Odporność: gracz do +50%, przeciwnik do +75%, słabość do -100%.
+export const RESIST_CAP = { gracz: 50, wrog: 75 }, RESIST_FLOOR = -100;
+export const elementOfSpell = (unit, spellId) => CLASSES[unit.classId]?.spells.find((s) => s.id === spellId)?.element || 'neutral';
+export const statFor = (unit, element) => (element === 'neutral' ? 0 : unit.stats?.[element] || 0) + (unit.stats?.power || 0);
+export const damageRange = (unit, data, element = 'neutral') => {
+  const m = Math.max(0, 1 + statFor(unit, element) / 100) * (unit.damageScale ?? 1), f = unit.stats?.flat || 0;
+  return [Math.floor(data.dmg[0] * m) + f, Math.floor(data.dmg[1] * m) + f];
+};
+export const resistOf = (target, element) => Math.max(RESIST_FLOOR, Math.min(RESIST_CAP[target.team] ?? 75, target.resist?.[element] || 0));
+export const afterResist = (target, element, v) => Math.max(0, Math.floor(v * (1 - resistOf(target, element) / 100)));
+export const damageRangeVs = (unit, data, element, target) => damageRange(unit, data, element).map((v) => afterResist(target, element, v));
 
 // kod błędu albo null, gdy czar można rzucić w ten kafel
 export function castProblem(state, unitId, spellId, target) {
@@ -56,8 +67,9 @@ export function resolveCast(next, unit, spellId, target, events) {
   const hits = [], died = [];
   let victim = null;
   if (data.dmg) {
-    const t = alive(next).find((x) => x.x === target.x && x.y === target.y), [lo, hi] = damageRange(unit, data), dmg = rollInt(next, lo, hi);
-    t.hp = Math.max(0, t.hp - dmg); hits.push({ unit: t.id, dmg, hp: t.hp, killed: t.hp === 0 }); victim = t;
+    const t = alive(next).find((x) => x.x === target.x && x.y === target.y), el = elementOfSpell(unit, spellId), [lo, hi] = damageRange(unit, data, el), raw = rollInt(next, lo, hi), dmg = afterResist(t, el, raw);
+    t.hp = Math.max(0, t.hp - dmg); hits.push({ unit: t.id, dmg, raw, element: el, resist: resistOf(t, el), hp: t.hp, killed: t.hp === 0, kind: 'spell' }); victim = t;
+    next.known[t.id] = { ...(next.known[t.id] || {}), [el]: resistOf(t, el) };
     if (t.hp === 0) { kill(next, t); died.push({ unit: t.id, grave: { x: t.x, y: t.y } }); }
   }
   events.push({ type: 'cast', unit: unit.id, spell: spellId, to: { x: target.x, y: target.y }, hits });
@@ -74,9 +86,9 @@ export function resolveCast(next, unit, spellId, target, events) {
     }
     const remaining = hitWall ? data.push - moved : 0, coll = remaining * (data.collision || 0), pHits = [];
     if (coll > 0) {
-      victim.hp = Math.max(0, victim.hp - coll); pHits.push({ unit: victim.id, dmg: coll, hp: victim.hp, killed: victim.hp === 0 });
+      victim.hp = Math.max(0, victim.hp - coll); pHits.push({ unit: victim.id, dmg: coll, hp: victim.hp, killed: victim.hp === 0, kind: 'collision', element: 'neutral' });
       if (victim.hp === 0) { kill(next, victim); died.push({ unit: victim.id, grave: { x: victim.x, y: victim.y } }); }
-      if (blocker) { blocker.hp = Math.max(0, blocker.hp - coll); pHits.push({ unit: blocker.id, dmg: coll, hp: blocker.hp, killed: blocker.hp === 0 }); if (blocker.hp === 0) { kill(next, blocker); died.push({ unit: blocker.id, grave: { x: blocker.x, y: blocker.y } }); } }
+      if (blocker) { blocker.hp = Math.max(0, blocker.hp - coll); pHits.push({ unit: blocker.id, dmg: coll, hp: blocker.hp, killed: blocker.hp === 0, kind: 'collision', element: 'neutral' }); if (blocker.hp === 0) { kill(next, blocker); died.push({ unit: blocker.id, grave: { x: blocker.x, y: blocker.y } }); } }
     }
     events.push({ type: 'pushed', unit: victim.id, from, to: { x: victim.x, y: victim.y }, moved, collision: coll, blocker: blocker ? blocker.id : null, hits: pHits });
     if (data.cloud) { next.clouds.push({ x: from.x, y: from.y, turns: data.cloud.turns, owner: unit.id }); events.push({ type: 'cloud', at: from, turns: data.cloud.turns }); }

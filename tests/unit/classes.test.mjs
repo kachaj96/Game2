@@ -100,11 +100,14 @@ test('przeszłości i cechy: 4 przeszłości, 6 cech, każda cecha to plus i ska
 test('startStats: PA i PM zawsze 6 i 3, przeszłość i cechy się sumują, nadmiarowe cechy są ignorowane', () => {
   const s = startStats('grabarz', 'syn_kopca', ['twardy', 'zawzięty']);
   assert.equal(s.pa, 6); assert.equal(s.pm, 3);
-  assert.equal(s.hp, 62 + 8 + 6); assert.equal(s.initiative, 15 - 3); assert.equal(s.strength, 3); assert.equal(s.endurance, -2);
+  assert.equal(s.hp, 62 + 8 + 6 - 4); assert.equal(s.initiative, 15 - 3); assert.equal(s.earth, 4); assert.equal(s.fire, 0);
   assert.deepEqual(startStats('grabarz', 'syn_kopca', ['twardy', 'zawzięty', 'cichy']), s, 'trzecia cecha ignorowana');
   assert.equal(startStats('zalobnik', 'uczen').spellPoints, 1);
-  for (const c of CLASS_LIST) for (const o of ORIGINS) for (const t of TRAITS) assert.ok(startStats(c.id, o.id, [t.id]).hp > 20, 'żadna kombinacja nie robi bohatera nieżywym');
+  const o = startStats('tropiciel', 'straznik', ['ostrożny']); assert.deepEqual(o.resist, { earth: 10, fire: 10, water: 10, air: 10, neutral: 0 }); assert.equal(o.earth, -4);
+  assert.equal(startStats('tropiciel', 'wygnaniec', ['cichy']).air, 4); assert.equal(startStats('tropiciel', 'wygnaniec', ['cichy']).fire, -4);
+  for (const c of CLASS_LIST) for (const o2 of ORIGINS) for (const t of TRAITS) assert.ok(startStats(c.id, o2.id, [t.id]).hp > 20, 'żadna kombinacja nie robi bohatera nieżywym');
 });
+
 
 import { ELEMENTS } from '../../src/game/classdata.js';
 import { SPELL_SYMBOLS, drawSpellIcon } from '../../src/art/spellicons.js';

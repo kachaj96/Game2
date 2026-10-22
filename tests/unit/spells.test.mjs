@@ -97,9 +97,9 @@ test('śmierć: życie 0, grób na kaflu, grób blokuje ruch i linię, zwycięst
 });
 
 test('statystyki i skala obrażeń: moc zwiększa obrażenia, damageScale je zmniejsza', () => {
-  const m = { classId: 'zalobnik', stats: { power: 50 } }, d = spellData({ ...m, spells: [{ id: 'zar', level: 1 }] }, 'zar').data;
-  assert.deepEqual(damageRange(m, d), [18, 24]); assert.deepEqual(damageRange({ classId: 'zalobnik', stats: {} }, d), [12, 16]);
-  assert.deepEqual(damageRange({ classId: 'zalobnik', stats: {}, damageScale: 0.5 }, d), [6, 8]);
+  const m = { classId: 'zalobnik', stats: { fire: 50 } }, d = spellData({ ...m, spells: [{ id: 'zar', level: 1 }] }, 'zar').data;
+  assert.deepEqual(damageRange(m, d, 'fire'), [18, 24]); assert.deepEqual(damageRange({ classId: 'zalobnik', stats: {} }, d, 'fire'), [12, 16]);
+  assert.deepEqual(damageRange({ classId: 'zalobnik', stats: {}, damageScale: 0.5 }, d, 'fire'), [6, 8]);
 });
 
 test('czary bez zaimplementowanego efektu są odrzucane, a nie udawane', () => {

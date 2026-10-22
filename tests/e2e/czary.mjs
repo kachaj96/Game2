@@ -35,11 +35,11 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   assert.deepEqual(await page.evaluate(() => window.__game.targets('zar')), [{ x: 5, y: 4 }], 'jedyny cel w zasięgu i widoczny');
   // pierwsze dotknięcie celu: tylko podgląd, bez zmiany stanu
   await tapCell(5, 4); let pv = await page.evaluate(() => window.__game.preview);
-  assert.ok(pv && pv.kind === 'cast' && pv.lo === 12 && pv.hi === 16, 'podgląd widełek obrażeń'); assert.equal(unit(await S(), 'e1').hp, 22);
+  assert.ok(pv && pv.kind === 'cast' && pv.lo === 14 && pv.hi === 19, 'podgląd widełek obrażeń z odpornością Strażnika (-20% na ogień)'); assert.equal(unit(await S(), 'e1').hp, 22);
   await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-czar.png') });
   // drugie potwierdza: obrażenia w widełkach, 3 PA zużyte, wybór czaru zdjęty
   await tapCell(5, 4); await idle(); let s = await S(); const dmg = 22 - unit(s, 'e1').hp;
-  assert.ok(dmg >= 12 && dmg <= 16, `obrażenia ${dmg}`); assert.equal(unit(s, 'h').pa, 3); assert.equal(await page.evaluate(() => window.__game.selSpell), null);
+  assert.ok(dmg >= 14 && dmg <= 19, `obrażenia ${dmg}`); assert.equal(unit(s, 'h').pa, 3); assert.equal(await page.evaluate(() => window.__game.selSpell), null);
   // drugi rzut zabija (22 życia, min 24 obrażeń łącznie): grób na kaflu, zwycięstwo
   await page.locator('#sp-zar').tap(); await tapCell(5, 4); await tapCell(5, 4); await page.waitForFunction(() => window.__game.state.result === 'victory', null, { timeout: 15000 }); await page.waitForSelector('#banner', { state: 'visible' });
   s = await S(); assert.equal(unit(s, 'e1').hp, 0); assert.deepEqual(s.graves, [{ x: 5, y: 4, unit: 'e1' }]); assert.equal(s.result, 'victory');
@@ -85,7 +85,7 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   await tapCell(4, 4); await tapCell(4, 4); await page.waitForFunction(() => !window.__game.busy, null, { timeout: 15000 });
   const s = await S(), e = unit(s, 'e1');
   assert.deepEqual([e.x, e.y], [5, 4], 'odepchnięty o 1 kafel i zatrzymany ścianą');
-  const lost = 22 - e.hp; assert.ok(lost >= 6 + 4 && lost <= 8 + 4, `obrażenia czaru (6-8) plus kolizja 4: ${lost}`);
+  const lost = 22 - e.hp; assert.ok(lost >= 4 + 4 && lost <= 5 + 4, `obrażenia czaru (6-8 po odporności Ziemi +30% to 4-5) plus kolizja 4: ${lost}`);
   assert.equal(unit(s, 'h').pa, 3); assert.equal(unit(s, 'h').cooldowns.zrzut_ziemi, 4, 'odnowienie 3 tury: wartość 4 na starcie');
   assert.equal(await page.locator('#sp-zrzut_ziemi').isDisabled(), true, 'czar w odnowieniu jest wyszarzony');
   assert.match(await page.locator('#sp-zrzut_ziemi').textContent(), /wraca za 4/);

@@ -48,8 +48,19 @@ Dokument żyje. Każda decyzja ma datę i powód, żeby dało się ją później
 
 **Kolejność czarów (każda warstwa z testami):** 1. obrażenia, zasięg, linia, odnowienia, limity, PA, śmierć i groby, linia widzenia. 2. odpychanie z kolizją. 3. pułapki i glify. Czar, którego efekt jeszcze nie jest zaimplementowany, jest w interfejsie wyszarzony, a logika go odrzuca, żeby nie udawać, że działa.
 
+## Decyzje, runda 5 (22.10.2026)
+
+| Pytanie | Decyzja |
+|---|---|
+| Żywioły | Cztery plus neutralny: Ziemia, Ogień, Woda, Powietrze, Zwykłe |
+| Statystyki | Witalność i moc każdego żywiołu (5 punktów za poziom, koszt rośnie z wartością) |
+| Pasek czarów | Skróty ze stronami (6 widocznych) i Księga Czarów |
+| Odporności wroga | Odkrywane w trakcie: widoczne po pierwszym trafieniu danym żywiołem |
+
+Budowa według `docs/PLAN_ZYWIOLY.md`, fazy A, C, D, B, E.
+
 ## Plan żywiołów, statystyk i paska czarów
-Opisany w `docs/PLAN_ZYWIOLY.md`, czeka na akceptację. Odpychanie z kolizją i chmury popiołu są już zbudowane (warstwa 2 czarów).
+Zatwierdzony w rundzie 5, opisany w `docs/PLAN_ZYWIOLY.md`. Odpychanie z kolizją i chmury popiołu są już zbudowane (warstwa 2 czarów).
 
 ## Zmiana zakresu (rozstrzygnięta: hybryda w fazach)
 

@@ -18,7 +18,7 @@ export const CLASSES = {
   grabarz: {
     id: 'grabarz', name: 'Grabarz', role: 'Wojownik', ratings: { damage: 3, control: 3, positioning: 1 },
     tagline: 'Kopie groby, zanim ktoś w nie wpadnie. Walczy z bliska i ustawia przeciwników tam, gdzie chce.',
-    stats: { hp: 62, hpPerLevel: 7, initiative: 15, main: 'strength' },
+    stats: { hp: 62, hpPerLevel: 7, initiative: 15, main: 'earth' },
     spells: [
       { id: 'cios_lopata', element: 'earth', name: 'Cios Łopatą', tags: ['damage'], desc: 'Uderzenie z bliska. Najmocniejszy cios na PA wśród klas startowych, ale wymaga stania przy przeciwniku.', levels: [
         { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [15, 19] }, { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [17, 21] },
@@ -34,7 +34,7 @@ export const CLASSES = {
   tropiciel: {
     id: 'tropiciel', name: 'Tropiciel', role: 'Łowca', ratings: { damage: 3, control: 2, positioning: 3 },
     tagline: 'Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dosięgnie.',
-    stats: { hp: 46, hpPerLevel: 5, initiative: 40, main: 'agility' },
+    stats: { hp: 46, hpPerLevel: 5, initiative: 40, main: 'air' },
     spells: [
       { id: 'belt', element: 'air', name: 'Bełt', tags: ['damage', 'los'], desc: 'Strzał z kuszy. Wymaga linii widzenia.', levels: [
         { pa: 3, min: 3, max: 7, los: true, cd: 0, perTurn: 2, dmg: [11, 15] }, { pa: 3, min: 3, max: 7, los: true, cd: 0, perTurn: 2, dmg: [13, 17] },
@@ -50,7 +50,7 @@ export const CLASSES = {
   zalobnik: {
     id: 'zalobnik', name: 'Żałobnik', role: 'Mag', ratings: { damage: 3, control: 3, positioning: 2 },
     tagline: 'Żałoba to jego broń. Z popiołu i grobów wyciąga ogień, który pamięta poległych.',
-    stats: { hp: 38, hpPerLevel: 4, initiative: 28, main: 'power' },
+    stats: { hp: 38, hpPerLevel: 4, initiative: 28, main: 'fire' },
     spells: [
       { id: 'zar', element: 'fire', name: 'Żar', tags: ['damage', 'los'], desc: 'Kula żaru. Przy świeżym grobie obok celu uderza mocniej. Wymaga linii widzenia.', levels: [
         { pa: 3, min: 2, max: 6, los: true, cd: 0, perTurn: 2, dmg: [12, 16], graveBonus: 0.3 }, { pa: 3, min: 2, max: 6, los: true, cd: 0, perTurn: 2, dmg: [14, 18], graveBonus: 0.3 },
@@ -72,21 +72,23 @@ export const ORIGINS = [
   { id: 'syn_kopca', name: 'Dziecko Cmentarza', story: 'Wychowałeś się wśród grobów. Martwych się nie boisz, żywych coraz mniej.', bonus: { hp: 8 }, bonusText: '+8 życia' },
   { id: 'wygnaniec', name: 'Wygnaniec z Dróg', story: 'Wypędzono cię z trzech miast. W czwartym nikt nie zadaje pytań, a arena nie pyta o przeszłość.', bonus: { initiative: 6 }, bonusText: '+6 inicjatywy' },
   { id: 'uczen', name: 'Uczeń Spalonej Biblioteki', story: 'Ocalało kilka kart. Resztę znasz na pamięć, i to cię przeraża.', bonus: { spellPoints: 1 }, bonusText: '+1 punkt czaru na start' },
-  { id: 'straznik', name: 'Strażnik Zamkniętej Bramy', story: 'Pilnowałeś wejścia, aż coś stamtąd wyszło. Teraz schodzisz sprawdzić co.', bonus: { endurance: 2 }, bonusText: '+2 wytrzymałości' },
+  { id: 'straznik', name: 'Strażnik Zamkniętej Bramy', story: 'Pilnowałeś wejścia, aż coś stamtąd wyszło. Teraz schodzisz sprawdzić co.', bonus: { resistAll: 5 }, bonusText: '+5% odporności na wszystkie żywioły' },
 ];
+// cechy: plus i skaza. Klucze: hp, initiative, earth/fire/water/air (moc żywiołu w %), resistAll (odporność na żywioły w %)
 export const TRAITS = [
   { id: 'twardy', name: 'Twardy', desc: 'Znosi więcej, wolniej reaguje.', plus: { hp: 6 }, minus: { initiative: -3 } },
   { id: 'szybki', name: 'Szybki', desc: 'Pierwszy w kolejce, kruchszy.', plus: { initiative: 5 }, minus: { hp: -4 } },
-  { id: 'zawzięty', name: 'Zawzięty', desc: 'Bije mocniej, gorzej się osłania.', plus: { strength: 3 }, minus: { endurance: -2 } },
-  { id: 'cichy', name: 'Cichy', desc: 'Celny i zwinny, słabszy w czarach.', plus: { agility: 3 }, minus: { power: -2 } },
-  { id: 'naznaczony', name: 'Naznaczony', desc: 'Arena zostawiła na nim ślad: moc kosztem życia.', plus: { power: 3 }, minus: { hp: -4 } },
-  { id: 'ostrożny', name: 'Ostrożny', desc: 'Odporny, mniej agresywny.', plus: { endurance: 2 }, minus: { strength: -2 } },
+  { id: 'zawzięty', name: 'Zawzięty', desc: 'Bije mocniej ziemią, mniej wytrzymuje.', plus: { earth: 4 }, minus: { hp: -4 } },
+  { id: 'cichy', name: 'Cichy', desc: 'Pewny w wietrze, słabszy w ogniu.', plus: { air: 4 }, minus: { fire: -4 } },
+  { id: 'naznaczony', name: 'Naznaczony', desc: 'Arena zostawiła ślad: ogień kosztem życia.', plus: { fire: 4 }, minus: { hp: -4 } },
+  { id: 'ostrożny', name: 'Ostrożny', desc: 'Odporny na żywioły, słabszy w ziemi.', plus: { resistAll: 5 }, minus: { earth: -4 } },
 ];
 export const MAX_TRAITS = 2;
 // statystyki startowe po kreatorze: klasa + przeszłość + cechy
 export function startStats(classId, originId, traitIds = []) {
-  const c = CLASSES[classId], o = ORIGINS.find((x) => x.id === originId), out = { hp: c.stats.hp, initiative: c.stats.initiative, strength: 0, agility: 0, power: 0, endurance: 0, spellPoints: 0, pa: BASE.pa, pm: BASE.pm };
-  const add = (d) => { for (const [k, v] of Object.entries(d || {})) out[k] = (out[k] || 0) + v; };
+  const c = CLASSES[classId], o = ORIGINS.find((x) => x.id === originId);
+  const out = { hp: c.stats.hp, initiative: c.stats.initiative, earth: 0, fire: 0, water: 0, air: 0, power: 0, flat: 0, spellPoints: 0, pa: BASE.pa, pm: BASE.pm, resist: { earth: 0, fire: 0, water: 0, air: 0, neutral: 0 } };
+  const add = (d) => { for (const [k, v] of Object.entries(d || {})) { if (k === 'resistAll') for (const e of ['earth', 'fire', 'water', 'air']) out.resist[e] += v; else out[k] = (out[k] || 0) + v; } };
   add(o?.bonus); for (const t of traitIds.slice(0, MAX_TRAITS)) { const tr = TRAITS.find((x) => x.id === t); add(tr?.plus); add(tr?.minus); }
   return out;
 }
