@@ -102,4 +102,11 @@ export function grave(g, x, y, sc = 1) {
   isoBox(g, x, y - 3 * sc, 9 * sc, 4 * sc, 16 * sc, { left: '#6e6e76', right: '#8e8e98', top: '#a8a8b2' });
   ln([[x, y - 21 * sc], [x, y - 12 * sc]], 1.6, '#3a3a42'); ln([[x - 3 * sc, y - 17.5 * sc], [x + 3 * sc, y - 17.5 * sc]], 1.6, '#3a3a42');
 }
-export const PROPS = { grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
+// chmura popiołu: kilka półprzezroczystych kłębów, zasłania widok
+export function ashCloud(g, x, y, sc = 1, seed = 1) {
+  const { blob } = kit(g), r = rng(seed);
+  blob(x, y - 4, 24 * sc, 9 * sc, '#2a2a30', 0.18);
+  for (let i = 0; i < 7; i++) { const a = r() * 6.28, d = r() * 11 * sc; blob(x + Math.cos(a) * d * 1.3, y - 12 * sc + Math.sin(a) * d * 0.7 - i * 2, (9 + r() * 6) * sc, (6 + r() * 4) * sc, r() < 0.5 ? '#8a8a92' : '#6a6a72', 0.5); }
+  for (let i = 0; i < 4; i++) blob(x + (r() - 0.5) * 26 * sc, y - 16 * sc - r() * 10 * sc, (5 + r() * 4) * sc, (4 + r() * 3) * sc, '#b8b8c0', 0.35);
+}
+export const PROPS = { ashCloud, grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };

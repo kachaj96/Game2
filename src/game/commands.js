@@ -57,6 +57,7 @@ function advanceTurn(s) {
     s.turn.index = (s.turn.index + 1) % s.order.length;
     if (s.turn.index === 0) s.turn.round++;
     const u = unitById(s, s.order[s.turn.index]);
-    if (u.hp > 0) { u.pm = u.maxPm; u.pa = u.maxPa; u.casts = {}; for (const k of Object.keys(u.cooldowns || {})) { u.cooldowns[k] = Math.max(0, u.cooldowns[k] - 1); } return; }
+    if (u.hp > 0) { u.pm = u.maxPm; u.pa = u.maxPa; u.casts = {}; for (const k of Object.keys(u.cooldowns || {})) { u.cooldowns[k] = Math.max(0, u.cooldowns[k] - 1); }
+      s.clouds = (s.clouds || []).map((c) => (c.owner === u.id ? { ...c, turns: c.turns - 1 } : c)).filter((c) => c.turns > 0); return; }
   }
 }

@@ -3,7 +3,7 @@
 Izometryczna taktyczna gra turowa w stylu Dofusa. Osobny projekt, nie część Natalis. Eksperyment na czas testów Natalis.
 
 ## Stan
-Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/game/`: A*, zasięg PM, komendy, kolejka, prosta sztuczna inteligencja) i prototyp walki na dotyk (`www/walka.html`). Czary: działają obrażenia, zasięg, linia widzenia, odnowienia, limity na turę, śmierć i groby (Żar, Cios Łopatą, Bełt). Odpychanie, pułapki i glify jeszcze nie, takie czary są w grze wyszarzone z podpisem "wkrótce". Nie ma jeszcze nagród ani pętli zejścia do areny.
+Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/game/`: A*, zasięg PM, komendy, kolejka, prosta sztuczna inteligencja) i prototyp walki na dotyk (`www/walka.html`). Czary: działają obrażenia, zasięg, linia widzenia, odnowienia, limity na turę, śmierć i groby, odpychanie z kolizją i chmury popiołu (Żar, Cios Łopatą, Bełt, Zrzut Ziemi, Podmuch Popiołu). Pułapki i glify jeszcze nie, takie czary są w grze wyszarzone z podpisem "wkrótce". Nie ma jeszcze nagród ani pętli zejścia do areny.
 
 | Co | Gdzie | Co umie |
 |---|---|---|
@@ -17,6 +17,9 @@ Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/g
 Wszystko rysuje kod, bez plików graficznych. Każdy obiekt ma ziarno, więc ta sama liczba daje ten sam obiekt, a inna liczba inny.
 
 ![wioska](docs/podglad/wioska.png)
+
+## Gra w przeglądarce (GitHub Pages)
+Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root). Adres: `https://kachaj96.github.io/Game2/`. Walka: `www/walka.html` (najlepiej w poziomie). Ze scenariuszami: `?scenario=cast`, `?scenario=push&hero=grabarz`, `?hero=tropiciel`, `?mood=zmierzch`.
 
 ## Uruchomienie
 ```

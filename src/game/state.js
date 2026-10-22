@@ -11,7 +11,7 @@ export function createState({ cols, rows, blocked = [], units, seed = 1 }) {
     out.hp = u.hp ?? out.maxHp; out.pm = out.maxPm; out.pa = out.maxPa; return out;
   });
   const order = [...us].sort((a, b) => b.initiative - a.initiative || (a.id < b.id ? -1 : 1)).map((u) => u.id);
-  return { cols, rows, blocked: [...grid.blocked].sort((a, b) => a - b), units: us, order, turn: { index: 0, round: 1 }, seed, rolls: 0, graves: [], result: null, log: [] };
+  return { cols, rows, blocked: [...grid.blocked].sort((a, b) => a - b), units: us, order, turn: { index: 0, round: 1 }, seed, rolls: 0, graves: [], clouds: [], result: null, log: [] };
 }
 export const gridOf = (state) => { const g = new IsoGrid(state.cols, state.rows); for (const k of state.blocked) g.blocked.add(k); return g; };
 export const unitById = (state, id) => state.units.find((u) => u.id === id) || null;

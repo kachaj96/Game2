@@ -5,7 +5,7 @@ import { rng } from '../../src/art/rng.js';
 import { lineCells, hasLineOfSight } from '../../src/game/los.js';
 import { createState, currentUnit, unitById, gridOf, alive } from '../../src/game/state.js';
 import { applyCommand, legalMoves } from '../../src/game/commands.js';
-import { castProblem, validTargets, damageRange, spellData, implemented, graveKeys } from '../../src/game/spells.js';
+import { castProblem, validTargets, damageRange, spellData, implemented, graveKeys, sightBlockers } from '../../src/game/spells.js';
 import { CLASSES, CLASS_LIST } from '../../src/game/classdata.js';
 import { chooseCommand, playTurn } from '../../src/game/ai.js';
 
@@ -104,8 +104,8 @@ test('statystyki i skala obrażeń: moc zwiększa obrażenia, damageScale je zmn
 
 test('czary bez zaimplementowanego efektu są odrzucane, a nie udawane', () => {
   const impl = []; for (const c of CLASS_LIST) for (const sp of c.spells) { if (implemented(sp.levels[0])) impl.push(sp.id); }
-  assert.deepEqual(impl.sort(), ['belt', 'cios_lopata', 'zar']);
-  for (const [cls, id] of [['grabarz', 'zrzut_ziemi'], ['grabarz', 'dol'], ['tropiciel', 'sidla'], ['tropiciel', 'odskok'], ['zalobnik', 'podmuch'], ['zalobnik', 'stos']]) {
+  assert.deepEqual(impl.sort(), ['belt', 'cios_lopata', 'podmuch', 'zar', 'zrzut_ziemi']);
+  for (const [cls, id] of [['grabarz', 'dol'], ['tropiciel', 'sidla'], ['tropiciel', 'odskok'], ['zalobnik', 'stos']]) {
     const s = mk({}, [{ id: 'h', team: 'gracz', classId: cls, x: 3, y: 4, initiative: 10 }, { id: 'e', team: 'wrog', classId: 'grabarz', x: 4, y: 4, initiative: 5 }]);
     assert.equal(castProblem(s, 'h', id, { x: 4, y: 4 }), 'not_implemented', `${cls}/${id}`);
   }
@@ -144,6 +144,97 @@ test('niezmienniki na 300 losowych walkach z czarami: życie, PA, groby, wynik',
       for (const un of s.units) { assert.ok(un.hp >= 0 && un.hp <= un.maxHp && un.pa >= 0 && un.pm >= 0, `seed ${seed}: zakres`); if (un.hp > 0) { assert.ok(!keys.has(g.key(un.x, un.y)), `seed ${seed}: żywy na grobie`); assert.ok(!g.isBlocked(un.x, un.y)); } }
       assert.equal(s.graves.length, s.units.filter((x) => x.hp === 0).length, 'każdy poległy ma grób');
       if (s.result === 'victory') assert.equal(alive(s, 'wrog').length, 0); if (s.result === 'defeat') assert.equal(alive(s, 'gracz').length, 0);
+    }
+  }
+});
+
+// ---------- odpychanie ----------
+const G = (x, y, extra = {}) => ({ id: 'g', team: 'gracz', classId: 'grabarz', x, y, initiative: 10, maxPa: 30, ...extra });
+const E = (id, x, y, extra = {}) => ({ id, team: 'wrog', classId: 'grabarz', x, y, maxHp: 500, initiative: 5, ...extra });
+const push = (s, tx, ty) => cast(s, 'zrzut_ziemi', tx, ty, 'g');
+const board = (units, o = {}) => mk({ ...o, units });
+
+test('odpychanie: cel leci dokładnie o tyle kafli, ile ma czar, w każdym z czterech kierunków', () => {
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const r = push(board([G(4, 4), E('e', 4 + dx * 2, 4 + dy * 2)]), 4 + dx * 2, 4 + dy * 2); assert.ok(r.ok, r.error);
+    const e = unitById(r.state, 'e'), ev = r.events.find((x) => x.type === 'pushed');
+    assert.deepEqual([e.x, e.y], [4 + dx * 4, 4 + dy * 4], `kierunek ${dx},${dy}`); assert.equal(ev.moved, 2); assert.equal(ev.collision, 0); assert.deepEqual(ev.hits, []);
+  }
+});
+
+test('odpychanie: ściana kończy lot, a kolizja zadaje obrażenia za każdy niewykorzystany kafel', () => {
+  const s = board([G(2, 4), E('e', 4, 4)], { blocked: [{ x: 6, y: 4 }] });
+  const r = push(s, 4, 4); assert.ok(r.ok);
+  const e = unitById(r.state, 'e'), ev = r.events.find((x) => x.type === 'pushed');
+  assert.deepEqual([e.x, e.y], [5, 4], 'zatrzymał się przed ścianą'); assert.equal(ev.moved, 1); assert.equal(ev.collision, 4, '1 niewykorzystany kafel x 4 obr.');
+  const direct = r.events[0].hits[0].dmg; assert.equal(e.hp, 500 - direct - 4);
+  // natychmiastowa ściana: cały ruch przepada
+  const w = push(board([G(2, 4), E('e', 3, 4)], { blocked: [{ x: 4, y: 4 }] }), 3, 4); const ev2 = w.events.find((x) => x.type === 'pushed');
+  assert.equal(ev2.moved, 0); assert.equal(ev2.collision, 8, '2 niewykorzystane kafle');
+});
+
+test('odpychanie: krawędź planszy działa jak ściana', () => {
+  const r = push(board([G(5, 4), E('e', 7, 4)]), 7, 4), ev = r.events.find((x) => x.type === 'pushed');
+  assert.deepEqual([unitById(r.state, 'e').x, unitById(r.state, 'e').y], [8, 4]); assert.equal(ev.moved, 1); assert.equal(ev.collision, 4);
+});
+
+test('odpychanie: grób blokuje lot jak ściana', () => {
+  const s = board([G(2, 4), E('e', 4, 4)]); s.graves.push({ x: 6, y: 4, unit: 'x' });
+  const ev = push(s, 4, 4).events.find((x) => x.type === 'pushed'); assert.equal(ev.moved, 1); assert.equal(ev.collision, 4);
+});
+
+test('odpychanie: zderzenie z inną jednostką rani obie, nikt nie ląduje na zajętym kaflu', () => {
+  const r = push(board([G(2, 4), E('e', 4, 4), E('b', 6, 4)]), 4, 4), ev = r.events.find((x) => x.type === 'pushed');
+  assert.equal(ev.blocker, 'b'); assert.equal(ev.moved, 1); assert.equal(ev.collision, 4);
+  assert.deepEqual(ev.hits.map((h) => [h.unit, h.dmg]), [['e', 4], ['b', 4]]);
+  assert.deepEqual([unitById(r.state, 'e').x, unitById(r.state, 'b').x], [5, 6]); assert.equal(unitById(r.state, 'b').hp, 496);
+});
+
+test('odpychanie: cel zabity obrażeniami czaru nie jest odpychany, a grób stoi na jego kaflu', () => {
+  const r = push(board([G(2, 4), E('e', 4, 4, { maxHp: 5 })]), 4, 4);
+  assert.ok(!r.events.some((x) => x.type === 'pushed')); assert.deepEqual(r.state.graves, [{ x: 4, y: 4, unit: 'e' }]);
+});
+
+test('odpychanie: cel zabity zderzeniem zostawia grób na kaflu, na którym się zatrzymał', () => {
+  const s = board([G(2, 4), E('e', 4, 4, { maxHp: 22, hp: 22 }), E('z', 20, 20)].slice(0, 2).concat([E('z', 8, 8)]), { blocked: [{ x: 6, y: 4 }] });
+  unitById(s, 'e').hp = 12; // czar zadaje 6-8, zostaje 4-6, kolizja 4 zabija przy hp<=8
+  let r = null; for (const hp of [5, 6, 7, 8, 9, 10, 11, 12]) { const t = structuredClone(s); unitById(t, 'e').hp = hp; const q = push(t, 4, 4); const dm = q.events[0].hits[0].dmg; if (hp - dm > 0 && hp - dm <= 4) { r = q; break; } }
+  assert.ok(r, 'znaleziono układ, w którym kolizja zabija'); assert.equal(unitById(r.state, 'e').hp, 0);
+  assert.deepEqual(r.state.graves.at(-1), { x: 5, y: 4, unit: 'e' }); assert.ok(r.events.some((x) => x.type === 'died' && x.unit === 'e' && x.grave.x === 5));
+});
+
+test('odpychanie: wymaga linii i zasięgu 1-3 (Zrzut Ziemi)', () => {
+  const s = board([G(2, 2), E('e', 4, 3)]); assert.equal(castProblem(s, 'g', 'zrzut_ziemi', { x: 4, y: 3 }), 'not_in_line');
+  const far = board([G(0, 4), E('e', 5, 4)]); assert.equal(castProblem(far, 'g', 'zrzut_ziemi', { x: 5, y: 4 }), 'range');
+  const ok1 = board([G(0, 4), E('e', 3, 4)]); assert.equal(castProblem(ok1, 'g', 'zrzut_ziemi', { x: 3, y: 4 }), null);
+});
+
+test('chmura popiołu: powstaje na kaflu, z którego cel odleciał, zasłania widok, znika na starcie następnej tury rzucającego', () => {
+  const units = [{ id: 'm', team: 'gracz', classId: 'zalobnik', x: 1, y: 4, initiative: 10, maxPa: 12 }, E('e', 3, 4, { maxHp: 900 }), E('f', 7, 4, { maxHp: 900, initiative: 4 })];
+  let s = board(units); const r = cast(s, 'podmuch', 3, 4); s = ok(r);
+  assert.deepEqual(s.clouds, [{ x: 3, y: 4, turns: 1, owner: 'm' }]); assert.ok(r.events.some((x) => x.type === 'cloud'));
+  assert.ok(sightBlockers(s).has(gridOf(s).key(3, 4)), 'chmura w zbiorze zasłon'); assert.ok(!graveKeys(s).has(gridOf(s).key(3, 4)), 'ale to nie grób');
+  assert.equal(castProblem(s, 'm', 'zar', { x: 7, y: 4 }), 'no_los', 'Żar przez chmurę nie przejdzie');
+  s = nextTurnOf(nextTurnOf(s, 'f'), 'm'); assert.deepEqual(s.clouds, [], 'zniknęła na starcie tury maga');
+  assert.equal(castProblem(s, 'm', 'zar', { x: 7, y: 4 }), null);
+});
+
+test('niezmienniki na 300 losowych walkach z odpychaniem: brak nakładania, ścian i grobów pod żywymi', () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    let s = mk({ seed, blocked: [{ x: 3, y: 3 }, { x: 6, y: 5 }, { x: 2, y: 6 }], units: [
+      { id: 'g', team: 'gracz', classId: 'grabarz', x: 1, y: 4, initiative: 10, maxPa: 18 }, { id: 'e1', team: 'wrog', classId: 'grabarz', x: 5, y: 4, maxHp: 40, initiative: 6, damageScale: 0.3 },
+      { id: 'e2', team: 'wrog', classId: 'grabarz', x: 6, y: 2, maxHp: 40, initiative: 3, damageScale: 0.3 }] });
+    const r = rng(seed * 29);
+    for (let i = 0; i < 40 && !s.result; i++) {
+      const u = currentUnit(s); let cmd;
+      if (u.team === 'wrog') cmd = chooseCommand(s);
+      else { const foes = alive(s, 'wrog'), t = r.int(0, 3), f = foes.length ? r.pick(foes) : null;
+        cmd = t === 0 ? { type: 'endTurn', unit: u.id } : t === 1 && f ? { type: 'cast', unit: u.id, spell: r.pick(['zrzut_ziemi', 'cios_lopata']), to: { x: f.x, y: f.y } } : { type: 'move', unit: u.id, to: { x: r.int(0, 8), y: r.int(0, 8) } }; }
+      const res = applyCommand(s, cmd); if (res.ok) s = res.state;
+      const g = gridOf(s), gk = graveKeys(s), seen = new Set();
+      assert.equal(s.graves.length, new Set(s.graves.map((q) => g.key(q.x, q.y))).size, `seed ${seed}: dwa groby na kaflu`);
+      for (const un of s.units) { if (un.hp > 0) { const k = g.key(un.x, un.y); assert.ok(g.inBounds(un.x, un.y) && !g.isBlocked(un.x, un.y), `seed ${seed}: ${un.id} w ścianie lub poza planszą`); assert.ok(!gk.has(k), `seed ${seed}: żywy na grobie`); assert.ok(!seen.has(k), `seed ${seed}: nakładanie`); seen.add(k); } assert.ok(un.hp >= 0 && un.hp <= un.maxHp); }
+      assert.equal(s.graves.length, s.units.filter((x) => x.hp === 0).length);
     }
   }
 });

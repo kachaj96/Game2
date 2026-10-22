@@ -29,29 +29,30 @@ import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
 import {heroSpec} from '../src/art/classes.js';
 import {drawGridLines,fillCells,drawCellOutline} from '../src/art/gridview.js';
 import * as N from '../src/art/nature.js';
-import {grave} from '../src/art/props.js';
+import {grave,ashCloud} from '../src/art/props.js';
 import {applyMood,glow} from '../src/art/mood.js';
 import {createState,currentUnit,unitById,gridOf,occupied} from '../src/game/state.js';
-import {applyCommand,legalMoves} from '../src/game/commands.js';
+import {applyCommand,legalMoves,ERRORS} from '../src/game/commands.js';
 import {findPath} from '../src/game/pathfinding.js';
 import {chooseCommand} from '../src/game/ai.js';
 import {CLASSES} from '../src/game/classdata.js';
 import {castProblem,validTargets,damageRange,spellData,implemented} from '../src/game/spells.js';
 
 const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
-const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'noc',scenario=Q.get('scenario')||'default';
+const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'noc',scenario=Q.get('scenario')||'default',HERO=Q.get('hero')||'zalobnik';
 const WORLD={w:540,h:400},grid=new IsoGrid(7,7,{x:WORLD.w/2,y:96});
 let view={s:1,ox:0,oy:0};
 const guard=(id,x,y,seed)=>({id,team:'wrog',name:'Strażnik',classId:'grabarz',role:'warrior',seed,x,y,maxHp:22,damageScale:.4,spells:[{id:'cios_lopata',level:1}]});
-const hero=(x,y)=>({id:'h',team:'gracz',name:'Ty',classId:'zalobnik',seed:3,x,y});
+const hero=(x,y)=>({id:'h',team:'gracz',name:'Ty',classId:HERO,seed:3,x,y,initiative:99});
 const SCEN={
   default:{blocked:[{x:3,y:2},{x:4,y:2},{x:2,y:4},{x:4,y:4},{x:0,y:3}],units:[hero(1,5),guard('e1',5,1,9),guard('e2',5,3,21)]},
   cast:{blocked:[],units:[hero(2,4),guard('e1',5,4,9)]},
   wall:{blocked:[{x:3,y:4}],units:[hero(1,4),guard('e1',5,4,9)]},
+  push:{blocked:[{x:6,y:4}],units:[hero(2,4),guard('e1',4,4,9)]},
 };
 let state,look,facing,lastPos,preview=null,selSpell=null,anim=null,busy=false,pendingResult=null,floats=[],shake=new Map();
 function newGame(){const sc=SCEN[scenario]||SCEN.default;state=createState({cols:7,rows:7,seed:42,blocked:sc.blocked,units:sc.units});
-  look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):genCharacter(u.seed,u.role)]));
+  look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec(HERO,{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):genCharacter(u.seed,u.role)]));
   facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
   preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];$('banner').style.display='none';hud();say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
 const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół
@@ -73,7 +74,7 @@ function hud(){const u=currentUnit(state),h=me(),mine=u.team==='gracz'&&!busy&&!
   $('end').disabled=!mine;
   const box=$('spells');if(!box.children.length)for(const sp of CLASSES[h.classId].spells){const b=document.createElement('button');b.className='sp';b.id='sp-'+sp.id;b.onclick=()=>pickSpell(sp.id);box.append(b)}
   for(const sp of CLASSES[h.classId].spells){const b=$('sp-'+sp.id),sd=spellData(h,sp.id),d=sd.data,cd=h.cooldowns[sp.id]||0,ok=implemented(d);
-    b.innerHTML=`<span>${sp.name}</span><small>${ok?(cd>0?`odnowienie ${cd}`:`${d.pa} PA`):'wkrótce'}</small>`;
+    b.innerHTML=`<span>${sp.name}</span><small>${ok?(cd>0?`wraca za ${cd} t.`:`${d.pa} PA`):'wkrótce'}</small>`;
     b.disabled=!mine||!ok||h.pa<d.pa||cd>0||(h.casts[sp.id]||0)>=d.perTurn;b.classList.toggle('on',selSpell===sp.id)}}
 function pickSpell(id){if(busy||state.result)return;selSpell=selSpell===id?null:id;preview=null;
   say(selSpell?`${CLASSES[me().classId].spells.find(s=>s.id===id).name}: wybierz cel na podświetlonych kaflach.`:'Wybór czaru anulowany.');hud()}
@@ -87,6 +88,8 @@ function act(cmd){
     if(e.type==='cast'){busy=true;anim=anim||{kind:'wait',t:0,dur:.8};
       const c=grid.center(e.to.x,e.to.y);for(const h of e.hits){floats.push({x:c[0],y:c[1]-46,text:'-'+h.dmg,t:0});shake.set(h.unit,0)}
       facing.set(e.unit,dirFor(Math.sign(e.to.x-lastPos.get(e.unit).x)||0,Math.sign(e.to.y-lastPos.get(e.unit).y)||0)||facing.get(e.unit))}
+    if(e.type==='pushed'){busy=true;anim={kind:'slide',unit:e.unit,from:e.from,to:e.to,t:0,dur:.8};shake.set(e.unit,0);
+      const c=grid.center(e.to.x,e.to.y);for(const h of e.hits){floats.push({x:c[0]+(h.unit===e.unit?0:14),y:c[1]-46,text:'-'+h.dmg,t:0});shake.set(h.unit,0)}}
     if(e.type==='finished')pendingResult=e.result}
   hud();return r;
 }
@@ -105,7 +108,7 @@ function tap(sx,sy){
   const c=grid.cellAt(sx,sy);if(!c){preview=null;return}
   if(selSpell){
     const err=castProblem(state,u.id,selSpell,c);
-    if(err){preview=null;say(({}[err])||({no_los:'Nie widzisz celu (coś zasłania).',range:'Poza zasięgiem czaru.',no_target:'Brak celu na tym kaflu.',out_of_bounds:'Poza planszą.'})[err]||'Nie można tu rzucić.');return}
+    if(err){preview=null;say(ERRORS[err]||'Nie można tu rzucić.');return}
     if(preview&&preview.kind==='cast'&&preview.x===c.x&&preview.y===c.y){const sp=selSpell;selSpell=null;if(act({type:'cast',unit:u.id,spell:sp,to:{x:c.x,y:c.y}})&&!anim)afterAnim();return}
     const [lo,hi]=damageRange(u,spellData(u,selSpell).data);preview={kind:'cast',x:c.x,y:c.y,lo,hi};say(`Dotknij ponownie, by rzucić (${lo}-${hi} obrażeń).`);return}
   if(preview&&preview.kind==='move'&&preview.x===c.x&&preview.y===c.y){const p=preview;act({type:'move',unit:u.id,to:{x:p.x,y:p.y}});return}
@@ -118,6 +121,8 @@ $('end').addEventListener('click',()=>{if(busy||state.result)return;const u=curr
 
 function visual(u){
   const lp=lastPos.get(u.id);
+  if(anim&&anim.kind==='slide'&&anim.unit===u.id){const f=Math.min(1,anim.t/.35),e=1-(1-f)*(1-f),a=anim.from,b=anim.to,A=grid.center(a.x,a.y),B=grid.center(b.x,b.y);
+    return{x:A[0]+(B[0]-A[0])*e,y:A[1]+(B[1]-A[1])*e,walk:undefined,gx:a.x+(b.x-a.x)*e,gy:a.y+(b.y-a.y)*e}}
   if(anim&&anim.kind==='move'&&anim.unit===u.id){const i=Math.min(anim.cells.length-2,Math.floor(anim.t)),f=anim.t-i,a=anim.cells[i],b=anim.cells[i+1];
     const A=grid.center(a.x,a.y),B=grid.center(b.x,b.y);facing.set(u.id,dirFor(b.x-a.x,b.y-a.y));
     return{x:A[0]+(B[0]-A[0])*f,y:A[1]+(B[1]-A[1])*f,walk:(anim.t*1.5)%1,gx:a.x+(b.x-a.x)*f,gy:a.y+(b.y-a.y)*f}}
@@ -132,7 +137,7 @@ function frame(now){
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
   const cur=currentUnit(state),overlay=[],mine=!busy&&cur.team==='gracz'&&!state.result;
   if(mine&&selSpell){const t=validTargets(state,cur.id,selSpell),d=spellData(cur,selSpell).data;
-    const inRange=[];for(let y=0;y<7;y++)for(let x=0;x<7;x++){const dd=Math.abs(x-cur.x)+Math.abs(y-cur.y);if(dd>=d.min&&dd<=d.max)inRange.push({x,y})}
+    const inRange=[];for(let y=0;y<7;y++)for(let x=0;x<7;x++){const dd=Math.abs(x-cur.x)+Math.abs(y-cur.y);if(dd>=d.min&&dd<=d.max&&(!d.line||x===cur.x||y===cur.y))inRange.push({x,y})}
     fillCells(g,grid,inRange,'rgba(255,140,60,.13)');fillCells(g,grid,t,'rgba(255,90,40,.42)');for(const c of t)drawCellOutline(g,grid,c.x,c.y,'rgba(255,200,120,.9)',1.8)}
   else if(mine){const mv=[...legalMoves(state,cur.id).values()];fillCells(g,grid,mv,'rgba(90,150,255,.34)');for(const m of mv)drawCellOutline(g,grid,m.x,m.y,'rgba(170,210,255,.6)',1.2)}
   if(preview&&!busy){
@@ -141,6 +146,7 @@ function frame(now){
   const items=[];
   for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y);const t=(x*7+y*3)%3;
     items.push({d:x+y+.5,f:()=>t===0?N.rock(g,c[0],c[1]+10,x*9+y,{sc:.9}):t===1?N.stump(g,c[0],c[1]+8,x+y*5):N.deadTree(g,c[0],c[1]+10,x*3+y,{sc:.8})})}
+  for(const cl of state.clouds){const c=grid.center(cl.x,cl.y);items.push({d:cl.x+cl.y+.9,f:()=>ashCloud(g,c[0],c[1]+6,1.1,cl.x*7+cl.y)})}
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
   for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
     items.push({d:v.gx+v.gy+.5,f:()=>drawCharacter(g,v.x+sh,v.y+8,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring:u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)'})});

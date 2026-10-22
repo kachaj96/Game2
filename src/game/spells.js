@@ -1,19 +1,22 @@
 // Czary: sprawdzanie legalności i rozstrzyganie rzutu. Czysta logika na stanie JSON, losowość tylko przez licznik rzutów w stanie.
-// Warstwa 1 (jest): obrażenia, zasięg, linia, odnowienia, limity na turę, PA, linia widzenia, śmierć i groby.
-// Jeszcze nie zaimplementowane (czar jest odrzucany, a nie udawany): odpychanie, pułapki, glify, skok.
+// Warstwa 1: obrażenia, zasięg, linia, odnowienia, limity na turę, PA, linia widzenia, śmierć i groby.
+// Warstwa 2: odpychanie z kolizją (ściana, grób, krawędź, inna jednostka) i chmury popiołu zasłaniające widok.
+// Jeszcze nie zaimplementowane (czar jest odrzucany, a nie udawany): pułapki, glify, skok.
 import { rng } from '../art/rng.js';
 import { CLASSES } from './classdata.js';
 import { gridOf, unitById, alive } from './state.js';
 import { hasLineOfSight } from './los.js';
 
-export const NOT_IMPLEMENTED = ['push', 'trap', 'glyph', 'jump', 'cloud'];
+export const NOT_IMPLEMENTED = ['trap', 'glyph', 'jump'];
 export const spellData = (unit, spellId) => {
   const known = unit.spells?.find((s) => s.id === spellId); if (!known) return null;
   const def = CLASSES[unit.classId]?.spells.find((s) => s.id === spellId); if (!def) return null;
   const data = def.levels[known.level - 1]; return data ? { def, level: known.level, data } : null;
 };
-export const implemented = (data) => !NOT_IMPLEMENTED.some((k) => data[k] || data.trap || data.glyph || data.cloud || data.jump);
+export const implemented = (data) => !NOT_IMPLEMENTED.some((k) => data[k]);
 export const graveKeys = (state) => { const g = gridOf(state), s = new Set(); for (const gr of state.graves) s.add(g.key(gr.x, gr.y)); return s; };
+// komórki zasłaniające widok poza terenem: groby i chmury popiołu
+export const sightBlockers = (state) => { const g = gridOf(state), s = graveKeys(state); for (const c of state.clouds || []) s.add(g.key(c.x, c.y)); return s; };
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 // licznik rzutów w stanie: ten sam stan i komendy zawsze dają te same wyniki
@@ -35,7 +38,7 @@ export function castProblem(state, unitId, spellId, target) {
   const d = dist(u, target);
   if (d < data.min || d > data.max) return 'range';
   if (data.line && u.x !== target.x && u.y !== target.y) return 'not_in_line';
-  if (data.los && !hasLineOfSight(g, graveKeys(state), u, target)) return 'no_los';
+  if (data.los && !hasLineOfSight(g, sightBlockers(state), u, target)) return 'no_los';
   if (data.dmg) { const t = alive(state).find((x) => x.x === target.x && x.y === target.y); if (!t || t.team === u.team) return 'no_target'; }
   return null;
 }
@@ -45,16 +48,38 @@ export function validTargets(state, unitId, spellId) {
 }
 
 // rozstrzygnięcie rzutu na sklonowanym stanie (komenda jest już zwalidowana)
+function kill(next, t) { next.graves.push({ x: t.x, y: t.y, unit: t.id }); }
 export function resolveCast(next, unit, spellId, target, events) {
   const { data } = spellData(unit, spellId);
   unit.pa -= data.pa; unit.casts = { ...unit.casts, [spellId]: (unit.casts?.[spellId] || 0) + 1 };
   if (data.cd > 0) unit.cooldowns = { ...unit.cooldowns, [spellId]: data.cd + 1 };
-  const hits = [];
+  const hits = [], died = [];
+  let victim = null;
   if (data.dmg) {
     const t = alive(next).find((x) => x.x === target.x && x.y === target.y), [lo, hi] = damageRange(unit, data), dmg = rollInt(next, lo, hi);
-    t.hp = Math.max(0, t.hp - dmg); hits.push({ unit: t.id, dmg, hp: t.hp, killed: t.hp === 0 });
-    if (t.hp === 0) { next.graves.push({ x: t.x, y: t.y, unit: t.id }); }
+    t.hp = Math.max(0, t.hp - dmg); hits.push({ unit: t.id, dmg, hp: t.hp, killed: t.hp === 0 }); victim = t;
+    if (t.hp === 0) { kill(next, t); died.push({ unit: t.id, grave: { x: t.x, y: t.y } }); }
   }
   events.push({ type: 'cast', unit: unit.id, spell: spellId, to: { x: target.x, y: target.y }, hits });
-  for (const h of hits) if (h.killed) events.push({ type: 'died', unit: h.unit, grave: { x: target.x, y: target.y } });
+  // odpychanie: tylko żywy cel, w kierunku od rzucającego, do N kafli; przeszkoda kończy ruch i zadaje obrażenia za każdy niewykorzystany kafel
+  if (data.push && victim && victim.hp > 0) {
+    const dir = { x: Math.sign(victim.x - unit.x), y: Math.sign(victim.y - unit.y) }, from = { x: victim.x, y: victim.y }, g = gridOf(next), grv = graveKeys(next);
+    let moved = 0, blocker = null, hitWall = false;
+    for (let i = 0; i < data.push; i++) {
+      const nx = victim.x + dir.x, ny = victim.y + dir.y;
+      if (!g.inBounds(nx, ny) || g.isBlocked(nx, ny) || grv.has(g.key(nx, ny))) { hitWall = true; break; }
+      const other = alive(next).find((x) => x.id !== victim.id && x.x === nx && x.y === ny);
+      if (other) { hitWall = true; blocker = other; break; }
+      victim.x = nx; victim.y = ny; moved++;
+    }
+    const remaining = hitWall ? data.push - moved : 0, coll = remaining * (data.collision || 0), pHits = [];
+    if (coll > 0) {
+      victim.hp = Math.max(0, victim.hp - coll); pHits.push({ unit: victim.id, dmg: coll, hp: victim.hp, killed: victim.hp === 0 });
+      if (victim.hp === 0) { kill(next, victim); died.push({ unit: victim.id, grave: { x: victim.x, y: victim.y } }); }
+      if (blocker) { blocker.hp = Math.max(0, blocker.hp - coll); pHits.push({ unit: blocker.id, dmg: coll, hp: blocker.hp, killed: blocker.hp === 0 }); if (blocker.hp === 0) { kill(next, blocker); died.push({ unit: blocker.id, grave: { x: blocker.x, y: blocker.y } }); } }
+    }
+    events.push({ type: 'pushed', unit: victim.id, from, to: { x: victim.x, y: victim.y }, moved, collision: coll, blocker: blocker ? blocker.id : null, hits: pHits });
+    if (data.cloud) { next.clouds.push({ x: from.x, y: from.y, turns: data.cloud.turns, owner: unit.id }); events.push({ type: 'cloud', at: from, turns: data.cloud.turns }); }
+  }
+  for (const d of died) events.push({ type: 'died', ...d });
 }

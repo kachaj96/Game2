@@ -26,7 +26,8 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   const { page, tapCell, S, idle } = await open('cast');
   // pasek czarów: Żar dostępny, niezaimplementowane wyszarzone z podpisem "wkrótce"
   assert.equal(await page.locator('#sp-zar').isDisabled(), false);
-  for (const id of ['sp-podmuch', 'sp-stos']) { assert.equal(await page.locator('#' + id).isDisabled(), true); assert.match(await page.locator('#' + id).textContent(), /wkrótce/); }
+  assert.equal(await page.locator('#sp-podmuch').isDisabled(), false, 'Podmuch już działa');
+  assert.equal(await page.locator('#sp-stos').isDisabled(), true); assert.match(await page.locator('#sp-stos').textContent(), /wkrótce/);
   assert.match(await page.locator('#sp-zar').textContent(), /3 PA/);
   const btn = await page.locator('#sp-zar').boundingBox(); assert.ok(btn.height >= 48, `przycisk czaru ${btn.height}px`);
 
@@ -68,6 +69,27 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   const s = await S(); const h = unit(s, 'h');
   assert.ok(h.hp < h.maxHp, `strażnicy zranili bohatera: ${h.hp}/${h.maxHp}`);
   assert.ok(s.units.filter((u) => u.team === 'wrog').every((u) => u.hp === u.maxHp), 'bohater nie atakował');
+}
+// --- scenariusz "push": Grabarz odpycha strażnika o 2 kafle, ściana zatrzymuje go po 1 i zadaje obrażenia ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('http://127.0.0.1:8112/www/walka.html?scenario=push&hero=grabarz'); await page.waitForFunction(() => window.__game);
+  const tapCell = async (x, y) => { const [cx, cy] = await page.evaluate(([x, y]) => window.__game.cssCenter(x, y), [x, y]); const b = await page.locator('canvas').boundingBox(); await page.touchscreen.tap(b.x + cx, b.y + cy); };
+  const S = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__game.state)));
+  // Grabarz ma trzy czary; Dół (pułapka) jeszcze nie działa, Zrzut Ziemi i Cios tak
+  assert.equal(await page.locator('#sp-dol').isDisabled(), true); assert.match(await page.locator('#sp-dol').textContent(), /wkrótce/);
+  assert.equal(await page.locator('#sp-zrzut_ziemi').isDisabled(), false);
+  await page.locator('#sp-zrzut_ziemi').tap();
+  assert.deepEqual((await page.evaluate(() => window.__game.targets('zrzut_ziemi'))), [{ x: 4, y: 4 }], 'cel w linii i w zasięgu');
+  await tapCell(4, 4); await tapCell(4, 4); await page.waitForFunction(() => !window.__game.busy, null, { timeout: 15000 });
+  const s = await S(), e = unit(s, 'e1');
+  assert.deepEqual([e.x, e.y], [5, 4], 'odepchnięty o 1 kafel i zatrzymany ścianą');
+  const lost = 22 - e.hp; assert.ok(lost >= 6 + 4 && lost <= 8 + 4, `obrażenia czaru (6-8) plus kolizja 4: ${lost}`);
+  assert.equal(unit(s, 'h').pa, 3); assert.equal(unit(s, 'h').cooldowns.zrzut_ziemi, 4, 'odnowienie 3 tury: wartość 4 na starcie');
+  assert.equal(await page.locator('#sp-zrzut_ziemi').isDisabled(), true, 'czar w odnowieniu jest wyszarzony');
+  assert.match(await page.locator('#sp-zrzut_ziemi').textContent(), /wraca za 4/);
+  await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-odpychanie.png') });
 }
 assert.deepEqual(errors, [], 'błędy strony');
 await browser.close(); server.close(); console.log('e2e czary: OK');
