@@ -245,7 +245,12 @@ export function drawBuilding(g, X, Y, s) {
     poly([A, B, Cc, D], fill, 2);
     const rows = Math.max(4, Math.round(Math.max(dist(A, D), dist(B, Cc)) / 7));
     if (s.thatch) {
-      for (let i = 0; i < 90; i++) { const u = r(), t0 = r() * 0.85, t1 = t0 + 0.08 + r() * 0.12; const p0 = lerp(lerp(A, D, t0), lerp(B, Cc, t0), u), p1 = lerp(lerp(A, D, Math.min(1, t1)), lerp(B, Cc, Math.min(1, t1)), u); ln([p0, p1], 0.9, r() < 0.5 ? 'rgba(90,60,10,.3)' : 'rgba(255,240,170,.35)'); }
+      const rowsT = Math.max(4, Math.round(Math.max(dist(A, D), dist(B, Cc)) / 8));
+      for (let i = 1; i <= rowsT; i++) {
+        const t = i / rowsT, p0 = lerp(A, D, Math.min(1, t)), p1 = lerp(B, Cc, Math.min(1, t)), n = Math.max(3, Math.round(dist(p0, p1) / 7));
+        for (let j = 0; j < n; j++) { const c = lerp(p0, p1, (j + 0.5) / n), rx = dist(p0, p1) / n / 2 + 0.6; g.beginPath(); g.ellipse(c[0], c[1] + 1, rx, 3.2, Math.atan2(p1[1] - p0[1], p1[0] - p0[0]), 0, Math.PI); g.fillStyle = (i + j) % 2 ? shade(rc, 0.03) : shade(rc, -0.03); g.fill(); g.lineWidth = 0.9; g.strokeStyle = 'rgba(80,50,10,.55)'; g.stroke(); }
+      }
+      for (let i = 0; i < 40; i++) { const u = r(), t0 = r() * 0.8, t1 = t0 + 0.06 + r() * 0.08; ln([lerp(lerp(A, D, t0), lerp(B, Cc, t0), u), lerp(lerp(A, D, Math.min(1, t1)), lerp(B, Cc, Math.min(1, t1)), u)], 0.8, r() < 0.5 ? 'rgba(90,60,10,.25)' : 'rgba(255,240,170,.3)'); }
       return;
     }
     for (let i = 1; i < rows; i++) {
@@ -256,6 +261,10 @@ export function drawBuilding(g, X, Y, s) {
     }
   }
   function thatchFringe(a, b) { if (!s.thatch) return; const n = Math.round(dist(a, b) / 4); const pts = [a]; for (let i = 1; i < n; i++) { const p = lerp(a, b, i / n); pts.push([p[0], p[1] + 2 + r() * 3.5]); } pts.push(b); ln(pts, 2.2, OUT); ln(pts, 1, mix(rc, '#ffffff', 0.2)); }
+  // grubość dachu: bez niej połać wygląda jak płaska kartka bez tyłu
+  const slab = (a, b) => poly([a, b, [b[0], b[1] + 4], [a[0], a[1] + 4]], shade(rc, -0.3), 1.4);
+  const board = (a, b) => { poly([a, b, [b[0], b[1] + 6.5], [a[0], a[1] + 6.5]], shade(rc, -0.22), 1.6); ln([a, b], 2.4, OUT); ln([[a[0], a[1] + 1.4], [b[0], b[1] + 1.4]], 1, 'rgba(255,220,170,.3)'); };
+  const ridge = (a, b) => { ln([a, b], 5.2, OUT); ln([a, b], 3.2, shade(rc, 0.1)); ln([[a[0], a[1] - 0.8], [b[0], b[1] - 0.8]], 1, 'rgba(255,240,200,.5)'); };
   // ściana szczytowa: pięciokąt od podstawy muru do kalenicy, z szkieletem i okrągłym okienkiem rysowanym w płaszczyźnie ściany
   function gableWall(ro) {
     const dark = ro.gableFace === 'L', fid = ro.gableFace;
@@ -275,21 +284,21 @@ export function drawBuilding(g, X, Y, s) {
     apex = P3(...ro.apex);
     roofPlane(eW, eS, apex, apex, lg(eW[0], 0, apex[0], 0, shade(rc, -0.14), darkRoof));
     roofPlane(eS, eE, apex, apex, lg(apex[0], 0, eE[0], 0, litRoof, shade(rc, 0.12)));
-    ln([eW, eS, eE], 2.6, OUT); ln([eW, apex, eE], 2, OUT); ln([eS, apex], 2.2, OUT);
+    slab(eW, eS); slab(eS, eE); ln([eW, eS, eE], 2.6, OUT); ln([eW, apex, eE], 2, OUT); ridge(eS, apex);
     if (s.thatch) { thatchFringe(eW, eS); thatchFringe(eS, eE); }
     planeMid = lerp(mid(eS, eE), apex, 0.4); planeKind = 'R';
   } else if (ro.type === 'gx') {
     const R1 = P3(...ro.R1), R2 = P3(...ro.R2); ridgeA = R1; ridgeB = R2;
     gableWall(ro);
     roofPlane(eW, eS, R2, R1, lg(eW[0], 0, R2[0], 0, shade(rc, -0.14), darkRoof));
-    ln([eS, R2, eE], 3.4, OUT); ln([eS, R2, eE], 1.8, shade(rc, -0.2)); ln([eW, eS], 2.6, OUT); ln([R1, R2], 2.6, OUT);
+    slab(eW, eS); board(eS, R2); board(R2, eE); ln([eW, eS], 2.6, OUT); ridge(R1, R2);
     if (s.thatch) thatchFringe(eW, eS);
     planeMid = lerp(mid(eW, eS), mid(R1, R2), 0.45); planeKind = 'L';
   } else {
     const R1 = P3(...ro.R1), R2 = P3(...ro.R2); ridgeA = R1; ridgeB = R2;
     gableWall(ro);
     roofPlane(eS, eE, R2, R1, lg(R1[0], 0, eE[0], 0, litRoof, shade(rc, 0.12)));
-    ln([eW, R1, eS], 3.4, OUT); ln([eW, R1, eS], 1.8, shade(rc, -0.2)); ln([eS, eE], 2.6, OUT); ln([R1, R2], 2.6, OUT);
+    slab(eS, eE); board(eW, R1); board(R1, eS); ln([eS, eE], 2.6, OUT); ridge(R1, R2);
     if (s.thatch) thatchFringe(eS, eE);
     planeMid = lerp(mid(eS, eE), mid(R1, R2), 0.45); planeKind = 'R';
   }

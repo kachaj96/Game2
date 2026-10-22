@@ -41,14 +41,17 @@ export function pot(g, x, y, sc = 1, seed = 1) {
   circ(x, y - 14 * sc, 5 * sc, '#4f9a3a', 1.4);
   for (let i = 0; i < 4; i++) circ(x + (r() - 0.5) * 9 * sc, y - 14 * sc + (r() - 0.7) * 6 * sc, 1.8 * sc, r.pick(['#e8483a', '#f0c83a', '#f07aa8', '#fff']), 0.8);
 }
-// ława wzdłuż osi x: siedzisko, oparcie i nogi jako bryły izometryczne
+// ława wzdłuż osi x: siedzisko z deski, oparcie z dwóch listew, nogi i podpórki jako bryły izometryczne
 export function bench(g, x, y, sc = 1) {
   const { blob } = kit(g);
   blob(x + 3, y + 1, 20 * sc, 5, '#000', 0.2);
-  const wood = '#a8703a', cols = { left: shade(wood, -0.1), right: shade(wood, 0.02), top: shade(wood, 0.12) };
-  for (const dx of [-9, 9]) isoBox(g, x + dx * 0.894 * sc, y + dx * 0.447 * sc, 2.6 * sc, 6 * sc, 6 * sc, { left: '#6a3f1c', right: '#7a4a24', top: '#8a5a2c' });
-  isoBox(g, x, y - 6 * sc, 24 * sc, 7 * sc, 2.6 * sc, cols);
-  isoBox(g, x - 3.4 * sc, y - 6 * sc - 1.7 * sc, 24 * sc, 2 * sc, 7 * sc, { left: shade(wood, -0.06), right: shade(wood, 0.06), top: shade(wood, 0.16) });
+  const wood = '#a8703a', cols = (d) => ({ left: shade(wood, -0.1 + d), right: shade(wood, 0.02 + d), top: shade(wood, 0.12 + d) });
+  for (const dx of [-9, 9]) isoBox(g, x + dx * 0.894 * sc, y + dx * 0.447 * sc, 2.6 * sc, 7 * sc, 7 * sc, { left: '#6a3f1c', right: '#7a4a24', top: '#8a5a2c' });
+  isoBox(g, x, y - 7 * sc, 25 * sc, 7.5 * sc, 2.4 * sc, cols(0));
+  // oparcie przy tylnej krawędzi siedziska (w głąb: kierunek -y osi izometrii)
+  const bx = x + 3.4 * 0.894 * sc, by = y - 3.4 * 0.447 * sc - 7 * sc;
+  for (const dx of [-10.5, 10.5]) isoBox(g, bx + dx * 0.894 * sc, by + dx * 0.447 * sc, 2 * sc, 2 * sc, 11 * sc, { left: '#6a3f1c', right: '#7a4a24', top: '#8a5a2c' });
+  for (const z of [4, 7.6]) { const P = isoBox(g, bx, by - z * sc, 25 * sc, 1.4 * sc, 2.6 * sc, cols(0.02)); }
 }
 // bela siana leży bokiem wzdłuż osi x
 export function haybale(g, x, y, sc = 1) {
@@ -74,16 +77,22 @@ export function lampPost(g, x, y, sc = 1) {
   poly([Lp(-4.5, -4), Lp(4.5, -4), Lp(4.5, 4), Lp(-4.5, 4)], '#ffe27a', 1.4);
   poly([Lp(-6.5, 4), Lp(6.5, 4), Lp(0, 10)], '#3a3a42', 1.4);
 }
-// wóz stoi wzdłuż osi x: skrzynia jako bryła, koło jako elipsa w płaszczyźnie boku
-export function cart(g, x, y, sc = 1) {
-  const { poly, ln, blob } = kit(g);
-  blob(x + 4, y + 1, 26 * sc, 6, '#000', 0.2);
-  const wood = '#a8703a';
-  const Lw = plane('L', x - 4 * sc, y - 5 * sc);
-  poly(planeEllipse(Lw, 0, 0, 7.4 * sc, 7.4 * sc), '#8a5a2a', 1.8);
-  poly(planeEllipse(Lw, 0, 0, 2.2 * sc, 2.2 * sc), '#4a2c14', 1);
-  for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.3; ln([Lw(0, 0), Lw(Math.cos(a) * 7 * sc, Math.sin(a) * 7 * sc)], 1, '#4a2c14'); }
-  isoBox(g, x, y - 8 * sc, 26 * sc, 14 * sc, 7 * sc, { left: shade(wood, -0.1), right: shade(wood, 0.02), top: shade(wood, 0.1) });
-  ln([[x + 13 * sc * 0.894, y - 8 * sc + 13 * sc * 0.447], [x + 30 * sc * 0.894, y + 4 * sc]], 2.4, '#6a3f1c');
+// wóz stoi wzdłuż osi x: skrzynia z deskami burt, koło ze szprychami i obręczą, ładunek zależny od ziarna
+export function cart(g, x, y, sc = 1, seed = 1) {
+  const { poly, ln, blob, circ } = kit(g), r = rng(seed);
+  blob(x + 4, y + 1, 28 * sc, 6, '#000', 0.2);
+  const wood = '#a8703a', Lw = plane('L', x - 4 * sc, y - 5.5 * sc);
+  poly(planeEllipse(Lw, 0, 0, 8 * sc, 8 * sc), '#6a3f1c', 1.8);
+  poly(planeEllipse(Lw, 0, 0, 6 * sc, 6 * sc), '#8a5a2a', 1);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; ln([Lw(0, 0), Lw(Math.cos(a) * 6 * sc, Math.sin(a) * 6 * sc)], 1.1, '#4a2c14'); }
+  poly(planeEllipse(Lw, 0, 0, 2 * sc, 2 * sc), '#4a2c14', 1);
+  const P = isoBox(g, x, y - 9 * sc, 28 * sc, 15 * sc, 7 * sc, { left: shade(wood, -0.1), right: shade(wood, 0.02), top: shade(wood, 0.1) });
+  ln([P(-14 * sc, 7.5 * sc, 3.5 * sc), P(14 * sc, 7.5 * sc, 3.5 * sc)], 1, 'rgba(58,36,20,.7)');
+  const load = r.pick(['sacks', 'barrels', 'crates', 'hay']), top = 7 * sc;
+  if (load === 'sacks') { for (const [dx, dy] of [[-7, 0], [2, 1], [10, -1]]) { const q = P(dx * sc, dy * sc, top); sack(g, q[0], q[1], sc * 0.9); } }
+  if (load === 'barrels') { for (const dx of [-6, 6]) { const q = P(dx * sc, 0, top); barrel(g, q[0], q[1], sc * 0.8, seed); } }
+  if (load === 'crates') { for (const dx of [-6, 7]) { const q = P(dx * sc, 0, top); crate(g, q[0], q[1], sc * 0.75, seed + dx); } }
+  if (load === 'hay') { const q = P(0, 0, top); haybale(g, q[0] - 3 * sc, q[1] + 3 * sc, sc * 0.9); }
+  ln([P(14 * sc, 0, 3 * sc), [x + 32 * sc * 0.894, y + 6 * sc]], 2.6, OUT); ln([P(14 * sc, 0, 3 * sc), [x + 32 * sc * 0.894, y + 6 * sc]], 1.5, '#6a3f1c');
 }
 export const PROPS = { barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };

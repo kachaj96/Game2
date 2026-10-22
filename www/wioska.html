@@ -19,7 +19,7 @@ const roads=[
 ];
 const onRoad=(x,y)=>(x>6.7&&x<9.3)||(y>6.7&&y<9.3);
 // budynki stoją na pełnych kaflach: róg S w punkcie siatki, podstawa zajmuje w x d kafli
-const slotPos=(q,i,s)=>{const ox=[0,5,0][i],oy=[0,0,5][i];
+const slotPos=(q,i,s)=>{const ox=[0,6,0][i],oy=[0,0,6][i];
  if(q==='TL')return[7-ox,7-oy];if(q==='TR')return[9+s.w+ox,7-oy];if(q==='BL')return[7-ox,9+s.d+oy];return[9+s.w+ox,9+s.d+oy];};
 const defs=[['TL',0,11,'tavern'],['TL',1,5,'tower'],['TL',2,99,'shop'],['TR',0,37,'townhouse'],['TR',1,61,'farmhouse'],['BL',0,23,'shop'],['BL',1,72,'cottage'],['BR',0,48,'cottage'],['BR',1,88,'townhouse']];
 const buildings=defs.map(([q,i,seed,kind])=>{const s=genBuilding(seed,kind);const [sx,sy]=slotPos(q,i,s);return{s,sx,sy}});
