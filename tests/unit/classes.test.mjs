@@ -105,3 +105,21 @@ test('startStats: PA i PM zawsze 6 i 3, przeszłość i cechy się sumują, nadm
   assert.equal(startStats('zalobnik', 'uczen').spellPoints, 1);
   for (const c of CLASS_LIST) for (const o of ORIGINS) for (const t of TRAITS) assert.ok(startStats(c.id, o.id, [t.id]).hp > 20, 'żadna kombinacja nie robi bohatera nieżywym');
 });
+
+import { ELEMENTS } from '../../src/game/classdata.js';
+import { SPELL_SYMBOLS, drawSpellIcon } from '../../src/art/spellicons.js';
+test('żywioły: każdy czar ma znany żywioł, kolory i kształty ramek są unikalne, przewodni żywioł klasy zgadza się z planem', () => {
+  assert.deepEqual(Object.keys(ELEMENTS), ['earth', 'fire', 'water', 'air', 'neutral']);
+  assert.equal(new Set(Object.values(ELEMENTS).map((e) => e.color)).size, 5); assert.equal(new Set(Object.values(ELEMENTS).map((e) => e.shape)).size, 5, 'kształt ramki odróżnia żywioły bez koloru');
+  for (const c of CLASS_LIST) for (const sp of c.spells) assert.ok(ELEMENTS[sp.element], `${c.name}/${sp.name}: brak żywiołu`);
+  const lead = { grabarz: 'earth', tropiciel: 'air', zalobnik: 'fire' };
+  for (const c of CLASS_LIST) { const n = c.spells.filter((s) => s.element === lead[c.id]).length; assert.ok(n >= 1 && n >= c.spells.filter((s) => s.element !== lead[c.id]).length - 1, `${c.name}: przewodni żywioł dominuje`); }
+  assert.ok(!CLASS_LIST.flatMap((c) => c.spells).some((s) => s.element === 'water'), 'woda tylko z czarów zdobywanych (plan)');
+});
+test('ikony: każdy czar ma własny symbol, każdy stan rysuje się bez złych liczb', () => {
+  const ids = CLASS_LIST.flatMap((c) => c.spells.map((s) => s.id)); assert.deepEqual([...SPELL_SYMBOLS].sort(), [...ids].sort(), 'symbol dla każdego czaru i żaden zbędny');
+  for (const c of CLASS_LIST) for (const sp of c.spells) for (const size of [40, 56, 96]) for (const st of [{}, { selected: true }, { disabled: true, noPa: true }, { cooldown: 3 }, { soon: true }]) {
+    const g = mockCtx(); drawSpellIcon(g, { ...sp, pa: sp.levels[0].pa }, 50, 50, size, st); assert.ok(g.__state.calls > 10); assert.deepEqual(g.__state.bad, [], `${sp.id} ${size}`);
+  }
+  const g = mockCtx(); drawSpellIcon(g, { id: 'nieznany', element: 'water' }, 0, 0); assert.deepEqual(g.__state.bad, [], 'nieznany czar rysuje się zastępczym symbolem');
+});

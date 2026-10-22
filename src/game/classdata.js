@@ -1,6 +1,14 @@
 // Dane klas: statystyki i czary. PROPOZYCJA, liczby do strojenia po pierwszych walkach.
 // Wszystkie klasy startują z 6 PA i 3 PM (zwiększane ekwipunkiem). Każda ma 3 czary po 5 poziomów.
 export const BASE = { pa: 6, pm: 3 };
+// Żywioły (PROPOZYCJA do akceptacji): cztery plus neutralny. Kolor i kształt ramki ikony zależą od żywiołu. Efekt na obrażenia dopiero po akceptacji planu.
+export const ELEMENTS = {
+  earth: { id: 'earth', name: 'Ziemia', color: '#9a6a34', shape: 'square' },
+  fire: { id: 'fire', name: 'Ogień', color: '#e0482a', shape: 'circle' },
+  water: { id: 'water', name: 'Woda', color: '#3a8ae0', shape: 'hex' },
+  air: { id: 'air', name: 'Powietrze', color: '#5ac85a', shape: 'diamond' },
+  neutral: { id: 'neutral', name: 'Zwykłe', color: '#a8a8b4', shape: 'shield' },
+};
 export const MAX_SPELL_LEVEL = 5;
 export const spellUpgradeCost = (fromLevel) => fromLevel; // z poziomu n na n+1 kosztuje n punktów czaru, 1 punkt czaru za poziom bohatera
 export const STAT_POINTS_PER_LEVEL = 5;
@@ -12,13 +20,13 @@ export const CLASSES = {
     tagline: 'Kopie groby, zanim ktoś w nie wpadnie. Walczy z bliska i ustawia przeciwników tam, gdzie chce.',
     stats: { hp: 62, hpPerLevel: 7, initiative: 15, main: 'strength' },
     spells: [
-      { id: 'cios_lopata', name: 'Cios Łopatą', tags: ['damage'], desc: 'Uderzenie z bliska. Najmocniejszy cios na PA wśród klas startowych, ale wymaga stania przy przeciwniku.', levels: [
+      { id: 'cios_lopata', element: 'earth', name: 'Cios Łopatą', tags: ['damage'], desc: 'Uderzenie z bliska. Najmocniejszy cios na PA wśród klas startowych, ale wymaga stania przy przeciwniku.', levels: [
         { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [15, 19] }, { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [17, 21] },
         { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [19, 23] }, { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [21, 26] }, { pa: 3, min: 1, max: 1, cd: 0, perTurn: 2, dmg: [24, 30] }] },
-      { id: 'zrzut_ziemi', name: 'Zrzut Ziemi', tags: ['push'], desc: 'Odpycha cel w linii. Zderzenie z przeszkodą lub jednostką zadaje dodatkowe obrażenia za każdy niewykorzystany kafel.', levels: [
+      { id: 'zrzut_ziemi', element: 'earth', name: 'Zrzut Ziemi', tags: ['push'], desc: 'Odpycha cel w linii. Zderzenie z przeszkodą lub jednostką zadaje dodatkowe obrażenia za każdy niewykorzystany kafel.', levels: [
         { pa: 3, min: 1, max: 3, line: true, cd: 3, perTurn: 1, dmg: [6, 8], push: 2, collision: 4 }, { pa: 3, min: 1, max: 3, line: true, cd: 3, perTurn: 1, dmg: [7, 9], push: 2, collision: 5 },
         { pa: 3, min: 1, max: 4, line: true, cd: 2, perTurn: 1, dmg: [8, 10], push: 3, collision: 5 }, { pa: 3, min: 1, max: 4, line: true, cd: 2, perTurn: 1, dmg: [9, 12], push: 3, collision: 6 }, { pa: 3, min: 1, max: 5, line: true, cd: 2, perTurn: 1, dmg: [10, 13], push: 3, collision: 7 }] },
-      { id: 'dol', name: 'Dół', tags: ['trap'], desc: 'Kopie dół na kaflu. Kto w niego wpadnie, traci wszystkie punkty ruchu i obrywa.', levels: [
+      { id: 'dol', element: 'earth', name: 'Dół', tags: ['trap'], desc: 'Kopie dół na kaflu. Kto w niego wpadnie, traci wszystkie punkty ruchu i obrywa.', levels: [
         { pa: 4, min: 1, max: 2, cd: 4, perTurn: 1, trap: { dmg: [10, 14], turns: 3, radius: 0, holdPm: true } }, { pa: 4, min: 1, max: 2, cd: 4, perTurn: 1, trap: { dmg: [12, 16], turns: 3, radius: 0, holdPm: true } },
         { pa: 3, min: 1, max: 2, cd: 4, perTurn: 1, trap: { dmg: [14, 18], turns: 4, radius: 0, holdPm: true } }, { pa: 3, min: 1, max: 3, cd: 3, perTurn: 1, trap: { dmg: [16, 21], turns: 4, radius: 1, holdPm: true } }, { pa: 3, min: 1, max: 3, cd: 3, perTurn: 1, trap: { dmg: [18, 24], turns: 5, radius: 1, holdPm: true } }] },
     ],
@@ -28,13 +36,13 @@ export const CLASSES = {
     tagline: 'Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dosięgnie.',
     stats: { hp: 46, hpPerLevel: 5, initiative: 40, main: 'agility' },
     spells: [
-      { id: 'belt', name: 'Bełt', tags: ['damage', 'los'], desc: 'Strzał z kuszy. Wymaga linii widzenia.', levels: [
+      { id: 'belt', element: 'air', name: 'Bełt', tags: ['damage', 'los'], desc: 'Strzał z kuszy. Wymaga linii widzenia.', levels: [
         { pa: 3, min: 3, max: 7, los: true, cd: 0, perTurn: 2, dmg: [11, 15] }, { pa: 3, min: 3, max: 7, los: true, cd: 0, perTurn: 2, dmg: [13, 17] },
         { pa: 3, min: 3, max: 8, los: true, cd: 0, perTurn: 2, dmg: [15, 19] }, { pa: 3, min: 3, max: 8, los: true, cd: 0, perTurn: 2, dmg: [17, 22] }, { pa: 3, min: 3, max: 9, los: true, cd: 0, perTurn: 2, dmg: [19, 25] }] },
-      { id: 'sidla', name: 'Sidła', tags: ['trap'], desc: 'Zastawia pułapkę. Kto w nią wejdzie, obrywa i traci 2 PM w następnej turze.', levels: [
+      { id: 'sidla', element: 'earth', name: 'Sidła', tags: ['trap'], desc: 'Zastawia pułapkę. Kto w nią wejdzie, obrywa i traci 2 PM w następnej turze.', levels: [
         { pa: 3, min: 1, max: 5, cd: 2, perTurn: 1, trap: { dmg: [8, 12], turns: 4, radius: 0, slowPm: 2, maxActive: 2 } }, { pa: 3, min: 1, max: 5, cd: 2, perTurn: 1, trap: { dmg: [10, 14], turns: 4, radius: 0, slowPm: 2, maxActive: 2 } },
         { pa: 3, min: 1, max: 6, cd: 2, perTurn: 1, trap: { dmg: [12, 16], turns: 5, radius: 0, slowPm: 2, maxActive: 3 } }, { pa: 2, min: 1, max: 6, cd: 2, perTurn: 1, trap: { dmg: [14, 19], turns: 5, radius: 0, slowPm: 2, maxActive: 3 } }, { pa: 2, min: 1, max: 6, cd: 1, perTurn: 1, trap: { dmg: [16, 22], turns: 6, radius: 0, slowPm: 2, maxActive: 4 } }] },
-      { id: 'odskok', name: 'Skok w Cień', tags: ['position'], desc: 'Odskok do tyłu w linii, ponad jednostkami. Od 4. poziomu zostawia sidła w miejscu startu.', levels: [
+      { id: 'odskok', element: 'neutral', name: 'Skok w Cień', tags: ['position'], desc: 'Odskok do tyłu w linii, ponad jednostkami. Od 4. poziomu zostawia sidła w miejscu startu.', levels: [
         { pa: 2, min: 0, max: 0, self: true, jump: 3, cd: 4, perTurn: 1 }, { pa: 2, min: 0, max: 0, self: true, jump: 3, cd: 3, perTurn: 1 },
         { pa: 2, min: 0, max: 0, self: true, jump: 4, cd: 3, perTurn: 1 }, { pa: 2, min: 0, max: 0, self: true, jump: 4, cd: 3, perTurn: 1, leavesTrap: true }, { pa: 2, min: 0, max: 0, self: true, jump: 5, cd: 2, perTurn: 1, leavesTrap: true }] },
     ],
@@ -44,13 +52,13 @@ export const CLASSES = {
     tagline: 'Żałoba to jego broń. Z popiołu i grobów wyciąga ogień, który pamięta poległych.',
     stats: { hp: 38, hpPerLevel: 4, initiative: 28, main: 'power' },
     spells: [
-      { id: 'zar', name: 'Żar', tags: ['damage', 'los'], desc: 'Kula żaru. Przy świeżym grobie obok celu uderza mocniej. Wymaga linii widzenia.', levels: [
+      { id: 'zar', element: 'fire', name: 'Żar', tags: ['damage', 'los'], desc: 'Kula żaru. Przy świeżym grobie obok celu uderza mocniej. Wymaga linii widzenia.', levels: [
         { pa: 3, min: 2, max: 6, los: true, cd: 0, perTurn: 2, dmg: [12, 16], graveBonus: 0.3 }, { pa: 3, min: 2, max: 6, los: true, cd: 0, perTurn: 2, dmg: [14, 18], graveBonus: 0.3 },
         { pa: 3, min: 2, max: 7, los: true, cd: 0, perTurn: 2, dmg: [16, 20], graveBonus: 0.35 }, { pa: 3, min: 2, max: 7, los: true, cd: 0, perTurn: 2, dmg: [18, 23], graveBonus: 0.4 }, { pa: 3, min: 2, max: 8, los: true, cd: 0, perTurn: 2, dmg: [21, 26], graveBonus: 0.5 }] },
-      { id: 'podmuch', name: 'Podmuch Popiołu', tags: ['push', 'los'], desc: 'Odpycha cel w linii i zostawia chmurę popiołu, która zasłania linię widzenia.', levels: [
+      { id: 'podmuch', element: 'air', name: 'Podmuch Popiołu', tags: ['push', 'los'], desc: 'Odpycha cel w linii i zostawia chmurę popiołu, która zasłania linię widzenia.', levels: [
         { pa: 3, min: 1, max: 4, line: true, cd: 2, perTurn: 1, dmg: [4, 6], push: 3, collision: 3, cloud: { turns: 1 } }, { pa: 3, min: 1, max: 4, line: true, cd: 2, perTurn: 1, dmg: [5, 7], push: 3, collision: 3, cloud: { turns: 1 } },
         { pa: 3, min: 1, max: 5, line: true, cd: 2, perTurn: 1, dmg: [6, 8], push: 3, collision: 4, cloud: { turns: 2 } }, { pa: 3, min: 1, max: 5, line: true, cd: 2, perTurn: 1, dmg: [7, 10], push: 4, collision: 4, cloud: { turns: 2 } }, { pa: 3, min: 1, max: 6, line: true, cd: 1, perTurn: 1, dmg: [8, 12], push: 4, collision: 5, cloud: { turns: 2 } }] },
-      { id: 'stos', name: 'Stos Pogrzebowy', tags: ['glyph'], desc: 'Zapala stos, który wybucha po turze. Postawiony na grobie zadaje o połowę więcej i pochłania grób.', levels: [
+      { id: 'stos', element: 'fire', name: 'Stos Pogrzebowy', tags: ['glyph'], desc: 'Zapala stos, który wybucha po turze. Postawiony na grobie zadaje o połowę więcej i pochłania grób.', levels: [
         { pa: 4, min: 2, max: 5, cd: 3, perTurn: 1, glyph: { dmg: [18, 24], radius: 1, delay: 1, graveBonus: 0.5 } }, { pa: 4, min: 2, max: 5, cd: 3, perTurn: 1, glyph: { dmg: [21, 28], radius: 1, delay: 1, graveBonus: 0.5 } },
         { pa: 4, min: 2, max: 6, cd: 3, perTurn: 1, glyph: { dmg: [24, 32], radius: 1, delay: 1, graveBonus: 0.5 } }, { pa: 4, min: 2, max: 6, cd: 2, perTurn: 1, glyph: { dmg: [27, 36], radius: 1, delay: 1, graveBonus: 0.5 } }, { pa: 3, min: 2, max: 7, cd: 2, perTurn: 1, glyph: { dmg: [30, 40], radius: 2, delay: 1, graveBonus: 0.5 } }] },
     ],
