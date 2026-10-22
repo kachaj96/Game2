@@ -3,7 +3,7 @@
 Izometryczna taktyczna gra turowa w stylu Dofusa. Osobny projekt, nie część Natalis. Eksperyment na czas testów Natalis.
 
 ## Stan
-Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/game/`: A*, zasięg PM, komendy, kolejka, prosta sztuczna inteligencja) i prototyp walki na dotyk (`www/walka.html`). Nie ma jeszcze czarów, punktów życia w grze ani nagród.
+Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/game/`: A*, zasięg PM, komendy, kolejka, prosta sztuczna inteligencja) i prototyp walki na dotyk (`www/walka.html`). Czary: działają obrażenia, zasięg, linia widzenia, odnowienia, limity na turę, śmierć i groby (Żar, Cios Łopatą, Bełt). Odpychanie, pułapki i glify jeszcze nie, takie czary są w grze wyszarzone z podpisem "wkrótce". Nie ma jeszcze nagród ani pętli zejścia do areny.
 
 | Co | Gdzie | Co umie |
 |---|---|---|
@@ -22,7 +22,7 @@ Wszystko rysuje kod, bez plików graficznych. Każdy obiekt ma ziarno, więc ta 
 ```
 npm test          # testy jednostkowe (Node 22, bez zależności)
 npm start         # podgląd na http://127.0.0.1:8080/ (walka: /www/walka.html, najlepiej w poziomie, ?mood=zmierzch lub dzien)
-npm run e2e       # test w przeglądarce z emulacją telefonu (wymaga npm i)
+npm run e2e       # testy w przeglądarce z emulacją telefonu i dotyku: walka, kreator, czary (wymaga npm i)
 npm i && npm run shots   # zrzuty do docs/podglad (Playwright)
 ```
 

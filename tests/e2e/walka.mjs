@@ -24,7 +24,7 @@ const st = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__game.sta
 const unit = (s, id) => s.units.find((u) => u.id === id);
 
 let s = await st();
-assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [1, 5, 4], 'start');
+assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [1, 5, 3], 'start');
 
 // 1. pierwsze dotknięcie tylko pokazuje podgląd: stan gry się nie zmienia
 await tapCell(3, 5);
@@ -36,7 +36,7 @@ await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka.png') });
 // 2. drugie dotknięcie w ten sam kafel potwierdza ruch
 await tapCell(3, 5);
 await page.waitForFunction(() => !window.__game.busy);
-s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [3, 5, 2], 'ruch wykonany, 2 PM zużyte');
+s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [3, 5, 1], 'ruch wykonany, 2 PM zużyte');
 
 // 3. kafel poza zasięgiem i ściana nie dają podglądu
 await tapCell(6, 6);
@@ -46,8 +46,8 @@ assert.equal(await page.evaluate(() => window.__game.preview), null, 'ściana');
 assert.match(await page.locator('#msg').textContent(), /nie da się|Za daleko/);
 
 // 4. dotknięcie innego kafla zmienia podgląd, a nie wykonuje ruchu
-await tapCell(3, 6); await tapCell(2, 6);
-pv = await page.evaluate(() => window.__game.preview); assert.ok(pv && pv.x === 2 && pv.y === 6);
+await tapCell(3, 6); await tapCell(2, 5);
+pv = await page.evaluate(() => window.__game.preview); assert.ok(pv && pv.x === 2 && pv.y === 5);
 s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y], [3, 5]);
 
 // 5. koniec tury: przeciwnicy grają sami i podchodzą, potem wraca tura gracza z odnowionymi PM
@@ -57,7 +57,7 @@ await page.click('#end');
 await page.waitForFunction(() => !window.__game.busy && window.__game.state.units[window.__game.state.order.indexOf('h') >= 0 ? 0 : 0].id && window.__game.state.order[window.__game.state.turn.index] === 'h', null, { timeout: 15000 });
 s = await st();
 assert.equal(s.turn.round, 2, 'druga runda');
-assert.equal(unit(s, 'h').pm, 4, 'PM gracza odnowione');
+assert.equal(unit(s, 'h').pm, 3, 'PM gracza odnowione');
 const after = ['e1', 'e2'].map((id) => dist(unit(s, id), unit(s, 'h')));
 assert.ok(after[0] < before[0] && after[1] < before[1], `przeciwnicy podeszli: ${before} -> ${after}`);
 assert.ok(await page.locator('#end').isEnabled());

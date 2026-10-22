@@ -95,4 +95,11 @@ export function cart(g, x, y, sc = 1, seed = 1) {
   if (load === 'hay') { const q = P(0, 0, top); haybale(g, q[0] - 3 * sc, q[1] + 3 * sc, sc * 0.9); }
   ln([P(14 * sc, 0, 3 * sc), [x + 32 * sc * 0.894, y + 6 * sc]], 2.6, OUT); ln([P(14 * sc, 0, 3 * sc), [x + 32 * sc * 0.894, y + 6 * sc]], 1.5, '#6a3f1c');
 }
-export const PROPS = { barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
+// grób po poległym: kamienna płyta z krzyżem na kopcu ziemi. Blokuje ruch i linię widzenia, więc ma być czytelny z daleka
+export function grave(g, x, y, sc = 1) {
+  const { blob, ln, poly } = kit(g);
+  blob(x + 3, y + 1, 15 * sc, 5, '#000', 0.28); blob(x, y - 2, 13 * sc, 4.5, '#5a4a38', 1); blob(x - 2, y - 3.5, 8 * sc, 2.4, '#7a6a52', 0.8);
+  isoBox(g, x, y - 3 * sc, 9 * sc, 4 * sc, 16 * sc, { left: '#6e6e76', right: '#8e8e98', top: '#a8a8b2' });
+  ln([[x, y - 21 * sc], [x, y - 12 * sc]], 1.6, '#3a3a42'); ln([[x - 3 * sc, y - 17.5 * sc], [x + 3 * sc, y - 17.5 * sc]], 1.6, '#3a3a42');
+}
+export const PROPS = { grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
