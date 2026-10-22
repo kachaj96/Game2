@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { rng } from '../../src/art/rng.js';
 import { genBuilding, drawBuilding, KINDS } from '../../src/art/buildings.js';
 import { genCharacter, drawCharacter, ROLES, DIRS } from '../../src/art/characters.js';
+import { genKopacz, drawKopacz, KOPACZE } from '../../src/art/creatures.js';
 import * as N from '../../src/art/nature.js';
 import { PROPS } from '../../src/art/props.js';
 import { applyMood, glow, MOODS } from '../../src/art/mood.js';
@@ -71,4 +72,26 @@ test('drzewa tego samego gatunku z różnych ziaren nie są kopiami', () => {
 test('nastrój: każdy preset i poświata rysują się bez złych liczb', () => {
   for (const name of Object.keys(MOODS)) { const g = mockCtx(); applyMood(g, 400, 300, name); glow(g, 50, 60, 40); assert.ok(g.__state.calls > 0); clean(g, name); }
   const g = mockCtx(); applyMood(g, 100, 100, 'nieistniejacy'); clean(g, 'nieznany preset wraca do dnia');
+});
+
+test('Kopacze: generator jest deterministyczny, rodzaje różnią się sylwetką, a dwa stwory z różnych ziaren nie są kopiami', () => {
+  for (const k of KOPACZE) {
+    for (let s = 1; s <= 10; s++) assert.equal(sig(genKopacz(s, k)), sig(genKopacz(s, k)));
+    const specs = Array.from({ length: 40 }, (_, i) => genKopacz(i + 1, k));
+    assert.ok(distinct(specs) >= 39, `${k}: różne ziarna dają różne stwory`);
+    assert.ok(new Set(specs.map((s) => s.pal.mid)).size >= 30, `${k}: różne kolory, nie tylko kształt`);
+    assert.equal(genKopacz(3, k).kind, k);
+  }
+  const avg = (k, f) => Array.from({ length: 30 }, (_, i) => f(genKopacz(i + 1, k))).reduce((a, b) => a + b) / 30;
+  assert.ok(avg('pancerny', (s) => s.sc * s.bw) > avg('kopacz', (s) => s.sc * s.bw) * 1.4, 'pancerny wyraźnie większy');
+  assert.ok(avg('szperacz', (s) => s.sc) < avg('kopacz', (s) => s.sc), 'szperacz mniejszy');
+  assert.ok(genKopacz(2, 'pancerny').plates && genKopacz(2, 'szperacz').feelers && genKopacz(2, 'pluja').sac && genKopacz(2, 'zerca').neck, 'wyposażenie rodzaju');
+  assert.equal(new Set(Array.from({ length: 60 }, (_, i) => genKopacz(i + 1).kind)).size, KOPACZE.length, 'bez rodzaju losuje wszystkie');
+});
+
+test('Kopacze: każdy rodzaj, 4 kierunki i klatki chodu rysują się bez błędów', () => {
+  for (const k of KOPACZE) for (let s = 1; s <= 6; s++) for (const d of Object.values(DIRS)) for (const t of [undefined, 0, 0.3, 0.6, 0.9]) {
+    const g = mockCtx(); drawKopacz(g, 100, 100, genKopacz(s * 5, k), { ...d, t, ring: s % 2 ? 'rgb(220,60,50)' : undefined });
+    assert.ok(g.__state.calls > 40); clean(g, `${k}#${s}`);
+  }
 });

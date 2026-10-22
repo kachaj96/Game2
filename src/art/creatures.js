@@ -1,0 +1,105 @@
+// Stworzenia: rodzina Kopaczy. genKopacz(ziarno, rodzaj) losuje wygląd, drawKopacz rysuje go w 4 kierunkach (SE, NE wprost, SW i NW to lustro).
+// Wszystkie rodzaje mają wspólny plan (garb, długie ramiona z pazurami, ślepe oczy), ale różnią się sylwetką, wyposażeniem i światłem.
+import { rng } from './rng.js';
+import { kit } from './kit.js';
+import { hsl, shade } from './color.js';
+import { DIRS } from './characters.js';
+
+export const KOPACZE = ['kopacz', 'pancerny', 'szperacz', 'pluja', 'zerca'];
+export { DIRS };
+// zakresy sylwetki na rodzaj: skala, szerokość tułowia, wysokość tułowia, długość ramienia, głowa, liczba pazurów
+const PLAN = {
+  kopacz: { sc: [0.95, 1.1], bw: [11, 14], bh: [17, 21], arm: [13, 17], head: [7, 8.6], claws: [3, 4], hue: [18, 40], sat: [0.25, 0.4] },
+  pancerny: { sc: [1.22, 1.42], bw: [15, 18], bh: [18, 22], arm: [9, 12], head: [6, 7.2], claws: [2, 3], hue: [24, 44], sat: [0.18, 0.3] },
+  szperacz: { sc: [0.8, 0.92], bw: [8, 10], bh: [15, 18], arm: [15, 19], head: [7.4, 9], claws: [4, 5], hue: [30, 50], sat: [0.1, 0.2] },
+  pluja: { sc: [0.95, 1.06], bw: [9, 11], bh: [20, 24], arm: [9, 11], head: [6, 7.2], claws: [2, 3], hue: [6, 22], sat: [0.32, 0.45] },
+  zerca: { sc: [1, 1.12], bw: [9, 11], bh: [16, 20], arm: [13, 16], head: [7, 8.2], claws: [3, 4], hue: [320, 350], sat: [0.1, 0.2] },
+};
+
+export function genKopacz(seed, kind) {
+  const r = rng(seed * 7919 + 31);
+  kind = kind || r.pick(KOPACZE);
+  const p = PLAN[kind];
+  const hue = r.range(...p.hue), sat = r.range(...p.sat), mid = hsl(hue, sat, r.range(0.3, 0.38));
+  const sp = {
+    seed, kind, sc: r.range(...p.sc), bw: r.range(...p.bw), bh: r.range(...p.bh), arm: r.range(...p.arm), hr: r.range(...p.head), claws: r.int(...p.claws),
+    clawLen: r.range(5, 8.5), hunch: r.range(2, 6), spines: r.int(3, 7), scars: r.int(0, 3), horns: kind === 'zerca' ? 0 : r.int(0, 2), brow: r.range(0, 1),
+    pal: { mid, dark: shade(mid, -0.1), light: shade(mid, 0.1), belly: hsl(hue - 4, sat * 0.8, r.range(0.46, 0.56)), bone: hsl(r.range(36, 50), r.range(0.28, 0.4), r.range(0.76, 0.88)) },
+    eyeCol: kind === 'pluja' ? '#ff8a30' : kind === 'zerca' ? '#c83a3a' : '#e4ecf0',
+  };
+  if (kind === 'pancerny') sp.plates = r.int(5, 7);
+  if (kind === 'szperacz') sp.feelers = r.int(2, 4);
+  if (kind === 'pluja') sp.sac = r.range(5.5, 8.5);
+  if (kind === 'zerca') { sp.neck = r.range(5, 9); sp.ribs = r.int(3, 4); }
+  if (kind === 'kopacz') sp.ribs = r.int(2, 3);
+  return sp;
+}
+
+export function drawKopacz(g, x, y, sp, o = {}) {
+  const { poly, ln, circ, ell, blob, lg } = kit(g), back = o.view === 'back', walking = o.t != null, th = walking ? o.t * Math.PI * 2 : 0;
+  const P = sp.pal, heavy = sp.kind === 'pancerny';
+  const bob = walking ? -Math.abs(Math.cos(th)) * (heavy ? 2.4 : 1.6) : 0, step = walking ? Math.sin(th) * 3.2 : 0;
+  const bw = sp.bw, bh = sp.bh, top = -9 - bh + bob, cy = -9 - bh / 2 + bob, neck = sp.neck || 0;
+  g.save(); g.translate(x, y);
+  if (o.ring) { g.save(); g.scale(1, 0.5); g.beginPath(); g.arc(0, 4, 22 * sp.sc, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = o.ring; g.stroke(); g.fillStyle = o.ring.replace('rgb', 'rgba').replace(')', ',.22)'); g.fill(); g.restore(); }
+  if (o.mirror) g.scale(-1, 1);
+  g.scale(sp.sc, sp.sc);
+  blob(0, 3, bw * 1.7, 5, '#000', 0.28);
+  // nogi: krótkie, z pazurkami u stóp
+  const lw = bw * 0.38;
+  for (const sg of [-1, 1]) {
+    const lx = sg * bw * 0.55, st = sg * step * 0.3;
+    poly([[lx - lw, -10 + bob * 0.3], [lx + lw, -10 + bob * 0.3], [lx + lw * 0.9 + st, -1], [lx - lw * 0.9 + st, -1]], sg < 0 ? P.dark : P.mid, 1.6);
+    ell(lx + st, -0.6, lw * 1.25, 2.5, P.dark, 1.5);
+    for (let i = -1; i <= 1; i++) ln([[lx + st + i * lw * 0.75, 0.6], [lx + st + i * lw * 0.9, 3.2]], 1.4, P.bone);
+  }
+  const head = () => {
+    const hy = top + 3 + (sp.hunch * 0.4) - neck + (back ? -1 : 0), hr = sp.hr;
+    if (neck) { poly([[-3, cy - bh * 0.3], [3, cy - bh * 0.3], [2.5, hy + hr * 0.6], [-2.5, hy + hr * 0.6]], P.mid, 1.6); }
+    for (let i = 0; i < sp.horns; i++) { const sg = i ? 1 : -1; poly([[sg * hr * 0.55, hy - hr * 0.5], [sg * hr * 1.15, hy - hr * 1.35], [sg * hr * 0.2, hy - hr * 0.8]], P.bone, 1.4); }
+    if (sp.feelers) for (let i = 0; i < sp.feelers; i++) { const sg = i % 2 ? 1 : -1, k = 1 + (i >> 1) * 0.6; ln([[sg * hr * 0.3, hy - hr * 0.8], [sg * hr * 1.1 * k, hy - hr * 1.7 * k], [sg * hr * 1.7 * k, hy - hr * 1.5 * k]], 1.6, P.dark); circ(sg * hr * 1.7 * k, hy - hr * 1.5 * k, 1.5, P.bone, 1); }
+    const skull = sp.kind === 'zerca';
+    ell(0, hy, hr * 1.15, hr, lg(-hr, hy - hr, hr, hy + hr, skull ? P.bone : P.light, skull ? shade(P.bone, -0.18) : P.mid), 1.8);
+    if (back) { for (let i = 0; i < 3; i++) ln([[-hr * 0.5 + i * hr * 0.5, hy - hr * 0.8], [-hr * 0.4 + i * hr * 0.4, hy - hr * 0.1]], 1.1, P.dark); return; }
+    const ex = hr * 0.45, ey = hy - hr * 0.1;
+    if (sp.kind === 'szperacz') for (const s of [-1, 1]) { circ(s * ex, ey, hr * 0.38, sp.eyeCol, 1.3); circ(s * ex + s * 0.6, ey + 0.4, hr * 0.14, '#222', 0); }
+    else if (skull) for (const s of [-1, 1]) { ell(s * ex, ey, hr * 0.3, hr * 0.34, '#2a1414', 1.2); circ(s * ex, ey + 0.5, 1.1, sp.eyeCol, 0); }
+    else if (sp.kind === 'pluja') for (const s of [-1, 1]) { circ(s * ex, ey, 1.7, sp.eyeCol, 0.8); }
+    else if (heavy) for (const s of [-1, 1]) ln([[s * ex - 2, ey], [s * ex + 2, ey + 0.6 * s]], 1.6, '#1c1410');
+    else for (const s of [-1, 1]) { circ(s * ex, ey, 1.9, sp.eyeCol, 0.9); } // ślepe, mleczne oczy
+    for (let i = 0; i < sp.scars; i++) ln([[-hr * 0.9 + i * hr * 0.6, hy - hr * 0.7], [-hr * 0.5 + i * hr * 0.6, hy - hr * 0.1]], 1.1, 'rgba(30,10,6,.7)');
+    // pysk
+    const my = hy + hr * 0.52, open = sp.kind === 'pluja' ? 3.4 : sp.kind === 'zerca' ? 3 : 1.7;
+    ell(0, my, hr * 0.62, open, '#1c0c08', 1.3);
+    if (sp.kind === 'pluja') { const gr = g.createRadialGradient(0, my, 0, 0, my, hr * 0.7); gr.addColorStop(0, 'rgba(255,170,60,.95)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, my, hr * 0.62, open, 0, 0, 7); g.fill(); }
+    for (let i = -2; i <= 2; i++) poly([[i * hr * 0.2 - 1, my - open * 0.6], [i * hr * 0.2 + 1, my - open * 0.6], [i * hr * 0.2, my + 0.6]], P.bone, 0.7);
+  };
+  const body = () => {
+    ell(0, cy, bw, bh / 2, lg(-bw, top, bw, cy + bh / 2, P.light, P.dark), 1.9);
+    if (!back) {
+      ell(0, cy + bh * 0.14, bw * 0.55, bh * 0.3, P.belly, 0); g.globalAlpha = 0.5; ell(0, cy + bh * 0.14, bw * 0.55, bh * 0.3, P.belly, 0); g.globalAlpha = 1;
+      for (let i = 0; i < (sp.ribs || 0); i++) { const ry = cy - bh * 0.2 + i * (bh * 0.2); ln([[-bw * 0.6, ry], [0, ry + 2.4], [bw * 0.6, ry]], sp.kind === 'zerca' ? 2 : 1.2, sp.kind === 'zerca' ? P.bone : P.dark); }
+    }
+    if (heavy) {
+      const n = sp.plates;
+      if (back) for (let i = 0; i < n; i++) { const py = top + 3 + i * ((bh - 3) / n), pw = bw * (0.95 - Math.abs(i - n * 0.4) * 0.07); ell(0, py + 3, pw, 4.2, lg(0, py, 0, py + 8, P.bone, shade(P.bone, -0.2)), 1.5); }
+      else for (const s of [-1, 1]) { ell(s * bw * 0.85, top + 4, bw * 0.42, 5, P.bone, 1.6); ln([[s * bw * 0.6, top + 3], [s * bw * 1.1, top + 5]], 1, P.dark); }
+    }
+    if (back) for (let i = 0; i < sp.spines; i++) { const sy = top + 2 + i * ((bh - 4) / sp.spines), w = 2.3 + (heavy ? 1 : 0); poly([[-w, sy + 3], [0, sy - 4.5 - (i % 2)], [w, sy + 3]], P.bone, 1.3); }
+    if (sp.kind === 'pluja' && !back) {
+      const sy = top + sp.hunch * 0.4 + sp.hr + 3, gr = g.createRadialGradient(0, sy, 0, 0, sy, sp.sac);
+      gr.addColorStop(0, '#ffd070'); gr.addColorStop(0.55, '#ff7a28'); gr.addColorStop(1, '#a8300e');
+      ell(0, sy + 2, sp.sac, sp.sac * 0.85, gr, 1.6);
+    }
+  };
+  const arms = () => {
+    for (const sg of [-1, 1]) {
+      const sx = sg * bw * 0.95, sy = top + 4, sw = step * sg * 0.35, hx = sg * (bw + 4.5), hy = sy + sp.arm + sw;
+      ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 6.6, '#3a2414'); ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 4.6, sg < 0 ? P.light : P.mid);
+      circ(hx, hy, 3, sg < 0 ? P.light : P.mid, 1.5);
+      for (let i = 0; i < sp.claws; i++) { const a = (i / Math.max(1, sp.claws - 1) - 0.5) * 1.1 + sg * 0.15, tx = hx + Math.sin(a) * sp.clawLen, ty = hy + Math.cos(a) * sp.clawLen; ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 3.1, '#3a2414'); ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 1.5, P.bone); }
+    }
+  };
+  if (back) { head(); body(); arms(); } else { body(); head(); arms(); }
+  g.restore();
+}

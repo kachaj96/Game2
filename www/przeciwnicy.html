@@ -1,0 +1,21 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Przeciwnicy: Kopacze</title>
+<style>body{margin:0;background:#14110e;color:#d8cdb4;font:14px system-ui,sans-serif}canvas{display:block;max-width:100%;height:auto}h1{font-size:16px;margin:10px 14px}</style></head><body>
+<h1>Rodzina Kopaczy: kopacz, pancerny, szperacz, pluja, żerca (8 ziaren każdy, 4 kierunki, kroki chodu)</h1>
+<canvas id="c" width="1500" height="760"></canvas>
+<script type="module">
+import { genKopacz, drawKopacz, KOPACZE, DIRS } from '../src/art/creatures.js';
+import { applyMood } from '../src/art/mood.js';
+import { ground, tufts } from '../src/art/nature.js';
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+ground(g, 1500, 760, 5); tufts(g, 1500, 760, 5, 200);
+g.fillStyle = 'rgba(14,10,6,.55)'; g.fillRect(0, 0, 1500, 760);
+g.fillStyle = '#d8cdb4'; g.font = '13px system-ui';
+KOPACZE.forEach((kind, row) => {
+  const y = 90 + row * 140; g.fillText(kind, 10, y - 55);
+  for (let i = 0; i < 8; i++) drawKopacz(g, 110 + i * 105, y, genKopacz(i + 1, kind), { view: 'front', ring: i % 2 ? undefined : 'rgb(220,60,50)' });
+  const s = genKopacz(3, kind);
+  for (const [j, d] of Object.values(DIRS).entries()) drawKopacz(g, 960 + j * 70, y, s, d);
+  [0.1, 0.35, 0.6, 0.85].forEach((t, j) => drawKopacz(g, 1260 + j * 62, y, s, { view: 'front', t }));
+});
+applyMood(g, 1500, 760, 'zmierzch');
+</script></body></html>
