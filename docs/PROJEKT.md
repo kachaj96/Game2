@@ -37,7 +37,18 @@ Dokument żyje. Każda decyzja ma datę i powód, żeby dało się ją później
 
 **Napięcie 2: waluta na stałe ulepszenia.** Przy krótkich runach łatwo o grind, w którym liczy się liczba podejść, nie umiejętność. Do rozstrzygnięcia: ulepszenia dają szerokość (więcej opcji), a nie siłę (więcej obrażeń).
 
-## Zmiana zakresu (do decyzji)
+## Decyzje, runda 4 (22.10.2026)
+
+| Pytanie | Decyzja | Konsekwencja |
+|---|---|---|
+| Zakres | Hybryda w fazach | Stały bohater i świat, Pogrzebana arena jako loch 5 do 6 komnat. Fazy: 1 walka i klasy, 2 mała mapa, 3 zbieranie i crafting, 4 profesje. Każda faza sprawdzana w grze |
+| Klasy | Grabarz, Tropiciel, Żałobnik zatwierdzone (nazwy, wygląd, styl ruchu) | Dalej tylko strojenie liczb po walkach |
+| Groby | Wchodzą jako wyróżnik | Pokonana jednostka zostawia grób: blokuje ruch i linię widzenia, jest paliwem czarów |
+| PA i PM | 6 i 3 bez zmian | Różnicę względem Dofusa dają groby i zasady czarów |
+
+**Kolejność czarów (każda warstwa z testami):** 1. obrażenia, zasięg, linia, odnowienia, limity, PA, śmierć i groby, linia widzenia. 2. odpychanie z kolizją. 3. pułapki i glify. Czar, którego efekt jeszcze nie jest zaimplementowany, jest w interfejsie wyszarzony, a logika go odrzuca, żeby nie udawać, że działa.
+
+## Zmiana zakresu (rozstrzygnięta: hybryda w fazach)
 
 Po rundzie 3 użytkownik napisał: chcę grę Dofus-like, więc świat i eksploracja są ważne, areny również, ale gracz ma mieć eksplorację, profesje, crafting i więcej. To zmienia projekt z serii aren w RPG ze światem. Wcześniejsze decyzje o postępie po porażce, o jednym bohaterze i o tej samej postaci po śmierci pasują do takiego RPG, a seria aren staje się rodzajem lochu.
 

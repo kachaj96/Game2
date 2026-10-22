@@ -1,6 +1,6 @@
-# Klasy startowe i kreator postaci: PROPOZYCJA DO AKCEPTACJI
+# Klasy startowe i kreator postaci
 
-**Status: nic tu nie jest zatwierdzone.** Wszystkie nazwy, liczby i opisy to propozycja. Dane źródłowe: `src/game/classdata.js` (liczby, testowane) i `src/art/classes.js` (wygląd). Podgląd: `www/klasy.html` i `www/kreator.html`, zrzuty w `docs/podglad/klasy.png` i `kreator.png`.
+**Status: klasy, nazwy, wygląd, groby i 6 PA / 3 PM zatwierdzone (22.10.2026).** Liczby czarów to nadal propozycja do strojenia po pierwszych walkach. Dane źródłowe: `src/game/classdata.js` (liczby, testowane) i `src/art/classes.js` (wygląd). Podgląd: `www/klasy.html` i `www/kreator.html`, zrzuty w `docs/podglad/klasy.png` i `kreator.png`.
 
 ## Zasady wspólne
 

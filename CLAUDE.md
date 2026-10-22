@@ -3,13 +3,13 @@
 Osobny projekt, nie część Natalis. Powstał na czas testów Natalis jako eksperyment: czy turowa walka na siatce izometrycznej daje frajdę. Gra po polsku. Testy: `npm test`. Podgląd grafiki: `npm start`, potem http://127.0.0.1:8080/.
 
 ## Kierunek (szczegóły i powody w `docs/PROJEKT.md`)
-Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci), telefon i dotyk najpierw, ton poważniejszy i mroczniejszy.
+Hybryda w fazach: stały bohater i świat do eksploracji, Pogrzebana arena jako loch 5 do 6 komnat. Jedna osoba (z czasem współpraca przez internet z kodem pokoju), telefon i dotyk najpierw, ton poważniejszy i mroczniejszy. Fazy: 1 walka i klasy, 2 mała mapa, 3 zbieranie i crafting, 4 profesje. Klasy Grabarz, Tropiciel, Żałobnik zatwierdzone, groby jako wyróżnik, 6 PA i 3 PM.
 - Logika gry mieszka w `src/game/`, jest deterministyczna i nie dotyka canvasa, DOM ani `Math.random()`. Zmiany stanu to komendy.
 - Żadnej funkcji zależnej od najechania myszą: dotyk jest podstawą (pierwsze dotknięcie pokazuje podgląd, drugie potwierdza).
 - Mroczny nastrój osiągamy oświetleniem i paletą (`src/art/mood.js`: `applyMood`, `glow`), nie zmianą kształtów.
 - Walka jest w poziomie, interfejs to nakładki na planszy. Zmiany układu sprawdzaj `npm run e2e` (emulacja telefonu i dotyku) i patrząc na `docs/podglad/walka*.png`.
 
-- Klasy, czary, przeszłości i cechy to dane w `src/game/classdata.js` z testami spójności (np. każdy poziom czaru musi coś zmieniać). Nowa klasa = dane + wygląd w `src/art/classes.js` + testy. Stan: propozycja do akceptacji, patrz `docs/KLASY.md`.
+- Klasy, czary, przeszłości i cechy to dane w `src/game/classdata.js` z testami spójności (np. każdy poziom czaru musi coś zmieniać). Nowa klasa = dane + wygląd w `src/art/classes.js` + testy. Klasy i wygląd zatwierdzone, liczby czarów do strojenia po walkach, patrz `docs/KLASY.md`.
 
 ## Zasada: grafika to generatory, nie pliki
 Żadnych pobranych paczek ani obrazków. Wszystko rysuje kod na canvasie (`src/art/`).
