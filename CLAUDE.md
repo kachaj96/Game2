@@ -6,7 +6,8 @@ Osobny projekt, nie część Natalis. Powstał na czas testów Natalis jako eksp
 Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci), telefon i dotyk najpierw, ton poważniejszy i mroczniejszy.
 - Logika gry mieszka w `src/game/`, jest deterministyczna i nie dotyka canvasa, DOM ani `Math.random()`. Zmiany stanu to komendy.
 - Żadnej funkcji zależnej od najechania myszą: dotyk jest podstawą (pierwsze dotknięcie pokazuje podgląd, drugie potwierdza).
-- Mroczny nastrój osiągamy oświetleniem i paletą, nie zmianą kształtów.
+- Mroczny nastrój osiągamy oświetleniem i paletą (`src/art/mood.js`: `applyMood`, `glow`), nie zmianą kształtów.
+- Walka jest w poziomie, interfejs to nakładki na planszy. Zmiany układu sprawdzaj `npm run e2e` (emulacja telefonu i dotyku) i patrząc na `docs/podglad/walka*.png`.
 
 ## Zasada: grafika to generatory, nie pliki
 Żadnych pobranych paczek ani obrazków. Wszystko rysuje kod na canvasie (`src/art/`).

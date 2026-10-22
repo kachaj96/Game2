@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "start": "node tools/serve.mjs",
-    "shots": "node tools/shot.mjs"
+    "shots": "node tools/shot.mjs",
+    "e2e": "node tests/e2e/walka.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

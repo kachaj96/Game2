@@ -5,6 +5,7 @@ import { genBuilding, drawBuilding, KINDS } from '../../src/art/buildings.js';
 import { genCharacter, drawCharacter, ROLES, DIRS } from '../../src/art/characters.js';
 import * as N from '../../src/art/nature.js';
 import { PROPS } from '../../src/art/props.js';
+import { applyMood, glow, MOODS } from '../../src/art/mood.js';
 import { mockCtx } from './mockctx.mjs';
 
 const sig = (o) => JSON.stringify(o);
@@ -65,4 +66,9 @@ test('drzewa tego samego gatunku z różnych ziaren nie są kopiami', () => {
   const rec = (seed) => { const g = mockCtx(); const log = []; const orig = g.arc; const p = new Proxy(g, { get(t, k) { if (k === 'arc') return (...a) => log.push(a.map((v) => Math.round(v))); return t[k]; }, set(t, k, v) { t[k] = v; return true; } }); N.oak(p, 100, 100, seed); return log; };
   const sigs = new Set(Array.from({ length: 12 }, (_, i) => sig(rec(i + 1))));
   assert.ok(sigs.size >= 11);
+});
+
+test('nastrój: każdy preset i poświata rysują się bez złych liczb', () => {
+  for (const name of Object.keys(MOODS)) { const g = mockCtx(); applyMood(g, 400, 300, name); glow(g, 50, 60, 40); assert.ok(g.__state.calls > 0); clean(g, name); }
+  const g = mockCtx(); applyMood(g, 100, 100, 'nieistniejacy'); clean(g, 'nieznany preset wraca do dnia');
 });

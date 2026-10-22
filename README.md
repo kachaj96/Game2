@@ -3,7 +3,7 @@
 Izometryczna taktyczna gra turowa w stylu Dofusa. Osobny projekt, nie część Natalis. Eksperyment na czas testów Natalis.
 
 ## Stan
-Gotowa jest warstwa grafiki i siatka izometryczna (`src/grid.js`, podgląd w `www/siatka.html`). Gry jeszcze nie ma: brak ruchu i tur.
+Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/game/`: A*, zasięg PM, komendy, kolejka, prosta sztuczna inteligencja) i prototyp walki na dotyk (`www/walka.html`). Nie ma jeszcze czarów, punktów życia w grze ani nagród.
 
 | Co | Gdzie | Co umie |
 |---|---|---|
@@ -20,7 +20,8 @@ Wszystko rysuje kod, bez plików graficznych. Każdy obiekt ma ziarno, więc ta 
 ## Uruchomienie
 ```
 npm test          # testy jednostkowe (Node 22, bez zależności)
-npm start         # podgląd grafiki na http://127.0.0.1:8080/
+npm start         # podgląd na http://127.0.0.1:8080/ (walka: /www/walka.html, najlepiej w poziomie, ?mood=zmierzch lub dzien)
+npm run e2e       # test w przeglądarce z emulacją telefonu (wymaga npm i)
 npm i && npm run shots   # zrzuty do docs/podglad (Playwright)
 ```
 
@@ -29,7 +30,7 @@ Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci)
 
 ## Plan
 1. ~~Siatka logiczna i rzut izometryczny~~ (zrobione, z testami odwracalności).
-2. Ruch po kaflach: A*, punkty ruchu, przeszkody. Logika w `src/game/`, deterministyczna, sterowana komendami, bez hovera (dotyk).
+2. ~~Ruch po kaflach: A*, punkty ruchu, przeszkody~~ (zrobione, 36 testów jednostkowych plus test w przeglądarce z emulacją telefonu).
 3. Tury: kolejka, PA/PM, jeden czar z zasięgiem i linią widzenia.
 4. Jedna grywalna arena. Dopiero wtedy decyzja, czy iść dalej.
 5. Animacje ataku i trafienia (dziś jest tylko chód), cache sprite'ów do offscreen canvasów.

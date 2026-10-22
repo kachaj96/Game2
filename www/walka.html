@@ -1,0 +1,122 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Walka</title>
+<style>
+html,body{margin:0;height:100%;background:#0c1210;color:#e8f0d0;font:15px system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none;overflow:hidden}
+#app{position:fixed;inset:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.pill{position:absolute;background:rgba(10,14,8,.72);border-radius:12px;padding:8px 12px;pointer-events:none;backdrop-filter:blur(2px)}
+#hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;display:flex;gap:14px}
+#msg{bottom:max(12px,env(safe-area-inset-bottom));left:max(8px,env(safe-area-inset-left));max-width:calc(100% - 220px);color:#c6d6a6;font-size:14px}
+#msg:empty{display:none}
+button{position:absolute;bottom:max(12px,env(safe-area-inset-bottom));right:max(12px,env(safe-area-inset-right));width:min(200px,38vw);height:60px;border:0;border-radius:14px;font:700 17px system-ui;background:#3b6a2a;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+button:disabled{background:#2a3324;color:#6a7a5a}
+</style></head><body><div id="app">
+<canvas id="c"></canvas>
+<div id="hud" class="pill"><span id="who">Walka</span><span id="pts"></span></div>
+<div id="msg" class="pill"></div>
+<button id="end">Koniec tury</button></div>
+<script type="module">
+import {IsoGrid} from '../src/grid.js';
+import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
+import {drawGridLines,fillCells,drawCellOutline} from '../src/art/gridview.js';
+import {kit} from '../src/art/kit.js';
+import * as N from '../src/art/nature.js';
+import {applyMood,glow} from '../src/art/mood.js';
+import {createState,currentUnit,unitById,gridOf,occupied} from '../src/game/state.js';
+import {applyCommand,legalMoves} from '../src/game/commands.js';
+import {findPath} from '../src/game/pathfinding.js';
+import {chooseCommand} from '../src/game/ai.js';
+
+const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
+const WORLD={w:540,h:400},mood=new URLSearchParams(location.search).get('mood')||'noc';
+const grid=new IsoGrid(7,7,{x:WORLD.w/2,y:96});
+let view={s:1,ox:0,oy:0};
+let state=createState({cols:7,rows:7,seed:42,
+  blocked:[{x:3,y:2},{x:4,y:2},{x:2,y:4},{x:4,y:4},{x:0,y:3}],
+  units:[{id:'h',team:'gracz',name:'Ty',role:'mage',seed:3,x:1,y:5,maxHp:30,maxPm:4,maxPa:6,initiative:10},
+         {id:'e1',team:'wrog',name:'Strażnik',role:'warrior',seed:9,x:5,y:1,maxHp:20,maxPm:3,initiative:5},
+         {id:'e2',team:'wrog',name:'Strażnik',role:'warrior',seed:21,x:5,y:3,maxHp:20,maxPm:3,initiative:2}]});
+const look=new Map(state.units.map(u=>[u.id,genCharacter(u.seed,u.role)]));
+const facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));
+const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół
+let preview=null, anim=null, busy=false;
+
+// tło rysowane przy zmianie rozmiaru: teren na cały ekran, siatka w układzie świata
+const bg=document.createElement('canvas');
+function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');
+  N.ground(b,bg.width,bg.height,7,{biome:'dark'});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400),null,{biome:'dark'});
+  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawGridLines(b,grid,'rgba(255,255,255,.22)')}
+function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr));
+  const s=Math.min(cv.width/WORLD.w,cv.height/WORLD.h);view={s,ox:(cv.width-WORLD.w*s)/2,oy:(cv.height-WORLD.h*s)/2};renderBg()}
+addEventListener('resize',resize);
+const toWorld=(cssX,cssY)=>{const r=cv.getBoundingClientRect(),px=(cssX-r.left)*cv.width/r.width,py=(cssY-r.top)*cv.height/r.height;return[(px-view.ox)/view.s,(py-view.oy)/view.s]};
+const toCss=(wx,wy)=>{const r=cv.getBoundingClientRect();return[(view.ox+wx*view.s)*r.width/cv.width,(view.oy+wy*view.s)*r.height/cv.height]};
+
+const say=t=>$('msg').textContent=t;
+function hud(){const u=currentUnit(state);$('who').textContent=`Runda ${state.turn.round}: ${u.name}`;$('pts').textContent=`PM ${u.pm}/${u.maxPm}   PA ${u.pa}/${u.maxPa}`;
+  $('end').disabled=busy||u.team!=='gracz';}
+const pathTo=(u,c)=>{const gr=gridOf(state),p=findPath(gr,u,c,occupied(state,u.id));return p&&p.length<=u.pm?p:null};
+
+function run(cmd){
+  const r=applyCommand(state,cmd);
+  if(!r.ok){say(r.message);return false}
+  state=r.state;preview=null;
+  const mv=r.events.find(e=>e.type==='moved');
+  if(mv){busy=true;anim={unit:mv.unit,cells:[lastPos.get(mv.unit),...mv.path],t:0};}
+  hud();return true;
+}
+const lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
+function afterAnim(){
+  busy=false;for(const u of state.units)lastPos.set(u.id,{x:u.x,y:u.y});hud();
+  const u=currentUnit(state);
+  if(u.team==='wrog'){busy=true;hud();setTimeout(()=>{const c=chooseCommand(state);const r=applyCommand(state,c);if(r.ok){state=r.state;const mv=r.events.find(e=>e.type==='moved');
+      if(mv){anim={unit:mv.unit,cells:[lastPos.get(mv.unit),...mv.path],t:0};}else{afterAnim();}hud();}else{busy=false;hud()}},380)}
+  else say(`Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.`);
+}
+
+function tap(sx,sy){
+  if(busy)return;const u=currentUnit(state);if(u.team!=='gracz')return;
+  const c=grid.cellAt(sx,sy);if(!c){preview=null;return}
+  if(preview&&preview.x===c.x&&preview.y===c.y){const p=preview;run({type:'move',unit:u.id,to:{x:p.x,y:p.y}});return}
+  const moves=legalMoves(state,u.id),m=moves.get(grid.key(c.x,c.y));
+  if(m){preview={x:c.x,y:c.y,path:pathTo(u,c),cost:m.cost};say(`Dotknij ponownie, by pójść (${m.cost} PM).`)}
+  else{preview=null;say(gridOf(state).isBlocked(c.x,c.y)?'Tu nie da się wejść.':'Za daleko albo zajęte.')}
+}
+cv.addEventListener('pointerdown',e=>{const [wx,wy]=toWorld(e.clientX,e.clientY);tap(wx,wy);e.preventDefault()});
+$('end').addEventListener('click',()=>{if(busy)return;const u=currentUnit(state);if(u.team!=='gracz')return;if(run({type:'endTurn',unit:u.id}))afterAnim()});
+
+function visual(u){
+  if(anim&&anim.unit===u.id){const i=Math.min(anim.cells.length-2,Math.floor(anim.t)),f=anim.t-i,a=anim.cells[i],b=anim.cells[i+1];
+    const A=grid.center(a.x,a.y),B=grid.center(b.x,b.y);facing.set(u.id,dirFor(b.x-a.x,b.y-a.y));
+    return{x:A[0]+(B[0]-A[0])*f,y:A[1]+(B[1]-A[1])*f,walk:(anim.t*1.5)%1,gx:a.x+(b.x-a.x)*f,gy:a.y+(b.y-a.y)*f}}
+  const [x,y]=grid.center(lastPos.get(u.id).x,lastPos.get(u.id).y);return{x,y,walk:undefined,gx:lastPos.get(u.id).x,gy:lastPos.get(u.id).y};
+}
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(anim){anim.t+=dt*5;if(anim.t>=anim.cells.length-1){anim=null;afterAnim()}}
+  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);g.drawImage(bg,0,0);
+  g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
+  const cur=currentUnit(state),overlay=[];
+  // zasięg ruchu i podgląd drogi (dotyk: najpierw podgląd, potem potwierdzenie)
+  if(!busy&&cur.team==='gracz'){const mv=[...legalMoves(state,cur.id).values()];fillCells(g,grid,mv,'rgba(90,150,255,.34)');for(const m of mv)drawCellOutline(g,grid,m.x,m.y,'rgba(170,210,255,.6)',1.2)}
+  if(preview&&preview.path&&!busy){fillCells(g,grid,preview.path,'rgba(255,220,90,.42)');drawCellOutline(g,grid,preview.x,preview.y,'#ffe066',3);
+    const c=grid.center(preview.x,preview.y);overlay.push(()=>{g.font='bold 15px system-ui';g.textAlign='center';const w=g.measureText(preview.cost+' PM').width+14;
+      g.fillStyle='rgba(20,20,10,.88)';g.beginPath();g.roundRect(c[0]-w/2,c[1]-52,w,22,8);g.fill();g.fillStyle='#ffe066';g.fillText(preview.cost+' PM',c[0],c[1]-36)})}
+  const items=[];
+  for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y);const t=(x*7+y*3)%3;
+    items.push({d:x+y+.5,f:()=>t===0?N.rock(g,c[0],c[1]+10,x*9+y,{sc:.9}):t===1?N.stump(g,c[0],c[1]+8,x+y*5):N.deadTree(g,c[0],c[1]+10,x*3+y,{sc:.8})})}
+  for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25};
+    items.push({d:v.gx+v.gy+.5,f:()=>drawCharacter(g,v.x,v.y+8,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring:u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)'})});
+    overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#4ad04a':'#e04848';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
+      if(u.id===cur.id&&!busy){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
+      if(u.team==='gracz')glow(g,v.x+8,v.y-50,34,'120,200,255',.55)})}
+  items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());
+  g.setTransform(1,0,0,1,0,0);applyMood(g,cv.width,cv.height,mood);
+  g.setTransform(view.s,0,0,view.s,view.ox,view.oy);overlay.forEach(f=>f());
+  requestAnimationFrame(frame);
+}
+resize();
+hud();say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.');requestAnimationFrame(frame);
+window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},grid,cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
+</script></body></html>
