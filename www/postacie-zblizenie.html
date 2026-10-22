@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#1d2418}canvas{display:block}</style></head><body>
+<canvas id="c" width="1500" height="560"></canvas>
+<script type="module">
+import {genCharacter,drawCharacter,ROLES,DIRS} from '../src/art/characters.js';
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+g.fillStyle='#8fcf52';g.fillRect(0,0,1500,560);
+g.scale(3.2,3.2);
+const dk=Object.keys(DIRS);
+for(let i=0;i<7;i++)drawCharacter(g,34+i*66,80,genCharacter(i*5+3,ROLES[i%7]),{...DIRS.SE});
+for(let i=0;i<7;i++)drawCharacter(g,34+i*66,165,genCharacter(i*7+101,ROLES[(i+3)%7]),{...DIRS[dk[(i%2)*2+ (i>3?1:0)]]});
+</script></body></html>

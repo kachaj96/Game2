@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Scena</title><style>body{margin:0;background:#1d2418}canvas{display:block}</style></head><body>
+<canvas id="c" width="1500" height="800"></canvas>
+<script type="module">
+import {rng} from '../src/art/rng.js';
+import {TW,TH,genBuilding,drawBuilding} from '../src/art/buildings.js';
+import {genCharacter,drawCharacter,ROLES,DIRS} from '../src/art/characters.js';
+import * as N from '../src/art/nature.js';
+import {lampPost,bench,cart,barrel,crate} from '../src/art/props.js';
+const cv=document.getElementById('c'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
+const OX=W/2,OY=120,P=(x,y)=>[OX+(x-y)*TW/2,OY+(x+y)*TH/2];
+const G=(sx,sy)=>{const dx=(sx-OX)/(TW/2),dy=(sy-OY)/(TH/2);return[(dx+dy)/2,(dy-dx)/2]};
+const r=rng(2024);
+N.ground(g,W,H,5);
+// drogi: główna po y (x 7..8.7) i poprzeczna po x (y 7..8.7)
+const wob=()=> (r()-.5)*.1;
+const roads=[
+ [[7,-14],[8.7,-14],[8.7,30],[7,30]],
+ [[-14,7],[30,7],[30,8.7],[-14,8.7]],
+];
+const onRoad=(x,y)=>(x>6.6&&x<9.1)||(y>6.6&&y<9.1);
+const buildings=[
+ {s:genBuilding(11,'tavern'),sx:6.3,sy:5.7},
+ {s:genBuilding(23,'shop'),sx:6.3,sy:12.2},
+ {s:genBuilding(37,'townhouse'),sx:12.6,sy:5.9},
+ {s:genBuilding(48,'cottage'),sx:13.3,sy:12.6},
+ {s:genBuilding(5,'tower'),sx:2.6,sy:6.0},
+ {s:genBuilding(61,'farmhouse'),sx:14.4,sy:2.8},
+ {s:genBuilding(72,'cottage'),sx:3.8,sy:13.4},
+ {s:genBuilding(88,'townhouse'),sx:11.2,sy:3.2},
+ {s:genBuilding(99,'shop'),sx:5.2,sy:2.4},
+];
+const inB=(x,y,m=0.9)=>buildings.some(b=>x>b.sx-b.s.w-m&&x<b.sx+m&&y>b.sy-b.s.d-m&&y<b.sy+m);
+const pondG=[10.6,14.9,3.2,1.2]; // środek, promienie w siatce
+const inPond=(x,y)=>((x-pondG[0])/ (pondG[2]+1))**2+((y-pondG[1])/(pondG[3]+1))**2<1;
+const free=(x,y,m=0.9)=>!onRoad(x,y)&&!inB(x,y,m)&&!inPond(x,y);
+// tło: kępki trawy poza drogami
+N.tufts(g,W,H,5,900,(x,y)=>{const [gx,gy]=G(x,y);return onRoad(gx,gy)});
+for(const poly of roads)N.road(g,poly.map(([x,y])=>P(x,y)),7);
+// plac
+N.road(g,[[6.4,6.4],[9.4,6.4],[9.4,9.4],[6.4,9.4]].map(([x,y])=>P(x,y)),8);
+{const [px,py]=P(pondG[0],pondG[1]);N.pond(g,px,py,pondG[2]*TW/2*1.1,pondG[3]*TH/2*1.6,3);}
+const items=[];
+const add=(y,f)=>items.push({y,f});
+buildings.forEach(b=>{const [x,y]=P(b.sx,b.sy);add(y,()=>drawBuilding(g,x,y,b.s))});
+// drzewa i krzewy
+const biomeAt=(sx,sy)=>sx>W*.74?'autumn':(sx<W*.2?'dark':(sy>H*.74?'lush':(r()<.2?'spring':'summer')));
+let tries=0,placed=0;
+while(placed<190&&tries<9000){tries++;
+ const sx=r.range?0:0;const px=r()*W,py=r()*(H-130)+130,[x,y]=G(px,py);
+ if(!free(x,y,0.6))continue;
+ const sxx=px,syy=py;
+ if(items.some(it=>it.t&&Math.hypot(it.sx-sxx,(it.sy-syy)*2)<44))continue;
+ const biome=biomeAt(sxx,syy),kind=r();
+ const it={t:1,sx:sxx,sy:syy,y:syy};items.push(it);const seed=placed*7+3;
+ const forest=biome==='dark';
+ const cut=forest?[.2,.7,.78,.83,.92,.95,.97,.985]:[.46,.6,.72,.78,.88,.93,.96,.98];
+ const fn=kind<cut[0]?()=>N.oak(g,sxx,syy,seed,{biome}):kind<cut[1]?()=>N.pine(g,sxx,syy,seed,{}):kind<cut[2]?()=>N.birch(g,sxx,syy,seed,{biome}):kind<cut[3]?()=>N.deadTree(g,sxx,syy,seed):kind<cut[4]?()=>N.bush(g,sxx,syy,seed,{biome}):kind<cut[5]?()=>N.rock(g,sxx,syy,seed):kind<cut[6]?()=>N.stump(g,sxx,syy,seed):kind<cut[7]?()=>N.mushrooms(g,sxx,syy,seed):()=>N.flowers(g,sxx,syy,seed);
+ it.f=fn;placed++;
+}
+for(let i=0;i<70;i++){const sx=r()*W,sy=r()*(H-140)+140,[x,y]=G(sx,sy);if(!free(x,y,0.6))continue;add(sy-3,()=>N.flowers(g,sx,sy,i+300))}
+for(let i=0;i<6;i++){const a=pondG[0]+r.range?0:0;const ang=i/6*6.28,x=pondG[0]+Math.cos(ang)*(pondG[2]+.2),y=pondG[1]+Math.sin(ang)*(pondG[3]+.2),[sx,sy]=P(x,y);add(sy,()=>N.reeds(g,sx,sy,i+400))}
+// latarnie, ławki, wóz na placu i przy drodze
+for(const [x,y] of [[6.8,5],[9,5],[6.8,10.5],[9,10.5],[5,7.2],[11.5,7.2]]){const [sx,sy]=P(x,y);add(sy,()=>lampPost(g,sx,sy,1))}
+{const [sx,sy]=P(9.2,9.6);add(sy,()=>bench(g,sx,sy,1));}
+{const [sx,sy]=P(6.4,9.6);add(sy,()=>cart(g,sx,sy,1));}
+// postacie
+const spots=[[7.6,3],[8.1,5.2],[7.3,6.6],[7.8,8],[8.4,9.4],[7.5,11.5],[8,13.5],[4.4,7.8],[5.6,7.9],[10.5,7.8],[12,8.1],[13.8,7.6],[7.9,1.2],[8.3,15.2],[6.6,8.4],[9,7.5]];
+const dk=Object.keys(DIRS);
+spots.forEach(([x,y],i)=>{const [sx,sy]=P(x,y),sp=genCharacter(100+i*13,ROLES[(i*3+1)%7]),d=DIRS[dk[(i*5)%4]],walking=i%3!==0;add(sy+6,()=>drawCharacter(g,sx,sy+4,{...sp,sc:sp.sc*1.15},{...d,t:walking?(i*0.37)%1:undefined}))});
+items.sort((a,b)=>a.y-b.y).forEach(it=>it.f&&it.f());
+// delikatna winieta
+const v=g.createRadialGradient(W/2,H/2,H*.45,W/2,H/2,H*.95);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(10,25,10,.35)');g.fillStyle=v;g.fillRect(0,0,W,H);
+</script></body></html>

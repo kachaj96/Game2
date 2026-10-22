@@ -1,0 +1,28 @@
+// Robi zrzuty stron podglądu do docs/podglad. Wymaga Playwrighta (npm i), a w razie potrzeby CHROMIUM_PATH.
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { startServer } from './serve.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SHOTS = [
+  ['wioska', 1500, 800], ['budynki', 1500, 860], ['postacie', 1500, 620], ['postacie-zblizenie', 1500, 560], ['przyroda', 1500, 520],
+];
+
+let chromium;
+try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); }
+
+const server = await startServer(8099);
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+let bad = 0;
+for (const [name, w, h] of SHOTS) {
+  const page = await browser.newPage({ viewport: { width: w, height: h } });
+  page.on('pageerror', (e) => { bad++; console.error(`${name}: ${e.message}`); });
+  await page.goto(`http://127.0.0.1:8099/www/${name}.html`);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(ROOT, 'docs/podglad', `${name}.png`) });
+  await page.close();
+  console.log('zrzut:', name);
+}
+await browser.close();
+server.close();
+process.exit(bad ? 1 : 0);

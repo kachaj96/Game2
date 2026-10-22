@@ -1,0 +1,24 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Postacie</title>
+<style>body{margin:0;background:#1d2418}canvas{display:block}</style></head><body>
+<canvas id="c" width="1500" height="620"></canvas>
+<script type="module">
+import {genCharacter,drawCharacter,ROLES,DIRS} from '../src/art/characters.js';
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+g.fillStyle='#8fcf52';g.fillRect(0,0,cv.width,cv.height);
+g.fillStyle='#86c64a';g.fillRect(0,300,1500,320);
+// wiersz 1: 14 różnych postaci (role w kolejności)
+for(let i=0;i<14;i++){const sp=genCharacter(i*5+3,ROLES[i%7]);drawCharacter(g,60+i*104,110,sp,{...DIRS.SE});}
+// wiersz 2: 14 kolejnych, inne kierunki
+const dk=Object.keys(DIRS);
+for(let i=0;i<14;i++){const sp=genCharacter(i*7+101,ROLES[(i+3)%7]);drawCharacter(g,60+i*104,230,sp,{...DIRS[dk[i%4]]});}
+// wiersz 3: jedna postać w 4 kierunkach i 6 klatek chodu
+const hero=genCharacter(42,'ranger');
+dk.forEach((d,i)=>drawCharacter(g,60+i*92,400,hero,{...DIRS[d]}));
+for(let f=0;f<6;f++)drawCharacter(g,520+f*80,400,genCharacter(9,'warrior'),{...DIRS.SE,t:f/6});
+for(let f=0;f<6;f++)drawCharacter(g,1040+f*78,400,genCharacter(77,'mage'),{...DIRS.NE,t:f/6});
+// wiersz 4: dzieci i starsi, oraz w ringach
+for(let i=0;i<7;i++){drawCharacter(g,60+i*104,530,genCharacter(200+i,i<4?'child':'elder'),{...DIRS.SE});}
+const ringed=[genCharacter(31,'mage'),genCharacter(32,'warrior'),genCharacter(33,'ranger')];
+ringed.forEach((s,i)=>drawCharacter(g,860+i*110,540,s,{...DIRS.SW,ring:'rgb(60,120,255)'}));
+drawCharacter(g,1250,540,genCharacter(55,'villager'),{...DIRS.SW,ring:'rgb(255,70,70)'});
+</script></body></html>

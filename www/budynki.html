@@ -1,0 +1,17 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Budynki</title>
+<style>body{margin:0;background:#1d2418}canvas{display:block}</style></head><body>
+<canvas id="c" width="1500" height="860"></canvas>
+<script type="module">
+import {genBuilding,drawBuilding,KINDS} from '../src/art/buildings.js';
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+g.fillStyle='#8fcf52';g.fillRect(0,0,cv.width,cv.height);
+const COLS=6,CW=250,CH=285;
+const SP=[];
+const kinds=['cottage','townhouse','tavern','shop','tower','farmhouse'];
+for(let row=0;row<3;row++)for(let c=0;c<COLS;c++){
+  const seed=row*COLS+c+1+row*40; const kind=row===0?kinds[c]:(row===1?kinds[(c+2)%6]:undefined);
+  const s=genBuilding(seed*3+1,kind);SP.push([c*CW+CW/2-18,row*CH+CH-36,s]);
+  g.fillStyle=(row+c)%2?'#8bc94e':'#93d056';g.fillRect(c*CW,row*CH,CW,CH);
+}
+SP.forEach(([x,y,s])=>drawBuilding(g,x,y,s));
+</script></body></html>

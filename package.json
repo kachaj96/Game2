@@ -1,0 +1,15 @@
+{
+  "name": "game2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Izometryczna taktyczna gra turowa w stylu Dofusa. Osobny projekt, nie część Natalis.",
+  "scripts": {
+    "test": "node --test \"tests/unit/*.test.mjs\"",
+    "start": "node tools/serve.mjs",
+    "shots": "node tools/shot.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
