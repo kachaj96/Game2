@@ -24,9 +24,12 @@ npm start         # podgląd grafiki na http://127.0.0.1:8080/
 npm i && npm run shots   # zrzuty do docs/podglad (Playwright)
 ```
 
+## Kierunek
+Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci), telefon i dotyk najpierw, ton poważniejszy i mroczniejszy. Decyzje i ryzyka: [docs/PROJEKT.md](docs/PROJEKT.md).
+
 ## Plan
 1. ~~Siatka logiczna i rzut izometryczny~~ (zrobione, z testami odwracalności).
-2. Ruch po kaflach: A*, punkty ruchu, przeszkody.
+2. Ruch po kaflach: A*, punkty ruchu, przeszkody. Logika w `src/game/`, deterministyczna, sterowana komendami, bez hovera (dotyk).
 3. Tury: kolejka, PA/PM, jeden czar z zasięgiem i linią widzenia.
 4. Jedna grywalna arena. Dopiero wtedy decyzja, czy iść dalej.
 5. Animacje ataku i trafienia (dziś jest tylko chód), cache sprite'ów do offscreen canvasów.

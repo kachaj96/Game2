@@ -2,6 +2,12 @@
 
 Osobny projekt, nie część Natalis. Powstał na czas testów Natalis jako eksperyment: czy turowa walka na siatce izometrycznej daje frajdę. Gra po polsku. Testy: `npm test`. Podgląd grafiki: `npm start`, potem http://127.0.0.1:8080/.
 
+## Kierunek (szczegóły i powody w `docs/PROJEKT.md`)
+Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci), telefon i dotyk najpierw, ton poważniejszy i mroczniejszy.
+- Logika gry mieszka w `src/game/`, jest deterministyczna i nie dotyka canvasa, DOM ani `Math.random()`. Zmiany stanu to komendy.
+- Żadnej funkcji zależnej od najechania myszą: dotyk jest podstawą (pierwsze dotknięcie pokazuje podgląd, drugie potwierdza).
+- Mroczny nastrój osiągamy oświetleniem i paletą, nie zmianą kształtów.
+
 ## Zasada: grafika to generatory, nie pliki
 Żadnych pobranych paczek ani obrazków. Wszystko rysuje kod na canvasie (`src/art/`).
 - Każdy rodzaj obiektu (budynek, postać, roślina, rekwizyt) to para: `gen...(ziarno)` losuje specyfikację, `draw...(g, x, y, spec)` ją rysuje.
