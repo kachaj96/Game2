@@ -37,6 +37,21 @@ Dokument żyje. Każda decyzja ma datę i powód, żeby dało się ją później
 
 **Napięcie 2: waluta na stałe ulepszenia.** Przy krótkich runach łatwo o grind, w którym liczy się liczba podejść, nie umiejętność. Do rozstrzygnięcia: ulepszenia dają szerokość (więcej opcji), a nie siłę (więcej obrażeń).
 
+## Zmiana zakresu (do decyzji)
+
+Po rundzie 3 użytkownik napisał: chcę grę Dofus-like, więc świat i eksploracja są ważne, areny również, ale gracz ma mieć eksplorację, profesje, crafting i więcej. To zmienia projekt z serii aren w RPG ze światem. Wcześniejsze decyzje o postępie po porażce, o jednym bohaterze i o tej samej postaci po śmierci pasują do takiego RPG, a seria aren staje się rodzajem lochu.
+
+**Propozycja hybrydy.** Stały bohater i świat do eksploracji. Pogrzebana arena to loch na 5 do 6 komnat (ok. 15 minut), do którego się schodzi: porażka oznacza utratę łupów z zejścia, ale nie postaci, ekwipunku i poziomu. Skrót od głębszego piętra działa po pokonaniu bossa.
+
+**Ryzyko.** Dofus to setki godzin treści zrobionych przez duży zespół. Trzy duże systemy (świat, profesje, crafting) zbudowane obok walki mogą przez miesiące nie dać odpowiedzi, czy walka jest zabawna. Dlatego fazy, każda sprawdzana w grze:
+
+1. Walka, klasy, kreator, jedna arena do zejścia (zasada: najpierw sprawdzamy, czy walka daje frajdę).
+2. Mała mapa nadziemna: chodzenie, kilku mieszkańców, wejście do areny.
+3. Zbieranie surowców, crafting i ekwipunek, który daje PA i PM (to spina się z założeniem, że PA i PM rosną z ekwipunku).
+4. Dalsze profesje i regiony.
+
+Do rozstrzygnięcia przez autora: potwierdzenie hybrydy i kolejności faz, wybór pierwszych profesji.
+
 ## Odkrycia z prototypu walki (22.10.2026)
 
 - **Izometria jest szeroka, więc telefon w pionie marnuje ponad połowę ekranu.** Walka powinna być w poziomie, interfejs jako nakładki na planszy, nie paski. W pionie zostają menu. Plansza 7x7 w poziomie ma kafel ok. 62 px szerokości, co jest granicą wygody dla dotyku.

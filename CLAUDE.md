@@ -9,6 +9,8 @@ Serie aren w stylu roguelite, jedna osoba (z czasem współpraca w jednej sieci)
 - Mroczny nastrój osiągamy oświetleniem i paletą (`src/art/mood.js`: `applyMood`, `glow`), nie zmianą kształtów.
 - Walka jest w poziomie, interfejs to nakładki na planszy. Zmiany układu sprawdzaj `npm run e2e` (emulacja telefonu i dotyku) i patrząc na `docs/podglad/walka*.png`.
 
+- Klasy, czary, przeszłości i cechy to dane w `src/game/classdata.js` z testami spójności (np. każdy poziom czaru musi coś zmieniać). Nowa klasa = dane + wygląd w `src/art/classes.js` + testy. Stan: propozycja do akceptacji, patrz `docs/KLASY.md`.
+
 ## Zasada: grafika to generatory, nie pliki
 Żadnych pobranych paczek ani obrazków. Wszystko rysuje kod na canvasie (`src/art/`).
 - Każdy rodzaj obiektu (budynek, postać, roślina, rekwizyt) to para: `gen...(ziarno)` losuje specyfikację, `draw...(g, x, y, spec)` ją rysuje.

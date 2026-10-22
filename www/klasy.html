@@ -1,0 +1,35 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Klasy startowe</title><style>body{margin:0;background:#151014}canvas{display:block}</style></head><body>
+<canvas id="c" width="1500" height="980"></canvas>
+<script type="module">
+import {heroSpec,CLASS_IDS,CLASS_LOOKS} from '../src/art/classes.js';
+import {drawCharacter,DIRS} from '../src/art/characters.js';
+import {CLASSES,startStats} from '../src/game/classdata.js';
+import {glow} from '../src/art/mood.js';
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const bg=g.createLinearGradient(0,0,0,cv.height);bg.addColorStop(0,'#1c1620');bg.addColorStop(1,'#0e0b10');g.fillStyle=bg;g.fillRect(0,0,cv.width,cv.height);
+const ACC={grabarz:'255,170,60',tropiciel:'120,200,120',zalobnik:'255,130,60'};
+const S=3.6;
+CLASS_IDS.forEach((id,i)=>{
+  const cx=250+i*500,c=CLASSES[id],look=CLASS_LOOKS[id];
+  g.fillStyle='rgba(255,255,255,.04)';g.beginPath();g.roundRect(cx-235,30,470,920,18);g.fill();
+  glow(g,cx,330,230,ACC[id],.18);
+  g.textAlign='center';g.fillStyle='#f0e6d0';g.font='bold 34px Georgia,serif';g.fillText(c.name,cx,82);
+  g.fillStyle=`rgb(${ACC[id]})`;g.font='17px system-ui';g.fillText(c.role.toUpperCase(),cx,108);
+  // przód: mężczyzna i kobieta
+  const m=heroSpec(id,{face:1,hairStyle:'short',skin:'#dba878',hair:'#4a2c18',beard:id==='grabarz'?'stubble':null}),f=heroSpec(id,{female:true,face:3,hairStyle:id==='tropiciel'?'ponytail':'long',skin:'#f0c49a',hair:id==='zalobnik'?'#e8e8e8':'#a8381e'});
+  for(const [sp,x] of [[m,cx-85],[f,cx+85]]){g.save();g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x+4,400,60,16,0,0,7);g.fill();g.restore();drawCharacter(g,x,395,{...sp,sc:sp.sc*S},{...DIRS.SE})}
+  // tył
+  for(const [sp,x] of [[m,cx-85],[f,cx+85]]){g.save();g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(x+3,640,38,10,0,0,7);g.fill();g.restore();drawCharacter(g,x,636,{...sp,sc:sp.sc*2.4},{...DIRS.NE})}
+  // chód: 6 klatek
+  g.fillStyle='#b8a888';g.font='14px system-ui';g.fillText('chód: '+({heavy:'ciężki krok',sneak:'skradanie',float:'unosi się nad ziemią'})[look.move],cx,660);
+  for(let k=0;k<5;k++){const x=cx-170+k*85;g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(x+2,790,22,6,0,0,7);g.fill();drawCharacter(g,x,787,{...m,sc:m.sc*1.7},{...DIRS.SE,t:k/5})}
+  // opis
+  g.fillStyle='#d8ccb0';g.font='15px system-ui';
+  const wrap=(t,x,y,w,lh)=>{let line='';for(const word of t.split(' ')){const test=line+word+' ';if(g.measureText(test).width>w&&line){g.fillText(line,x,y);line=word+' ';y+=lh}else line=test}g.fillText(line,x,y);return y};
+  let y=wrap(c.tagline,cx,836,430,20);
+  const st=startStats(id,'syn_kopca',[]);g.fillStyle='#a89878';g.font='14px system-ui';
+  g.fillText(`Życie ${st.hp}   PA 6   PM 3   Inicjatywa ${st.initiative}`,cx,y+26);
+  g.fillText('Czary: '+c.spells.map(s=>s.name).join(', '),cx,y+48);
+  g.fillStyle='#8a7a60';g.font='italic 13px system-ui';wrap(look.note,cx,y+72,430,17);
+});
+</script></body></html>

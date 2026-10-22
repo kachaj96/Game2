@@ -1,0 +1,95 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Kreator postaci</title>
+<style>
+:root{--bg:#161014;--panel:#241a1c;--edge:#5a4030;--ink:#f0e6d0;--dim:#a89878;--ember:#e07a3a}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 30%,#2a1c1a,#120d10);color:var(--ink);font:15px system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+#app{display:grid;grid-template-columns:150px minmax(220px,1fr) 340px;gap:10px;height:100%;padding:10px;max-width:1280px;margin:0 auto}
+@media (max-width:760px) and (orientation:portrait){#app{grid-template-columns:1fr;grid-template-rows:auto 46vh auto;height:auto;min-height:100%}}
+.panel{background:var(--panel);border:2px solid var(--edge);border-radius:14px;padding:10px;overflow:auto}
+h2{margin:0 0 8px;font:700 13px system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+#classes{display:flex;flex-direction:column;gap:8px}
+@media (max-width:760px) and (orientation:portrait){#classes{flex-direction:row}}
+.card{flex:1;min-height:88px;border:2px solid var(--edge);border-radius:12px;background:#1a1214;color:var(--ink);padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px;font:600 14px system-ui;touch-action:manipulation}
+.card small{color:var(--dim);font-weight:400;font-size:12px}
+.card.on{border-color:var(--ember);background:#2c1c18;box-shadow:0 0 12px rgba(224,122,58,.35)}
+#stage{position:relative;display:flex;flex-direction:column;padding:0;overflow:hidden}
+#view{flex:1;min-height:0;width:100%;display:block}
+#rot{position:absolute;left:0;right:0;bottom:62px;display:flex;justify-content:center;gap:12px}
+#name{display:flex;gap:8px;padding:8px}
+#name input{flex:1;min-width:0;height:46px;border-radius:10px;border:2px solid var(--edge);background:#120c0e;color:var(--ink);font:600 17px system-ui;padding:0 12px;text-align:center}
+button{touch-action:manipulation;font-family:inherit}
+.btn{min-width:46px;height:46px;border-radius:10px;border:2px solid var(--edge);background:#2c2022;color:var(--ink);font:700 15px system-ui;padding:0 12px}
+.btn.on{border-color:var(--ember);background:#4a2a1c}
+.btn.go{background:#b4501c;border-color:#e07a3a;font-size:17px;height:54px;width:100%}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.th{width:58px;height:58px;border:2px solid var(--edge);border-radius:10px;background:#1a1214;padding:0;overflow:hidden}
+.th.on{border-color:var(--ember)}
+.sw{width:40px;height:40px;border-radius:50%;border:3px solid var(--edge);padding:0}
+.sw.on{border-color:#fff}
+.org{width:100%;text-align:left;border:2px solid var(--edge);border-radius:10px;background:#1a1214;color:var(--ink);padding:8px 10px;margin-bottom:6px}
+.org b{display:block}.org span{display:block;color:var(--dim);font-size:13px;line-height:1.35}.org i{color:var(--ember);font-style:normal;font-size:13px}
+.org.on{border-color:var(--ember);background:#2c1c18}
+.chip{height:auto;min-height:46px;text-align:left;padding:6px 10px;line-height:1.25}.chip small{display:block;color:var(--dim);font-weight:400;font-size:12px}
+#sum{font-size:14px;line-height:1.5;color:var(--dim)}#sum b{color:var(--ink)}
+#msg{color:var(--ember);min-height:18px;font-size:13px;margin:-6px 0 6px}
+</style></head><body><div id="app">
+<div class="panel" id="classes"><h2 style="display:none">Klasa</h2></div>
+<div class="panel" id="stage"><canvas id="view"></canvas><div id="rot"><button class="btn" id="left">⟲</button><button class="btn" id="walk">Chód</button><button class="btn" id="right">⟳</button></div>
+<div id="name"><input id="nm" maxlength="24" aria-label="Imię"><button class="btn" id="rnd">Losuj</button></div></div>
+<div class="panel" id="opts"></div></div>
+<script type="module">
+import {heroSpec,CLASS_IDS,CLASS_LOOKS,SKIN_TONES,HAIR_COLORS,HAIR_STYLES,HAIR_NAMES,FACES,SWATCHES,COLOR_SLOTS,randomHeroOpts,randomName} from '../src/art/classes.js';
+import {drawCharacter,DIRS} from '../src/art/characters.js';
+import {CLASSES,ORIGINS,TRAITS,MAX_TRAITS,startStats} from '../src/game/classdata.js';
+import {glow} from '../src/art/mood.js';
+const $=id=>document.getElementById(id),el=(t,a={},k=[])=>{const e=document.createElement(t);Object.assign(e,a);k.forEach(c=>e.append(c));return e};
+const ORDER=['SE','SW','NW','NE'];
+const st={classId:'grabarz',female:false,face:1,hairStyle:'short',hair:HAIR_COLORS[2],skin:SKIN_TONES[1],colors:[...CLASS_LOOKS.grabarz.colors],slot:0,name:randomName(1),origin:0,traits:[],dir:0,walk:false,nameSeed:1,heroSeed:1};
+const spec=(over={})=>heroSpec(st.classId,{...st,seed:st.heroSeed,...over});
+const dirOpt=()=>DIRS[ORDER[st.dir]];
+
+function thumb(cv,sp,K0=2.5){const K=K0*cv.width/58;const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.fillStyle='#241a1c';g.fillRect(0,0,cv.width,cv.height);
+  drawCharacter(g,cv.width/2,cv.height/2+35*sp.sc*K+2*cv.width/58,{...sp,sc:sp.sc*K,hat:null},{...DIRS.SE})}
+function portrait(cv,id){const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);const sp=heroSpec(id,{face:1,colors:CLASS_LOOKS[id].colors});drawCharacter(g,cv.width/2,cv.height-6,{...sp,sc:sp.sc*0.93},{...DIRS.SE})}
+function build(){
+  const cl=$('classes');cl.querySelectorAll('.card').forEach(n=>n.remove());
+  for(const id of CLASS_IDS){const c=CLASSES[id],cv=el('canvas',{width:70,height:86});cv.style.cssText='width:56px;height:70px';const b=el('button',{className:'card'+(st.classId===id?' on':''),id:'cls-'+id},[cv,el('span',{textContent:c.name}),el('small',{textContent:c.role})]);
+    b.onclick=()=>{st.classId=id;st.colors=[...CLASS_LOOKS[id].colors];render()};cl.append(b);portrait(cv,id)}
+  const o=$('opts'),keep=o.scrollTop;o.innerHTML='';
+  const sec=(t,k)=>{o.append(el('h2',{textContent:t}));const r=el('div',{className:'row'},k);o.append(r);return r};
+  sec('Płeć',[['♂',false],['♀',true]].map(([t,v])=>{const b=el('button',{className:'btn'+(st.female===v?' on':''),textContent:t,id:v?'female':'male'});b.onclick=()=>{st.female=v;render()};return b}));
+  sec('Twarz',FACES.map((_,i)=>{const cv=el('canvas',{width:116,height:116});cv.style.cssText='width:100%;height:100%;display:block';const b=el('button',{className:'th'+(st.face===i?' on':''),id:'face-'+i},[cv]);b.onclick=()=>{st.face=i;render()};thumb(cv,spec({face:i}));return b}));
+  sec('Fryzura',HAIR_STYLES.map(h=>{const cv=el('canvas',{width:116,height:116});cv.style.cssText='width:100%;height:100%;display:block';const b=el('button',{className:'th'+(st.hairStyle===h?' on':''),id:'hair-'+h,title:HAIR_NAMES[h]},[cv]);b.onclick=()=>{st.hairStyle=h;render()};thumb(cv,spec({hairStyle:h}));return b}));
+  sec('Kolor włosów',HAIR_COLORS.map((c,i)=>{const b=el('button',{className:'sw'+(st.hair===c?' on':''),id:'hc-'+i});b.style.background=c;b.onclick=()=>{st.hair=c;render()};return b}));
+  sec('Karnacja',SKIN_TONES.map((c,i)=>{const b=el('button',{className:'sw'+(st.skin===c?' on':''),id:'sk-'+i});b.style.background=c;b.onclick=()=>{st.skin=c;render()};return b}));
+  sec('Kolory stroju',COLOR_SLOTS.map((t,i)=>{const b=el('button',{className:'btn'+(st.slot===i?' on':''),textContent:t,id:'slot-'+i});b.onclick=()=>{st.slot=i;render()};return b}));
+  sec('',SWATCHES.map((c,i)=>{const b=el('button',{className:'sw'+(st.colors[st.slot]===c?' on':''),id:'sc-'+i});b.style.background=c;b.onclick=()=>{st.colors[st.slot]=c;render()};return b}));
+  o.append(el('h2',{textContent:'Przeszłość'}));
+  ORIGINS.forEach((x,i)=>{const b=el('button',{className:'org'+(st.origin===i?' on':''),id:'org-'+i},[el('b',{textContent:x.name}),el('span',{textContent:x.story}),el('i',{textContent:x.bonusText})]);b.onclick=()=>{st.origin=i;render()};o.append(b)});
+  o.append(el('h2',{textContent:`Cechy (wybierz ${MAX_TRAITS}), każda ma plus i skazę`}));o.append(el('div',{id:'msg'}));
+  const tr=el('div',{className:'row'});TRAITS.forEach(t=>{const on=st.traits.includes(t.id);const fmt=d=>Object.entries(d).map(([k,v])=>`${v>0?'+':''}${v} ${({hp:'życia',initiative:'inicjatywy',strength:'siły',agility:'zręczności',power:'mocy',endurance:'wytrzymałości'})[k]}`).join(', ');
+    const b=el('button',{className:'btn chip'+(on?' on':''),id:'tr-'+t.id},[document.createTextNode(t.name),el('small',{textContent:`${fmt(t.plus)}; ${fmt(t.minus)}`})]);
+    b.onclick=()=>{if(on)st.traits=st.traits.filter(x=>x!==t.id);else if(st.traits.length>=MAX_TRAITS){$('msg').textContent=`Maksymalnie ${MAX_TRAITS} cechy. Odznacz jedną.`;return}else st.traits=[...st.traits,t.id];render()};tr.append(b)});o.append(tr);
+  const s=startStats(st.classId,ORIGINS[st.origin].id,st.traits),c=CLASSES[st.classId];
+  o.append(el('h2',{textContent:'Podsumowanie'}));
+  const sm=el('div',{id:'sum'});sm.innerHTML=`<b>${st.name||'Bezimienny'}</b>, ${c.name}<br>Życie <b>${s.hp}</b> · PA <b>${s.pa}</b> · PM <b>${s.pm}</b> · Inicjatywa <b>${s.initiative}</b><br>Siła ${s.strength} · Zręczność ${s.agility} · Moc ${s.power} · Wytrzymałość ${s.endurance}${s.spellPoints?` · Punkty czaru ${s.spellPoints}`:''}<br>Czary: ${c.spells.map(x=>x.name).join(', ')}`;o.append(sm);
+  const go=el('button',{className:'btn go',textContent:'Zejdź do areny',id:'go'});go.style.marginTop='12px';go.onclick=()=>{window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};$('msg').textContent='';sm.innerHTML+='<br><b style="color:var(--ember)">Bohater zapisany.</b>';console.log(JSON.stringify(window.__hero))};o.append(go);
+  o.scrollTop=keep;
+}
+function render(){build();$('nm').value=st.name}
+$('nm').oninput=e=>{st.name=e.target.value;const b=$('sum')&&$('sum').querySelector('b');if(b)b.textContent=st.name||'Bezimienny'};
+$('rnd').onclick=()=>{st.nameSeed++;st.heroSeed++;const r=randomHeroOpts(st.nameSeed);Object.assign(st,{female:r.female,skin:r.skin,hair:r.hair,hairStyle:r.hairStyle,face:r.face,colors:r.colors,name:randomName(st.nameSeed)});render()};
+$('left').onclick=()=>{st.dir=(st.dir+3)%4};$('right').onclick=()=>{st.dir=(st.dir+1)%4};
+$('walk').onclick=()=>{st.walk=!st.walk;$('walk').classList.toggle('on',st.walk)};
+const cv=$('view'),g=cv.getContext('2d');
+function fit(){const r=cv.getBoundingClientRect(),d=Math.min(2,devicePixelRatio||1);cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d)}
+addEventListener('resize',fit);
+function frame(now){const W=cv.width,H=cv.height;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);
+  const grad=g.createRadialGradient(W/2,H*.55,10,W/2,H*.55,Math.max(W,H)*.6);grad.addColorStop(0,'#3a2a26');grad.addColorStop(1,'#140e10');g.fillStyle=grad;g.fillRect(0,0,W,H);
+  const sp=spec(),sc=Math.min(H*.6/90,W*.55/46),cx=W/2,fy=H*.78;
+  g.fillStyle='rgba(0,0,0,.4)';g.beginPath();g.ellipse(cx,fy+4,sc*16,sc*5,0,0,7);g.fill();
+  drawCharacter(g,cx,fy,{...sp,sc:sp.sc*sc/1.0},{...dirOpt(),t:st.walk?(now/700)%1:undefined});
+  requestAnimationFrame(frame)}
+fit();render();requestAnimationFrame(frame);
+window.__kreator={get state(){return st},get hero(){return window.__hero||null},spec};
+</script></body></html>
