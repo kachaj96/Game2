@@ -100,6 +100,9 @@ Obecny pionowy stos przycisków nie pomieści więcej niż 4 czarów. Propozycja
 
 ## 7. Fazy budowy (każda z testami)
 
+**Postęp:** A (żywioły i odporności w logice) gotowa. C (ikony w grze) i D (pasek skrótów, karty czaru i wroga, odkrywanie odporności) gotowe. E (kolory liczb obrażeń według żywiołu) gotowa w walce. B (model postaci, punkty cech, ekran awansu) w budowie. Układ poziomy: pasek w prawej kolumnie (3x2 ikony), bo romb planszy zostawia tam miejsce, a pasek u dołu zjadał wysokość i zmniejszał kafle. W pionie pasek jest u dołu.
+
+
 | Faza | Zakres | Dowód |
 |---|---|---|
 | A | Żywioły w danych i wzorze obrażeń, odporności przeciwników, nowe nazwy statystyk, kolor liczb obrażeń | testy wzoru (tabela z pkt 3), limity odporności, ujemne odporności, kolizje bez wpływu cech, reguła "każdy wróg ma słabość lub neutralność" |

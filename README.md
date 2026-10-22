@@ -19,7 +19,7 @@ Wszystko rysuje kod, bez plików graficznych. Każdy obiekt ma ziarno, więc ta 
 ![wioska](docs/podglad/wioska.png)
 
 ## Gra w przeglądarce (GitHub Pages)
-Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root). Adres: `https://kachaj96.github.io/Game2/`. Walka: `www/walka.html` (najlepiej w poziomie). Ze scenariuszami: `?scenario=cast`, `?scenario=push&hero=grabarz`, `?hero=tropiciel`, `?mood=zmierzch`.
+Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root). Adres: `https://kachaj96.github.io/Game2/`. Walka: `www/walka.html` (najlepiej w poziomie). Pasek z wieloma czarami: `?spells=all` (5 czarów testowych z innych żywiołów). Ze scenariuszami: `?scenario=cast`, `?scenario=push&hero=grabarz`, `?hero=tropiciel`, `?mood=zmierzch`.
 
 ## Uruchomienie
 ```

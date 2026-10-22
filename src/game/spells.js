@@ -3,14 +3,14 @@
 // Warstwa 2: odpychanie z kolizją (ściana, grób, krawędź, inna jednostka) i chmury popiołu zasłaniające widok.
 // Jeszcze nie zaimplementowane (czar jest odrzucany, a nie udawany): pułapki, glify, skok.
 import { rng } from '../art/rng.js';
-import { CLASSES } from './classdata.js';
+import { CLASSES, findSpellDef } from './classdata.js';
 import { gridOf, unitById, alive } from './state.js';
 import { hasLineOfSight } from './los.js';
 
 export const NOT_IMPLEMENTED = ['trap', 'glyph', 'jump'];
 export const spellData = (unit, spellId) => {
   const known = unit.spells?.find((s) => s.id === spellId); if (!known) return null;
-  const def = CLASSES[unit.classId]?.spells.find((s) => s.id === spellId); if (!def) return null;
+  const def = findSpellDef(unit.classId, spellId); if (!def) return null;
   const data = def.levels[known.level - 1]; return data ? { def, level: known.level, data } : null;
 };
 export const implemented = (data) => !NOT_IMPLEMENTED.some((k) => data[k]);
@@ -25,7 +25,7 @@ export function rollInt(state, lo, hi) { const v = rng(state.seed * 9973 + state
 // obrażenia = floor(rzut x (1 + (cecha żywiołu + moc ogólna)/100) x skala) + obrażenia stałe; potem x (1 - odporność%/100), minimum 0.
 // Zwykłe (neutralne) nie korzystają z cechy żywiołu, tylko z mocy ogólnej. Odporność: gracz do +50%, przeciwnik do +75%, słabość do -100%.
 export const RESIST_CAP = { gracz: 50, wrog: 75 }, RESIST_FLOOR = -100;
-export const elementOfSpell = (unit, spellId) => CLASSES[unit.classId]?.spells.find((s) => s.id === spellId)?.element || 'neutral';
+export const elementOfSpell = (unit, spellId) => findSpellDef(unit.classId, spellId)?.element || 'neutral';
 export const statFor = (unit, element) => (element === 'neutral' ? 0 : unit.stats?.[element] || 0) + (unit.stats?.power || 0);
 export const damageRange = (unit, data, element = 'neutral') => {
   const m = Math.max(0, 1 + statFor(unit, element) / 100) * (unit.damageScale ?? 1), f = unit.stats?.flat || 0;

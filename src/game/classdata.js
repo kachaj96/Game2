@@ -65,6 +65,18 @@ export const CLASSES = {
   },
 };
 export const CLASS_LIST = Object.values(CLASSES);
+
+// Czary TESTOWE (dev) z innych żywiołów, żeby sprawdzać pasek skrótów i odporności. Nie należą do żadnej klasy, ładowane tylko przez ?spells=all.
+// Prawdziwe czary zdobywane (i ich projekt) to osobna decyzja.
+const lv = (f) => Array.from({ length: MAX_SPELL_LEVEL }, (_, i) => f(i));
+export const DEV_SPELLS = [
+  { id: 'lzy_zaloby', element: 'water', name: 'Łzy Żałoby', tags: ['damage', 'los'], dev: true, desc: 'Zimna kula wody. Wymaga linii widzenia.', levels: lv((i) => ({ pa: 3, min: 2, max: 5 + (i > 2 ? 1 : 0), los: true, cd: 0, perTurn: 2, dmg: [11 + 2 * i, 15 + 2 * i] })) },
+  { id: 'kamienny_calun', element: 'earth', name: 'Kamienny Całun', tags: ['damage'], dev: true, desc: 'Uderzenie odłamkami skały z bliska.', levels: lv((i) => ({ pa: 3, min: 1, max: 3, cd: i < 3 ? 1 : 0, perTurn: 2, dmg: [13 + 2 * i, 17 + 2 * i] })) },
+  { id: 'plonacy_belt', element: 'fire', name: 'Płonący Bełt', tags: ['damage', 'los'], dev: true, desc: 'Bełt z płonącym grotem. Wymaga linii widzenia.', levels: lv((i) => ({ pa: 3, min: 3, max: 6, los: true, cd: 0, perTurn: 2, dmg: [12 + 2 * i, 16 + 2 * i] })) },
+  { id: 'szron', element: 'water', name: 'Szron', tags: ['damage'], dev: true, desc: 'Lodowy dotyk z bliska.', levels: lv((i) => ({ pa: 2, min: 1, max: 2, cd: i < 3 ? 1 : 0, perTurn: 2, dmg: [8 + 2 * i, 11 + 2 * i] })) },
+  { id: 'wicher', element: 'air', name: 'Wicher', tags: ['damage', 'los'], dev: true, desc: 'Cięcie wiatrem na dystans.', levels: lv((i) => ({ pa: 2, min: 2, max: 6, los: true, cd: 0, perTurn: 3, dmg: [8 + 2 * i, 11 + 2 * i] })) },
+];
+export const findSpellDef = (classId, spellId) => CLASSES[classId]?.spells.find((s) => s.id === spellId) || DEV_SPELLS.find((s) => s.id === spellId) || null;
 export const spellAt = (classId, spellId, level) => { const sp = CLASSES[classId]?.spells.find((s) => s.id === spellId); return sp ? sp.levels[level - 1] || null : null; };
 
 // Przeszłość (jedna) i cechy (dwie): historia bohatera plus drobne liczby. Każda cecha ma plus i skazę.

@@ -109,7 +109,7 @@ test('startStats: PA i PM zawsze 6 i 3, przeszłość i cechy się sumują, nadm
 });
 
 
-import { ELEMENTS } from '../../src/game/classdata.js';
+import { ELEMENTS, DEV_SPELLS } from '../../src/game/classdata.js';
 import { SPELL_SYMBOLS, drawSpellIcon } from '../../src/art/spellicons.js';
 test('żywioły: każdy czar ma znany żywioł, kolory i kształty ramek są unikalne, przewodni żywioł klasy zgadza się z planem', () => {
   assert.deepEqual(Object.keys(ELEMENTS), ['earth', 'fire', 'water', 'air', 'neutral']);
@@ -120,9 +120,15 @@ test('żywioły: każdy czar ma znany żywioł, kolory i kształty ramek są uni
   assert.ok(!CLASS_LIST.flatMap((c) => c.spells).some((s) => s.element === 'water'), 'woda tylko z czarów zdobywanych (plan)');
 });
 test('ikony: każdy czar ma własny symbol, każdy stan rysuje się bez złych liczb', () => {
-  const ids = CLASS_LIST.flatMap((c) => c.spells.map((s) => s.id)); assert.deepEqual([...SPELL_SYMBOLS].sort(), [...ids].sort(), 'symbol dla każdego czaru i żaden zbędny');
-  for (const c of CLASS_LIST) for (const sp of c.spells) for (const size of [40, 56, 96]) for (const st of [{}, { selected: true }, { disabled: true, noPa: true }, { cooldown: 3 }, { soon: true }]) {
+  const ids = [...CLASS_LIST.flatMap((c) => c.spells.map((s) => s.id)), ...DEV_SPELLS.map((s) => s.id)]; assert.deepEqual([...SPELL_SYMBOLS].sort(), [...ids].sort(), 'symbol dla każdego czaru i żaden zbędny');
+  for (const sp of [...CLASS_LIST.flatMap((c) => c.spells), ...DEV_SPELLS]) for (const size of [40, 56, 96]) for (const st of [{}, { selected: true }, { disabled: true, noPa: true }, { cooldown: 3 }, { soon: true }]) {
     const g = mockCtx(); drawSpellIcon(g, { ...sp, pa: sp.levels[0].pa }, 50, 50, size, st); assert.ok(g.__state.calls > 10); assert.deepEqual(g.__state.bad, [], `${sp.id} ${size}`);
   }
   const g = mockCtx(); drawSpellIcon(g, { id: 'nieznany', element: 'water' }, 0, 0); assert.deepEqual(g.__state.bad, [], 'nieznany czar rysuje się zastępczym symbolem');
+});
+
+test('czary testowe (dev): pełne dane, poprawne poziomy, wszystkie żywioły poza neutralnym, w tym woda', () => {
+  assert.equal(DEV_SPELLS.length, 5); assert.ok(DEV_SPELLS.some((s) => s.element === 'water'));
+  for (const sp of DEV_SPELLS) { assert.ok(sp.dev && sp.name && ELEMENTS[sp.element] && sp.levels.length === 5, sp.id);
+    for (let i = 1; i < 5; i++) { const a = sp.levels[i - 1], b = sp.levels[i]; assert.ok(b.pa <= a.pa && b.cd <= a.cd && b.max >= a.max, `${sp.id} L${i + 1}`); assert.ok((b.dmg[0] + b.dmg[1]) > (a.dmg[0] + a.dmg[1]), `${sp.id}: obrażenia rosną`); } }
 });

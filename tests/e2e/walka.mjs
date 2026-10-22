@@ -17,7 +17,7 @@ await page.waitForFunction(() => window.__game);
 
 const tapCell = async (x, y) => {
   const [cx, cy] = await page.evaluate(([x, y]) => window.__game.cssCenter(x, y), [x, y]);
-  const box = await page.locator('canvas').boundingBox();
+  const box = await page.locator('canvas#c').boundingBox();
   await page.touchscreen.tap(box.x + cx, box.y + cy);
 };
 const st = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__game.state)));
@@ -70,7 +70,7 @@ assert.deepEqual(errors, [], 'błędy strony');
 const land = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 const lp = await land.newPage(); await lp.goto('http://127.0.0.1:8110/www/walka.html'); await lp.waitForFunction(() => window.__game);
 const tl = await lp.evaluate(() => { const c = window.__game; return { a: c.cssCenter(0, 0), b: c.cssCenter(6, 6), l: c.cssCenter(0, 6), r: c.cssCenter(6, 0) }; });
-const boxL = await lp.locator('canvas').boundingBox();
+const boxL = await lp.locator('canvas#c').boundingBox();
 assert.ok(tl.l[0] > 0 && tl.r[0] < boxL.width && tl.a[1] > 0 && tl.b[1] < boxL.height, 'cała plansza mieści się w poziomie');
 assert.ok(tl.r[0] - tl.l[0] > 360 && tl.b[1] - tl.a[1] > 200, `plansza w poziomie jest czytelnie duża: ${Math.round(tl.r[0] - tl.l[0])} x ${Math.round(tl.b[1] - tl.a[1])} px`);
 const kafelek = (tl.r[0] - tl.l[0]) / 12; assert.ok(kafelek >= 28, `szerokość kafla ${Math.round(kafelek * 2)} px, min. 56`);
