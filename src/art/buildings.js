@@ -1,11 +1,13 @@
 // Generator budynków. genBuilding(ziarno, rodzaj) losuje specyfikację, drawBuilding rysuje ją w rzucie izometrycznym.
 // (X,Y) to przedni dolny róg budynku (róg S). Lewa ściana patrzy w lewo-dół (cień), prawa w prawo-dół (światło).
 import { rng } from './rng.js';
-import { kit, OUT } from './kit.js';
+import { kit, OUT, plane, planeEllipse, RECEDE } from './kit.js';
+import { TW, TH } from '../grid.js';
 import { shade, mix } from './color.js';
 import { PROPS } from './props.js';
 
-export const TW = 72, TH = 36;
+export { TW, TH };
+export const OVERHANG = 0.16;
 const NL = [-0.894, 0.447], NR = [0.894, 0.447];
 export const KINDS = ['cottage', 'townhouse', 'tavern', 'shop', 'tower', 'farmhouse'];
 
@@ -55,11 +57,29 @@ export function genBuilding(seed, kind) {
       s.material = r.pick(['plank', 'timber', 'plaster']); s.roofShape = 'gable'; s.thatch = r.chance(0.55); s.roofCol = s.thatch ? '#d4b45a' : s.roofCol;
       prop(['haybale', 'haybale', 'cart', 'logs', 'sack'], r.int(2, 3)); break;
   }
+  s.w = Math.max(1, Math.min(4, Math.round(s.w))); s.d = Math.max(1, Math.min(4, Math.round(s.d)));
+  if (kind === 'tower') { s.w = s.d = r.chance(0.3) ? 2 : 1; }
   const base = Math.max(s.w, s.d);
   s.roofH = s.roofShape === 'cone' ? r.int(58, 76) : s.roofShape === 'hip' ? r.int(26, 38) * (0.85 + base * 0.12) : r.int(24, 34) * (0.85 + base * 0.1);
   if (s.thatch) s.roofH *= 1.1;
   s.doorFaceLen = s.doorFace === 'R' ? s.d : s.w;
   return s;
+}
+
+// Geometria budynku w przestrzeni siatki: (x,y) w kaflach względem rogu S=(0,0), z w pikselach. Podstawa to x w [-w,0], y w [-d,0].
+// Okap i kalenica liczone tutaj w siatce, dzięki temu dach leży dokładnie nad murami (bez odklejania się).
+export function buildingGeometry(s) {
+  const { w, d } = s, h = s.floors * s.fh, o = s.roofShape === 'cone' ? 0.08 : OVERHANG, ez = h - 3, rz = h + s.roofH;
+  const eave = { W: [-w - o, o, ez], S: [o, o, ez], E: [o, -d - o, ez], N: [-w - o, -d - o, ez] };
+  const geo = { w, d, h, o, ez, rz, eave };
+  if (s.roofShape === 'hip' || s.roofShape === 'cone') geo.roof = { type: 'hip', apex: [-w / 2, -d / 2, rz] };
+  else if (s.ridge === 'x') geo.roof = { type: 'gx', R1: [-w - o, -d / 2, rz], R2: [o, -d / 2, rz], gableFace: 'R', gableApex: [0, -d / 2, rz], baseZ: ez + (rz - ez) * o / (d / 2 + o) };
+  else geo.roof = { type: 'gy', R1: [-w / 2, o, rz], R2: [-w / 2, -d - o, rz], gableFace: 'L', gableApex: [-w / 2, 0, rz], baseZ: ez + (rz - ez) * o / (w / 2 + o) };
+  return geo;
+}
+// komórki siatki zajęte przez budynek, gdy jego róg S stoi w punkcie siatki (sx,sy)
+export function footprintCells(s, sx, sy) {
+  const out = []; for (let i = 0; i < s.w; i++) for (let j = 0; j < s.d; j++) out.push({ x: sx - s.w + i, y: sy - s.d + j }); return out;
 }
 
 export function drawBuilding(g, X, Y, s) {
@@ -74,8 +94,12 @@ export function drawBuilding(g, X, Y, s) {
   const isStone = s.material === 'stone';
   const baseWall = s.material === 'stone' ? mix(s.stone, '#ffffff', 0.18) : s.material === 'plank' ? shade(s.timber, 0.2, -0.05) : s.wall;
 
-  // cień na ziemi
-  blob((Np[0] + S[0]) / 2 + 14, (Np[1] + S[1]) / 2 + 6, (s.w + s.d) * 20, (s.w + s.d) * 10, '#000', 0.2);
+  const P3 = (x, y, z) => [X + (x - y) * TW / 2, Y + (x + y) * TH / 2 - z];
+  const quad3 = (x0, y0, x1, y1, z = 0) => [P3(x0, y0, z), P3(x1, y0, z), P3(x1, y1, z), P3(x0, y1, z)];
+  // grunt pod budynkiem: wydeptana ziemia wokół podstawy i miękki cień (światło z lewej góry, cień pada w prawo-dół)
+  poly(quad3(-s.w - 0.3, -s.d - 0.3, 0.3, 0.3), 'rgba(168,140,92,.5)', 0);
+  for (let q = 0; q < 14; q++) blob(...P3(-s.w - 0.2 + r() * (s.w + 0.4), -s.d - 0.2 + r() * (s.d + 0.4), 0), 5 + r() * 5, 2.4 + r() * 2, r() < 0.5 ? '#b89a62' : '#d8c08a', 0.35);
+  for (let q = 0; q < 7; q++) poly(quad3(-s.w + q * 0.11, -s.d + q * 0.05, q * 0.11, q * 0.05 + 0.0), 'rgba(20,30,10,.07)', 0);
 
   const doorFace = faces[s.doorFace];
   function face(id) {
@@ -106,6 +130,7 @@ export function drawBuilding(g, X, Y, s) {
     }
     // cień pod okapem
     poly([F(0, h - 8), F(1, h - 8), F(1, h), F(0, h)], 'rgba(40,20,10,.2)', 0);
+    poly([F(0, 0), F(1, 0), F(1, 12), F(0, 12)], lg(0, F(0, 0)[1], 0, F(0, 12)[1], 'rgba(30,20,8,.3)', 'rgba(30,20,8,0)'), 0);
     return { F, Q, pxu, tim };
   }
 
@@ -155,7 +180,7 @@ export function drawBuilding(g, X, Y, s) {
       for (let q = 1; q < 5; q++) ln([F(u0 + (u1 - u0) * q / 5, 0), F(u0 + (u1 - u0) * q / 5, dh - 4)], 0.7, 'rgba(40,20,8,.4)');
       ln([F(u0, 8), F(u1, 8)], 1.4, '#3a3a42'); ln([F(u0, 19), F(u1, 19)], 1.4, '#3a3a42');
       circ(...F(du + dw * 0.55, 13), 1.2, '#e8c24a', 0.8);
-      if (s.lamp) { const lp = F(u1 + 0.07, 24); ln([[lp[0] - 3, lp[1] - 6], [lp[0], lp[1] - 4]], 1.4, OUT); blob(lp[0], lp[1], 11, 11, '#ffd84a', 0.24); poly([[lp[0] - 2.5, lp[1] - 4], [lp[0] + 2.5, lp[1] - 4], [lp[0] + 2.5, lp[1] + 2], [lp[0] - 2.5, lp[1] + 2]], '#ffe27a', 1.2); }
+      if (s.lamp) { const lp = F(u1 + 0.07, 24), Lp = plane(id, lp[0], lp[1]); ln([Lp(-5, 2), Lp(0, 2)], 1.4, OUT); blob(lp[0], lp[1], 11, 11, '#ffd84a', 0.24); poly([Lp(-2.5, -4), Lp(2.5, -4), Lp(2.5, 3), Lp(-2.5, 3)], '#ffe27a', 1.2); }
     }
     return { F, Q, pxu };
   }
@@ -197,25 +222,22 @@ export function drawBuilding(g, X, Y, s) {
       poly([b0, b1, [(b0[0] + b1[0]) / 2, (b0[1] + b1[1]) / 2 + 4]], i % 2 ? c[1] : c[0], 1);
     }
   }
-  // szyld wiszący
+  // szyld wiszący: wysięgnik idzie od prawej ściany wzdłuż osi x, szyld wisi w płaszczyźnie wysięgnika (nie wprost na ekran)
   if (s.sign) {
-    const kx = S[0] + 2, ky = S[1] - s.fh * 1.1; const ex = [kx + 20 * NR[0], ky + 20 * NR[1] - 8];
-    ln([[kx, ky], [kx + 20 * NR[0], ky + 20 * NR[1]]], 3.2, OUT); ln([[kx, ky], [kx + 20 * NR[0], ky + 20 * NR[1]]], 1.6, '#4a4a52');
-    const sx = kx + 20 * NR[0], sy = ky + 20 * NR[1];
-    ln([[sx - 6, sy], [sx - 6, sy + 5]], 1, OUT); ln([[sx + 6, sy], [sx + 6, sy + 5]], 1, OUT);
-    poly([[sx - 9, sy + 5], [sx + 9, sy + 5], [sx + 9, sy + 19], [sx - 9, sy + 19]], '#c8924a', 1.7);
-    if (s.kind === 'tavern') { poly([[sx - 4, sy + 9], [sx + 2, sy + 9], [sx + 2, sy + 16], [sx - 4, sy + 16]], '#fff3d8', 1.2); circ(sx + 3, sy + 12.5, 2.4, null, 1.2); ln([[sx - 4, sy + 9], [sx + 2, sy + 9]], 2, '#f0c83a'); }
-    else circ(sx, sy + 12, 4.2, '#f0c83a', 1.3);
+    const A = P3(0, -0.12 * s.d, s.fh * 1.08), Lp = plane('L', A[0], A[1]);
+    ln([Lp(0, 0), Lp(24, 0)], 3.4, OUT); ln([Lp(0, 0), Lp(24, 0)], 1.8, '#4a4a52'); ln([Lp(0, -7), Lp(10, 0)], 1.6, '#4a4a52');
+    ln([Lp(8, 0), Lp(8, -5)], 1, OUT); ln([Lp(21, 0), Lp(21, -5)], 1, OUT);
+    poly([Lp(5, -5), Lp(24, -5), Lp(24, -21), Lp(5, -21)], '#c8924a', 1.7);
+    const c = Lp(14.5, -13);
+    if (s.kind === 'tavern') { poly([Lp(11, -9), Lp(17, -9), Lp(17, -17), Lp(11, -17)], '#fff3d8', 1.2); ln([Lp(11, -10), Lp(17, -10)], 2, '#f0c83a'); }
+    else poly(planeEllipse(Lp, 14.5, -13, 4.4, 4.4), '#f0c83a', 1.3);
   }
   // pnącza
   if (s.vines) { const f = faces[r.pick(['L', 'R'])]; const id = f.dark ? 'L' : 'R'; const { F } = fo(id); const u0 = r.range(0.05, 0.95), vm = r.range(0.4, 0.95) * h; for (let v = 0; v < vm; v += 3.2) { const u = u0 + Math.sin(v * 0.13) * 0.025 + (r() - 0.5) * 0.02; const p = F(u, v); circ(p[0], p[1], 2 + r() * 2.2, r.pick(['#3f8a34', '#56a03e', '#2f7a2c']), 0); if (r() < 0.12) circ(p[0] + 2, p[1], 1.4, '#f07aa8', 0); } }
 
-  // ---- dach ----
-  const C0 = [(Nt[0] + St[0]) / 2, (Nt[1] + St[1]) / 2];
-  const kEave = s.roofShape === 'cone' ? 1.06 : 1.14;
-  const eave = (p) => [C0[0] + (p[0] - C0[0]) * kEave, C0[1] + (p[1] - C0[1]) * kEave + 3];
-  const eW = eave(Wt), eS = eave(St), eE = eave(Et), eN = eave(Nt);
-  const rh = s.roofH;
+  // ---- dach (geometria z buildingGeometry, wszystko w siatce, więc dach leży nad murami) ----
+  const G = buildingGeometry(s), eP = (k) => P3(...G.eave[k]);
+  const eW = eP('W'), eS = eP('S'), eE = eP('E'), eN = eP('N');
   const rc = s.roofCol, litRoof = shade(rc, 0.05), darkRoof = shade(rc, -0.09);
   const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -229,58 +251,64 @@ export function drawBuilding(g, X, Y, s) {
     for (let i = 1; i < rows; i++) {
       const t = i / rows, p0 = lerp(A, D, t), p1 = lerp(B, Cc, t);
       ln([p0, p1], 1, 'rgba(60,22,8,.5)'); ln([[p0[0], p0[1] + 1.6], [p1[0], p1[1] + 1.6]], 1, 'rgba(255,220,170,.26)');
-      const tn = Math.max(2, Math.round(dist(p0, p1) / 9)), tt = (i + 0.5) / rows, q0 = lerp(A, D, Math.min(1, t + 0.5 / rows)), q1 = lerp(B, Cc, Math.min(1, t + 0.5 / rows));
+      const tn = Math.max(2, Math.round(dist(p0, p1) / 9)), q0 = lerp(A, D, Math.min(1, t + 0.5 / rows)), q1 = lerp(B, Cc, Math.min(1, t + 0.5 / rows));
       for (let j = 0; j < tn; j++) { const u = (j + (i % 2 ? 0.5 : 0)) / tn; if (u > 1) continue; ln([lerp(p0, p1, u), lerp(q0, q1, u)], 0.8, 'rgba(60,22,8,.32)'); }
     }
   }
   function thatchFringe(a, b) { if (!s.thatch) return; const n = Math.round(dist(a, b) / 4); const pts = [a]; for (let i = 1; i < n; i++) { const p = lerp(a, b, i / n); pts.push([p[0], p[1] + 2 + r() * 3.5]); } pts.push(b); ln(pts, 2.2, OUT); ln(pts, 1, mix(rc, '#ffffff', 0.2)); }
-  const gableWall = (tri, dark) => {
-    poly(tri, lg(0, tri[2][1], 0, tri[0][1], dark ? shade(baseWall, -0.11) : shade(baseWall, 0.02), dark ? shade(baseWall, -0.18) : shade(baseWall, -0.04)), 1.8);
-    const ap = tri[2], bm = mid(tri[0], tri[1]);
-    if (s.material === 'timber' || s.material === 'plaster') { ln([bm, ap], 3, s.timber); ln([lerp(tri[0], ap, 0.5), lerp(bm, ap, 0.2)], 2, s.timber); ln([lerp(tri[1], ap, 0.5), lerp(bm, ap, 0.2)], 2, s.timber); }
-    if (s.material === 'stone') for (let q = 1; q < 4; q++) ln([lerp(tri[0], tri[1], 0.1), lerp(tri[0], tri[1], 0.9)].map((p) => [p[0], p[1] - q * 6]), 0.7, 'rgba(58,36,20,.3)');
-    const wc = lerp(bm, ap, 0.45); circ(wc[0], wc[1], 4.2, dark ? '#6fa0b8' : '#a8d8ee', 1.5); ln([[wc[0] - 4, wc[1]], [wc[0] + 4, wc[1]]], 0.9, OUT); ln([[wc[0], wc[1] - 4], [wc[0], wc[1] + 4]], 0.9, OUT);
-  };
-  let apex = null, ridgeA = null, ridgeB = null, planeMid = null;
-  if (s.roofShape === 'hip' || s.roofShape === 'cone') {
-    apex = [C0[0], C0[1] - rh];
-    // widoczne boki: lewy i prawy
+  // ściana szczytowa: pięciokąt od podstawy muru do kalenicy, z szkieletem i okrągłym okienkiem rysowanym w płaszczyźnie ściany
+  function gableWall(ro) {
+    const dark = ro.gableFace === 'L', fid = ro.gableFace;
+    const base = dark ? [P3(-s.w, 0, h), P3(0, 0, h), P3(0, 0, ro.baseZ), P3(-s.w, 0, ro.baseZ)] : [P3(0, 0, h), P3(0, -s.d, h), P3(0, -s.d, ro.baseZ), P3(0, 0, ro.baseZ)];
+    const ap = P3(...ro.gableApex);
+    const poly5 = dark ? [base[0], base[1], base[2], ap, base[3]] : [base[0], base[1], base[2], ap, base[3]];
+    poly(poly5, lg(0, ap[1], 0, base[0][1], dark ? shade(baseWall, -0.11) : shade(baseWall, 0.02), dark ? shade(baseWall, -0.18) : shade(baseWall, -0.04)), 1.8);
+    const a0 = dark ? P3(-s.w, 0, h) : P3(0, 0, h), a1 = dark ? P3(0, 0, h) : P3(0, -s.d, h), bm = mid(a0, a1);
+    if (s.material === 'timber' || s.material === 'plaster') { ln([bm, ap], 3, s.timber); ln([lerp(a0, ap, 0.5), lerp(bm, ap, 0.18)], 2, s.timber); ln([lerp(a1, ap, 0.5), lerp(bm, ap, 0.18)], 2, s.timber); }
+    if (s.material === 'stone') for (let q = 1; q < 4; q++) ln([lerp(a0, a1, 0.12), lerp(a0, a1, 0.88)].map((p) => [p[0], p[1] - q * 6]), 0.7, 'rgba(58,36,20,.3)');
+    const wc = lerp(bm, ap, 0.42), Lp = plane(fid, wc[0], wc[1]);
+    poly(planeEllipse(Lp, 0, 0, 5, 5), dark ? '#6fa0b8' : '#a8d8ee', 1.5); ln([Lp(-5, 0), Lp(5, 0)], 0.9, OUT); ln([Lp(0, -5), Lp(0, 5)], 0.9, OUT);
+  }
+  let apex = null, ridgeA = null, ridgeB = null, planeMid = null, planeKind = 'L';
+  const ro = G.roof;
+  if (ro.type === 'hip') {
+    apex = P3(...ro.apex);
     roofPlane(eW, eS, apex, apex, lg(eW[0], 0, apex[0], 0, shade(rc, -0.14), darkRoof));
     roofPlane(eS, eE, apex, apex, lg(apex[0], 0, eE[0], 0, litRoof, shade(rc, 0.12)));
     ln([eW, eS, eE], 2.6, OUT); ln([eW, apex, eE], 2, OUT); ln([eS, apex], 2.2, OUT);
     if (s.thatch) { thatchFringe(eW, eS); thatchFringe(eS, eE); }
-    planeMid = lerp(mid(eS, eE), apex, 0.4);
-  } else if (s.ridge === 'x') {
-    const R1 = [mid(eN, eW)[0], mid(eN, eW)[1] - rh], R2 = [mid(eE, eS)[0], mid(eE, eS)[1] - rh];
-    ridgeA = R1; ridgeB = R2;
-    const tri = [St, Et, [mid(St, Et)[0], mid(St, Et)[1] - rh * 0.96]];
-    gableWall(tri, false);
+    planeMid = lerp(mid(eS, eE), apex, 0.4); planeKind = 'R';
+  } else if (ro.type === 'gx') {
+    const R1 = P3(...ro.R1), R2 = P3(...ro.R2); ridgeA = R1; ridgeB = R2;
+    gableWall(ro);
     roofPlane(eW, eS, R2, R1, lg(eW[0], 0, R2[0], 0, shade(rc, -0.14), darkRoof));
-    ln([eS, R2, eE], 3.4, OUT); ln([eS, R2, eE], 1.8, shade(rc, -0.2));
-    ln([eW, eS], 2.6, OUT); ln([R1, R2], 2.6, OUT);
+    ln([eS, R2, eE], 3.4, OUT); ln([eS, R2, eE], 1.8, shade(rc, -0.2)); ln([eW, eS], 2.6, OUT); ln([R1, R2], 2.6, OUT);
     if (s.thatch) thatchFringe(eW, eS);
-    planeMid = lerp(mid(eW, eS), mid(R1, R2), 0.45);
+    planeMid = lerp(mid(eW, eS), mid(R1, R2), 0.45); planeKind = 'L';
   } else {
-    const R1 = [mid(eW, eS)[0], mid(eW, eS)[1] - rh], R2 = [mid(eN, eE)[0], mid(eN, eE)[1] - rh];
-    ridgeA = R1; ridgeB = R2;
-    const tri = [Wt, St, [mid(Wt, St)[0], mid(Wt, St)[1] - rh * 0.96]];
-    gableWall(tri, true);
+    const R1 = P3(...ro.R1), R2 = P3(...ro.R2); ridgeA = R1; ridgeB = R2;
+    gableWall(ro);
     roofPlane(eS, eE, R2, R1, lg(R1[0], 0, eE[0], 0, litRoof, shade(rc, 0.12)));
-    ln([eW, R1, eS], 3.4, OUT); ln([eW, R1, eS], 1.8, shade(rc, -0.2));
-    ln([eS, eE], 2.6, OUT); ln([R1, R2], 2.6, OUT);
+    ln([eW, R1, eS], 3.4, OUT); ln([eW, R1, eS], 1.8, shade(rc, -0.2)); ln([eS, eE], 2.6, OUT); ln([R1, R2], 2.6, OUT);
     if (s.thatch) thatchFringe(eS, eE);
-    planeMid = lerp(mid(eS, eE), mid(R1, R2), 0.45);
+    planeMid = lerp(mid(eS, eE), mid(R1, R2), 0.45); planeKind = 'R';
   }
-  // lukarna
+  // lukarna: bryła w płaszczyźnie połaci (front w płaszczyźnie ściany, bok cofnięty w głąb), nie płaski prostokąt
   if (s.dormer && ridgeA) {
-    const [qx, qy] = planeMid, wcol = '#a8d8ee';
-    poly([[qx - 8, qy + 3], [qx + 8, qy + 3], [qx + 8, qy - 9], [qx - 8, qy - 9]], baseWall, 1.6);
-    poly([[qx - 5, qy + 1], [qx + 5, qy + 1], [qx + 5, qy - 7], [qx - 5, qy - 7]], wcol, 1.4); ln([[qx, qy + 1], [qx, qy - 7]], 0.9, OUT);
-    poly([[qx - 11, qy - 8], [qx, qy - 17], [qx + 11, qy - 8]], shade(rc, 0.02), 1.8);
+    const Lp = plane(planeKind, planeMid[0], planeMid[1]), rec = RECEDE[planeKind], dep = 11, side = planeKind === 'L' ? 1 : -1;
+    const hw = 8, wh = 12, ph = 8;
+    const sh = (p) => [p[0] + rec[0] * dep, p[1] + rec[1] * dep];
+    // bok widoczny (od strony, z której patrzymy), potem front, potem dach
+    const bx = side * hw;
+    poly([Lp(bx, 0), Lp(bx, wh), sh(Lp(bx, wh)), sh(Lp(bx, 0))], shade(baseWall, planeKind === 'L' ? -0.2 : -0.14), 1.6);
+    poly([Lp(bx, wh), Lp(0, wh + ph), sh(Lp(0, wh + ph)), sh(Lp(bx, wh))], shade(rc, planeKind === 'L' ? 0.06 : -0.08), 1.7);
+    poly([Lp(-hw, 0), Lp(hw, 0), Lp(hw, wh), Lp(0, wh + ph), Lp(-hw, wh)], baseWall, 1.7);
+    poly([Lp(-hw + 3, 2), Lp(hw - 3, 2), Lp(hw - 3, wh - 3), Lp(-hw + 3, wh - 3)], '#a8d8ee', 1.4); ln([Lp(0, 2), Lp(0, wh - 3)], 0.9, OUT);
+    ln([Lp(-hw - 1.5, wh - 1), Lp(0, wh + ph + 1), Lp(hw + 1.5, wh - 1)], 2.4, OUT); ln([Lp(-hw - 1.5, wh - 1), Lp(0, wh + ph + 1), Lp(hw + 1.5, wh - 1)], 1.2, shade(rc, -0.2));
   }
-  // komin
+  // komin: stoi na kalenicy lub grani, bryła izometryczna
   if (s.chimney) {
-    const base = apex ? lerp(apex, eE, 0.38) : lerp(ridgeA, ridgeB, r.range(0.25, 0.7));
+    const base = apex ? lerp(apex, eE, 0.3) : lerp(ridgeA, ridgeB, r.range(0.25, 0.7));
     const cx = base[0], cy = base[1] + 5, stn = shade(s.stone, -0.05);
     poly([[cx - 5.5, cy + 3], [cx, cy + 6], [cx, cy - 15], [cx - 5.5, cy - 18]], shade(stn, -0.1), 1.6);
     poly([[cx, cy + 6], [cx + 5.5, cy + 3], [cx + 5.5, cy - 18], [cx, cy - 15]], shade(stn, 0.05), 1.6);
@@ -288,8 +316,11 @@ export function drawBuilding(g, X, Y, s) {
     poly([[cx - 3, cy - 18], [cx, cy - 19.5], [cx + 3, cy - 18], [cx, cy - 16.5]], '#2a1a12', 0);
     if (s.smoke) for (let i = 0; i < 4; i++) blob(cx + 3 + i * 4, cy - 26 - i * 10, 5 + i * 2, 4 + i * 1.5, '#ffffff', 0.5 - i * 0.1);
   }
-  // flaga
-  if (s.flag && apex) { const px = apex[0], py = apex[1]; ln([[px, py], [px, py - 22]], 2, OUT); ln([[px, py], [px, py - 22]], 1, '#6a4a2a'); poly([[px, py - 22], [px + 14, py - 19], [px + 9, py - 15], [px + 15, py - 11], [px, py - 13]], r.pick(['#c8382a', '#2a6aa8', '#d89a1a']), 1.3); }
+  // flaga: płat materiału w płaszczyźnie, w której wieje wiatr
+  if (s.flag && apex) { const Lp = plane('L', apex[0], apex[1] - 22); ln([[apex[0], apex[1]], [apex[0], apex[1] - 22]], 2, OUT); ln([[apex[0], apex[1]], [apex[0], apex[1] - 22]], 1, '#6a4a2a'); poly([Lp(0, 0), Lp(15, 3), Lp(10, -1), Lp(16, -5), Lp(0, -8)], r.pick(['#c8382a', '#2a6aa8', '#d89a1a']), 1.3); }
+
+  // kępki trawy przy podstawie murów: wiążą budynek z ziemią
+  for (const id of ['L', 'R']) { const f = faces[id], { F } = fo(id), n = Math.round(f.len * 5); for (let q = 0; q < n; q++) { const u = (q + r()) / n; if (s.doorFace === id && Math.abs(u - s.doorU) < 0.16) continue; const p = F(u, 0), gx = p[0] + f.n[0] * (1 + r() * 3), gy = p[1] + f.n[1] * (1 + r() * 3) + 1; const c = r() < 0.5 ? '#4f9a2c' : '#78c040'; for (const dx of [-2.4, 0, 2.4]) ln([[gx + dx, gy], [gx + dx * 1.5 + (r() - 0.5) * 2, gy - 4 - r() * 4]], 1.3, c); } }
 
   // rekwizyty z przodu
   const items = s.props.map((p) => { const f = faces[p.face], { F } = fo(p.face); const q = F(p.u, 0); return { y: q[1] + f.n[1] * p.off, x: q[0] + f.n[0] * p.off, p }; }).sort((a, b) => a.y - b.y);

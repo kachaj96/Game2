@@ -2,42 +2,38 @@
 <canvas id="c" width="1500" height="800"></canvas>
 <script type="module">
 import {rng} from '../src/art/rng.js';
-import {TW,TH,genBuilding,drawBuilding} from '../src/art/buildings.js';
+import {genBuilding,drawBuilding,footprintCells} from '../src/art/buildings.js';
+import {IsoGrid,TW,TH} from '../src/grid.js';
 import {genCharacter,drawCharacter,ROLES,DIRS} from '../src/art/characters.js';
 import * as N from '../src/art/nature.js';
 import {lampPost,bench,cart,barrel,crate} from '../src/art/props.js';
 const cv=document.getElementById('c'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
-const OX=W/2,OY=120,P=(x,y)=>[OX+(x-y)*TW/2,OY+(x+y)*TH/2];
-const G=(sx,sy)=>{const dx=(sx-OX)/(TW/2),dy=(sy-OY)/(TH/2);return[(dx+dy)/2,(dy-dx)/2]};
+const grid=new IsoGrid(40,40,{x:W/2,y:120});
+const P=(x,y)=>grid.toScreen(x,y),G=(sx,sy)=>grid.toGrid(sx,sy);
 const r=rng(2024);
 N.ground(g,W,H,5);
-// drogi: główna po y (x 7..8.7) i poprzeczna po x (y 7..8.7)
-const wob=()=> (r()-.5)*.1;
+// drogi mają po 2 kafle szerokości: główna x w [7,9], poprzeczna y w [7,9]
 const roads=[
- [[7,-14],[8.7,-14],[8.7,30],[7,30]],
- [[-14,7],[30,7],[30,8.7],[-14,8.7]],
+ [[7,-14],[9,-14],[9,30],[7,30]],
+ [[-14,7],[30,7],[30,9],[-14,9]],
 ];
-const onRoad=(x,y)=>(x>6.6&&x<9.1)||(y>6.6&&y<9.1);
-const buildings=[
- {s:genBuilding(11,'tavern'),sx:6.3,sy:5.7},
- {s:genBuilding(23,'shop'),sx:6.3,sy:12.2},
- {s:genBuilding(37,'townhouse'),sx:12.6,sy:5.9},
- {s:genBuilding(48,'cottage'),sx:13.3,sy:12.6},
- {s:genBuilding(5,'tower'),sx:2.6,sy:6.0},
- {s:genBuilding(61,'farmhouse'),sx:14.4,sy:2.8},
- {s:genBuilding(72,'cottage'),sx:3.8,sy:13.4},
- {s:genBuilding(88,'townhouse'),sx:11.2,sy:3.2},
- {s:genBuilding(99,'shop'),sx:5.2,sy:2.4},
-];
+const onRoad=(x,y)=>(x>6.7&&x<9.3)||(y>6.7&&y<9.3);
+// budynki stoją na pełnych kaflach: róg S w punkcie siatki, podstawa zajmuje w x d kafli
+const slotPos=(q,i,s)=>{const ox=[0,5,0][i],oy=[0,0,5][i];
+ if(q==='TL')return[7-ox,7-oy];if(q==='TR')return[9+s.w+ox,7-oy];if(q==='BL')return[7-ox,9+s.d+oy];return[9+s.w+ox,9+s.d+oy];};
+const defs=[['TL',0,11,'tavern'],['TL',1,5,'tower'],['TL',2,99,'shop'],['TR',0,37,'townhouse'],['TR',1,61,'farmhouse'],['BL',0,23,'shop'],['BL',1,72,'cottage'],['BR',0,48,'cottage'],['BR',1,88,'townhouse']];
+const buildings=defs.map(([q,i,seed,kind])=>{const s=genBuilding(seed,kind);const [sx,sy]=slotPos(q,i,s);return{s,sx,sy}});
+// kontrola: żadne dwa budynki ani droga nie mogą zajmować tej samej komórki
+{const seen=new Map();buildings.forEach((b,bi)=>footprintCells(b.s,b.sx,b.sy).forEach(c=>{const k=c.x+','+c.y;if(seen.has(k))console.error('NAKŁADANIE budynków',bi,seen.get(k),k);seen.set(k,bi);if(onRoad(c.x+.5,c.y+.5))console.error('budynek na drodze',bi,k)}))}
 const inB=(x,y,m=0.9)=>buildings.some(b=>x>b.sx-b.s.w-m&&x<b.sx+m&&y>b.sy-b.s.d-m&&y<b.sy+m);
-const pondG=[10.6,14.9,3.2,1.2]; // środek, promienie w siatce
+const pondG=[11,16.5,3.2,1.2]; // środek, promienie w siatce
 const inPond=(x,y)=>((x-pondG[0])/ (pondG[2]+1))**2+((y-pondG[1])/(pondG[3]+1))**2<1;
 const free=(x,y,m=0.9)=>!onRoad(x,y)&&!inB(x,y,m)&&!inPond(x,y);
 // tło: kępki trawy poza drogami
 N.tufts(g,W,H,5,900,(x,y)=>{const [gx,gy]=G(x,y);return onRoad(gx,gy)});
 for(const poly of roads)N.road(g,poly.map(([x,y])=>P(x,y)),7);
 // plac
-N.road(g,[[6.4,6.4],[9.4,6.4],[9.4,9.4],[6.4,9.4]].map(([x,y])=>P(x,y)),8);
+N.road(g,[[6,6],[10,6],[10,10],[6,10]].map(([x,y])=>P(x,y)),8);
 {const [px,py]=P(pondG[0],pondG[1]);N.pond(g,px,py,pondG[2]*TW/2*1.1,pondG[3]*TH/2*1.6,3);}
 const items=[];
 const add=(y,f)=>items.push({y,f});
@@ -60,7 +56,7 @@ while(placed<190&&tries<9000){tries++;
 for(let i=0;i<70;i++){const sx=r()*W,sy=r()*(H-140)+140,[x,y]=G(sx,sy);if(!free(x,y,0.6))continue;add(sy-3,()=>N.flowers(g,sx,sy,i+300))}
 for(let i=0;i<6;i++){const a=pondG[0]+r.range?0:0;const ang=i/6*6.28,x=pondG[0]+Math.cos(ang)*(pondG[2]+.2),y=pondG[1]+Math.sin(ang)*(pondG[3]+.2),[sx,sy]=P(x,y);add(sy,()=>N.reeds(g,sx,sy,i+400))}
 // latarnie, ławki, wóz na placu i przy drodze
-for(const [x,y] of [[6.8,5],[9,5],[6.8,10.5],[9,10.5],[5,7.2],[11.5,7.2]]){const [sx,sy]=P(x,y);add(sy,()=>lampPost(g,sx,sy,1))}
+for(const [x,y] of [[6.9,5],[9.1,5],[6.9,11],[9.1,11],[5,6.9],[12,9.1]]){const [sx,sy]=P(x,y);add(sy,()=>lampPost(g,sx,sy,1))}
 {const [sx,sy]=P(9.2,9.6);add(sy,()=>bench(g,sx,sy,1));}
 {const [sx,sy]=P(6.4,9.6);add(sy,()=>cart(g,sx,sy,1));}
 // postacie

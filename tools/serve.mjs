@@ -19,7 +19,7 @@ export function startServer(port = 8080) {
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 8080;
   await startServer(port);
   console.log(`Podgląd: http://127.0.0.1:${port}/`);

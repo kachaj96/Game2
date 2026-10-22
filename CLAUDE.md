@@ -9,9 +9,16 @@ Osobny projekt, nie część Natalis. Powstał na czas testów Natalis jako eksp
 - Dwa obiekty z różnych ziaren nie mogą być kopiami. Zmieniają się proporcje, materiały, kolory i wyposażenie, nie tylko kolor.
 - Nowy rodzaj obiektu = nowy generator + wpis w `tests/unit/art.test.mjs` (deterministyczność, różnorodność, rysowanie bez NaN). Bez tego CI nie przejdzie.
 
+## Zasady izometrii (po błędach z pierwszej wersji)
+- Siatka żyje w `src/grid.js` (`IsoGrid`): `toScreen`, `toGrid`, `cellAt`, `center`, `corners`, blokady i sąsiedzi. To jedyne źródło prawdy o rzucie. Nie liczymy współrzędnych izometrii ręcznie w stronach ani w generatorach.
+- Budynek stoi na pełnych kaflach (`w`, `d` całkowite). Jego róg S leży w punkcie siatki `(sx,sy)`, a zajęte komórki zwraca `footprintCells`. Dzięki temu logika (blokady, A*) zgadza się z tym, co widać.
+- Geometrię dachu liczymy w siatce (`buildingGeometry`), nie w przestrzeni ekranu. Skalowanie okapu na ekranie odklejało dach od murów i budynek "wisiał w powietrzu". Test `building-geometry.test.mjs` pilnuje, żeby szczyt, kalenica i okap leżały w jednej płaszczyźnie z murem.
+- Wszystko, co wisi na ścianie albo leży w świecie, rysujemy w płaszczyźnie ściany albo w osiach izometrii: `plane('L'|'R', x, y)`, `planeEllipse`, `isoBox`, `isoCylinder` z `src/art/kit.js`. Nigdy płaskie koło lub prostokąt wprost na ekran (okienko w szczycie, lukarna, szyld, lampa, ława, wóz, kłody). Wyjątek: postacie i rośliny, które są billboardami.
+- Budynek musi mieć kontakt z gruntem: wydeptana ziemia pod podstawą, cień, ciemniejszy pas przy murze, kępki trawy.
+
 ## Styl graficzny
 - Równy ciemnobrązowy kontur (`OUT` z `src/art/kit.js`), nasycone kolory, gradienty zamiast płaskich wypełnień, światło z lewej góry (lewa ściana ciemniejsza, prawa jaśniejsza).
-- Rzut izometryczny 2:1, kafel `TW=72`, `TH=36` (`src/art/buildings.js`). Punkt (X,Y) budynku to jego przedni dolny róg.
+- Rzut izometryczny 2:1, kafel `TW=72`, `TH=36` (`src/grid.js`). Punkt (X,Y) budynku to jego przedni dolny róg.
 - Postacie mają 4 kierunki: SE i NE rysowane wprost, SW i NW to lustro. Chód to parametr `t` od 0 do 1.
 - Na planszy walki liczy się czytelność: siatka musi być widoczna, przeszkody niskie albo wyraźnie oznaczone. Pierścienie pod postaciami: niebieski sojusznik, czerwony wróg.
 - Stary styl atramentowy z Natalis (drżąca kreska, pergamin) w tym projekcie nie jest używany.

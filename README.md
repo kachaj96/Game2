@@ -3,10 +3,11 @@
 Izometryczna taktyczna gra turowa w stylu Dofusa. Osobny projekt, nie część Natalis. Eksperyment na czas testów Natalis.
 
 ## Stan
-Gotowa jest warstwa grafiki. Gry jeszcze nie ma: brak siatki logicznej, ruchu i tur.
+Gotowa jest warstwa grafiki i siatka izometryczna (`src/grid.js`, podgląd w `www/siatka.html`). Gry jeszcze nie ma: brak ruchu i tur.
 
 | Co | Gdzie | Co umie |
 |---|---|---|
+| Siatka | `src/grid.js` | `IsoGrid`: ekran <-> siatka, komórka pod kursorem, blokady, sąsiedzi, głębokość do sortowania |
 | Budynki | `src/art/buildings.js` | 6 rodzajów (chata, kamienica, karczma, sklep, wieża, gospodarstwo), losowe materiały, dachy, balkony, markizy, szyldy |
 | Postacie | `src/art/characters.js` | 7 ról, fryzury, stroje, broń, 4 kierunki, chód w klatkach |
 | Przyroda | `src/art/nature.js` | dąb, sosna, brzoza, martwe drzewo, krzewy, skały, kwiaty, grzyby, staw, drogi, 5 biomów |
@@ -24,7 +25,7 @@ npm i && npm run shots   # zrzuty do docs/podglad (Playwright)
 ```
 
 ## Plan
-1. Siatka logiczna i rzut izometryczny (współrzędne siatka <-> ekran, test odwracalności).
+1. ~~Siatka logiczna i rzut izometryczny~~ (zrobione, z testami odwracalności).
 2. Ruch po kaflach: A*, punkty ruchu, przeszkody.
 3. Tury: kolejka, PA/PM, jeden czar z zasięgiem i linią widzenia.
 4. Jedna grywalna arena. Dopiero wtedy decyzja, czy iść dalej.
