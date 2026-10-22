@@ -26,6 +26,8 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
 let s = await st();
 assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [1, 5, 3], 'start');
 
+// 0. postacie i ich kręgi stoją dokładnie w środku kafla
+for (const [id, cx, cy] of [['h', 1, 5], ['e1', 5, 1]]) { const [rx, ry] = await page.evaluate(([id, cx, cy]) => { const g = window.__game, r = g.ringCenter(id), c = g.grid.center(cx, cy); return [r[0] - c[0], r[1] - c[1]]; }, [id, cx, cy]); assert.ok(Math.abs(rx) < 0.5 && Math.abs(ry) < 0.5, `${id}: środek kręgu odchylony o ${rx},${ry} od środka kafla`); }
 // 1. pierwsze dotknięcie tylko pokazuje podgląd: stan gry się nie zmienia
 await tapCell(3, 5);
 let pv = await page.evaluate(() => window.__game.preview);

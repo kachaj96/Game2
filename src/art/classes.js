@@ -8,11 +8,31 @@ export const HAIR_COLORS = ['#1a1a22', '#2a1a14', '#4a2c18', '#6a4020', '#8a5a2a
 export const HAIR_STYLES = ['short', 'long', 'ponytail', 'bun', 'braids', 'curly', 'bald'];
 export const HAIR_NAMES = { short: 'Krótkie', long: 'Długie', ponytail: 'Kucyk', bun: 'Kok', braids: 'Warkocze', curly: 'Loki', bald: 'Łysy' };
 export const EYE_COLORS = ['#3a2a1a', '#4a7a2a', '#2a5a9a', '#6a4a2a', '#5a5a5a'];
-// 8 wariantów twarzy: brwi, kolor oczu, blizna, piegi
-export const FACES = [
-  { brow: 0, eye: 0 }, { brow: 0.9, eye: 2 }, { brow: -0.9, eye: 1 }, { brow: 0.4, eye: 3, freckles: true },
-  { brow: -0.5, eye: 0, scar: true }, { brow: 0, eye: 4, scar: true }, { brow: 0.7, eye: 1, freckles: true }, { brow: -1, eye: 2 },
+// Głowy do wyboru, osobno dla mężczyzn i kobiet (jak w Dofusie): kształt twarzy, oczy, nos, usta, uszy, znaki szczególne i kolor oczu.
+export const FACES_M = [
+  { shape: 'square', eyes: 'narrow', nose: 'long', mouth: 'flat', brow: 0.4, bt: 2.1, eye: 0, beard: 'stubble' },
+  { shape: 'round', eyes: 'round', nose: 'dot', mouth: 'smile', brow: 0.9, bt: 1.4, eye: 2 },
+  { shape: 'long', eyes: 'sleepy', nose: 'hook', mouth: 'smirk', brow: -0.9, bt: 1.6, eye: 1, ears: 'pointy', beard: 'mustache' },
+  { shape: 'wide', eyes: 'wide', nose: 'wide', mouth: 'open', brow: 0.4, bt: 1.3, eye: 3, freckles: true, beard: 'full' },
+  { shape: 'square', eyes: 'narrow', nose: 'wide', mouth: 'flat', brow: -0.5, bt: 2.2, eye: 0, scar: true, beard: 'full' },
+  { shape: 'heart', eyes: 'sleepy', nose: 'dot', mouth: 'smirk', brow: 0.2, bt: 1.2, eye: 4, scar: true },
+  { shape: 'round', eyes: 'wide', nose: 'long', mouth: 'smile', brow: 0.7, bt: 1.5, eye: 1, freckles: true },
+  { shape: 'long', eyes: 'narrow', nose: 'hook', mouth: 'flat', brow: -1, bt: 1.8, eye: 2, ears: 'pointy', mole: true },
 ];
+export const FACES_F = [
+  { shape: 'heart', eyes: 'wide', nose: 'dot', mouth: 'full', brow: 0.5, bt: 0.9, eye: 2 },
+  { shape: 'round', eyes: 'round', nose: 'dot', mouth: 'smile', brow: 0.9, bt: 1.1, eye: 1 },
+  { shape: 'long', eyes: 'sleepy', nose: 'long', mouth: 'smirk', brow: -0.6, bt: 1, eye: 0, mole: true },
+  { shape: 'heart', eyes: 'narrow', nose: 'dot', mouth: 'flat', brow: -0.3, bt: 1.2, eye: 3, ears: 'pointy' },
+  { shape: 'square', eyes: 'round', nose: 'wide', mouth: 'full', brow: 0.2, bt: 1.3, eye: 4, scar: true },
+  { shape: 'round', eyes: 'sleepy', nose: 'dot', mouth: 'open', brow: 0.7, bt: 1, eye: 1, scar: true },
+  { shape: 'wide', eyes: 'wide', nose: 'dot', mouth: 'smile', brow: 0.8, bt: 1.1, eye: 2, freckles: true },
+  { shape: 'long', eyes: 'narrow', nose: 'hook', mouth: 'smirk', brow: -1, bt: 1.2, eye: 0, ears: 'pointy' },
+];
+export const facesFor = (female) => (female ? FACES_F : FACES_M);
+export const FACES = FACES_M;
+// fryzury osobno dla płci: kolejność w kreatorze, pełna lista zostaje do wygenerowanych postaci
+export const HAIR_BY_GENDER = { m: ['short', 'curly', 'long', 'ponytail', 'bald'], f: ['long', 'ponytail', 'bun', 'braids', 'short', 'curly'] };
 export const SWATCHES = ['#6b5a3a', '#3f5a3c', '#2a2438', '#7a2a2a', '#2a4a6a', '#8a6a2a', '#5a5a62', '#8a4a2a', '#4a2a4a', '#2a5a4a', '#c8a050', '#e07a3a'];
 export const COLOR_SLOTS = ['Strój', 'Wykończenie', 'Akcent'];
 
@@ -34,11 +54,11 @@ export const CLASS_IDS = Object.keys(CLASS_LOOKS);
 
 export function heroSpec(classId, o = {}) {
   const L = CLASS_LOOKS[classId]; if (!L) throw new Error(`Nieznana klasa: ${classId}`);
-  const colors = o.colors || L.colors, face = FACES[(o.face ?? 0) % FACES.length], female = !!o.female;
+  const colors = o.colors || L.colors, female = !!o.female, faceSet = facesFor(female), face = faceSet[(o.face ?? 0) % faceSet.length];
   const sp = {
     seed: o.seed || 1, role: L.role, classId, female, skin: o.skin || SKIN_TONES[1], eye: EYE_COLORS[face.eye], hair: o.hair || HAIR_COLORS[2],
     build: classId === 'grabarz' && female ? 'avg' : L.build, sc: L.sc * (female ? 0.97 : 1), headS: 1, brow: face.brow, hairStyle: o.hairStyle || 'short',
-    face: { scar: !!face.scar, freckles: !!face.freckles }, move: L.move, hat: null, cloak: null, scarf: null, beard: o.beard || null, held: 'none', pack: null,
+    face: { shape: face.shape, eyes: face.eyes, nose: face.nose, mouth: face.mouth, ears: face.ears || 'round', bt: face.bt, scar: !!face.scar, freckles: !!face.freckles, mole: !!face.mole }, move: L.move, hat: null, cloak: null, scarf: null, beard: o.beard || face.beard || null, held: 'none', pack: null,
     outfit: { kind: 'tunic', base: colors[0], trim: colors[1], pants: shade(colors[0], -0.18, -0.08), boots: '#3a2a1c', apron: false, belt: true, beltCol: '#2a1a10' },
   };
   if (classId === 'grabarz') {
@@ -56,7 +76,7 @@ export function heroSpec(classId, o = {}) {
 // losowy bohater z ziarna (przycisk "Losuj" w kreatorze)
 export function randomHeroOpts(seed) {
   const r = rng(seed * 7 + 3);
-  return { female: r.chance(0.5), skin: r.pick(SKIN_TONES), hair: r.pick(HAIR_COLORS), hairStyle: r.pick(HAIR_STYLES), face: r.int(0, FACES.length - 1), colors: [r.pick(SWATCHES), r.pick(SWATCHES), r.pick(SWATCHES)] };
+  return { female: r.chance(0.5), skin: r.pick(SKIN_TONES), hair: r.pick(HAIR_COLORS), hairStyle: r.pick(HAIR_STYLES), beard: null, face: r.int(0, FACES_M.length - 1), colors: [r.pick(SWATCHES), r.pick(SWATCHES), r.pick(SWATCHES)] };
 }
 
 const FIRST = ['Miłosz', 'Radogost', 'Sławomir', 'Dobrawa', 'Wiesława', 'Jaromir', 'Mirosława', 'Borys', 'Zbyszko', 'Ludmiła', 'Gniewko', 'Jarosława', 'Wit', 'Wiera', 'Przemko', 'Bronisława', 'Racibor', 'Dzierżysława'];

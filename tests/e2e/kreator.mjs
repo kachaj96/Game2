@@ -15,7 +15,7 @@ const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on(
 await page.goto('http://127.0.0.1:8111/www/kreator.html');
 await page.waitForFunction(() => window.__kreator);
 const S = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__kreator.state)));
-const TAB = { female: 'twarz', male: 'twarz', face: 'twarz', hair: 'twarz', hc: 'barwy', sk: 'barwy', slot: 'stroj', sc: 'stroj', org: 'org', tr: 'cechy' };
+const TAB = { female: 'twarz', male: 'twarz', face: 'twarz', hair: 'wlosy', hc: 'wlosy', beard: 'twarz', sk: 'twarz', slot: 'stroj', sc: 'stroj', org: 'org', tr: 'cechy' };
 const tap = async (id) => { const t = TAB[id.split('-')[0]]; if (t) await page.locator('#tab-' + t).tap(); await page.locator('#' + id).tap(); };
 
 let s = await S(); assert.equal(s.classId, 'grabarz');
@@ -55,7 +55,7 @@ assert.equal(typeof stored.look.female, 'boolean'); assert.equal(stored.look.col
 // 9. panel cech i przeszłości mieści się na ekranie telefonu w poziomie, a przewijanie nie wraca na górę po wyborze (regresja)
 await page.locator('#tab-org').tap(); await page.evaluate(() => { const e = document.getElementById('body'); e.scrollTop = e.scrollHeight; }); const top0 = await page.evaluate(() => document.getElementById('body').scrollTop);
 await tap('org-1'); const top1 = await page.evaluate(() => document.getElementById('body').scrollTop); assert.ok(top0 > 0 && top1 === top0, `scrollTop ${top0} -> ${top1}`);
-for (const t of ['twarz', 'barwy', 'stroj', 'cechy', 'gotowe']) { await page.locator('#tab-' + t).tap(); const o = await page.evaluate(() => { const e = document.getElementById('body'); return e.scrollHeight - e.clientHeight; }); assert.ok(o <= 1, `zakładka ${t} nie powinna się przewijać (nadmiar ${o}px)`); }
+for (const t of ['twarz', 'wlosy', 'stroj', 'cechy', 'gotowe']) { await page.locator('#tab-' + t).tap(); const o = await page.evaluate(() => { const e = document.getElementById('body'); return e.scrollHeight - e.clientHeight; }); assert.ok(o <= 1, `zakładka ${t} nie powinna się przewijać (nadmiar ${o}px)`); }
 await page.locator('#tab-twarz').tap();
 // nic nie wystaje poza ramkę panelu
 const over = await page.evaluate(() => { const bad = []; for (const p of document.querySelectorAll('.panel')) { const r = p.getBoundingClientRect(); for (const e of p.querySelectorAll('button,span,b,input,small')) { const q = e.getBoundingClientRect(); if (q.width && (q.right > r.right + 1 || q.left < r.left - 1 || q.bottom > r.bottom + 1)) bad.push(e.id || e.textContent.slice(0, 20)); } } return bad; });

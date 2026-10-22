@@ -132,3 +132,24 @@ test('czary testowe (dev): pełne dane, poprawne poziomy, wszystkie żywioły po
   for (const sp of DEV_SPELLS) { assert.ok(sp.dev && sp.name && ELEMENTS[sp.element] && sp.levels.length === 5, sp.id);
     for (let i = 1; i < 5; i++) { const a = sp.levels[i - 1], b = sp.levels[i]; assert.ok(b.pa <= a.pa && b.cd <= a.cd && b.max >= a.max, `${sp.id} L${i + 1}`); assert.ok((b.dmg[0] + b.dmg[1]) > (a.dmg[0] + a.dmg[1]), `${sp.id}: obrażenia rosną`); } }
 });
+
+test('głowy: każda z 8 wygląda inaczej niż reszta nie tylko kolorem oczu, i kobiece różnią się od męskich', async () => {
+  const { FACES_M, FACES_F } = await import('../../src/art/classes.js');
+  for (const set of [FACES_M, FACES_F]) {
+    const sig = (f) => JSON.stringify({ ...f, eye: 0, brow: 0 });
+    assert.equal(new Set(set.map(sig)).size, set.length, 'bez dwóch głów różniących się tylko kolorem oczu lub brwią');
+    assert.ok(new Set(set.map((f) => f.shape)).size >= 4, 'różne kształty głowy');
+    assert.ok(new Set(set.map((f) => f.eyes)).size >= 3 && new Set(set.map((f) => f.nose)).size >= 3 && new Set(set.map((f) => f.mouth)).size >= 3, 'różne oczy, nosy i usta');
+  }
+  assert.notEqual(JSON.stringify(FACES_M), JSON.stringify(FACES_F));
+});
+
+test('sylwetka: kobieta ma węższe ramiona i talię, mężczyzna szersze ramiona', () => {
+  const pts = (female) => { const out = []; const g = new Proxy({}, { get: (t, p) => (p in t ? t[p] : p === 'createLinearGradient' || p === 'createRadialGradient' ? () => ({ addColorStop() {} }) : (...a) => { if (p === 'moveTo' || p === 'lineTo') out.push(a); }), set: (t, p, v) => { t[p] = v; return true; } });
+    drawCharacter(g, 0, 0, { ...heroSpec('tropiciel', { female, face: 1 }), cloak: null, hat: null, pack: null, held: 'none', mask: null, outfit: { ...heroSpec('tropiciel').outfit, kind: 'tunic', apron: false } }, { view: 'front' }); return out; };
+  const maxX = (p, y) => Math.max(...p.filter((q) => Math.abs(q[1] - y) < 0.01).map((q) => Math.abs(q[0])));
+  const m = pts(false), f = pts(true);
+  assert.ok(maxX(m, -27) > maxX(f, -27) * 1.15, 'ramiona męskie szersze');
+  assert.ok(maxX(m, -19) > maxX(f, -19) * 1.15, 'talia kobieca węższa');
+  assert.ok(maxX(f, -12) > maxX(f, -19) * 1.2, 'biodra szersze od talii u kobiety');
+});

@@ -85,6 +85,8 @@ function newGame(){const sc=SCEN[scenario]||SCEN.default;state=createState({cols
   facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
   preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
 const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół
+// stopy postaci stoją tak, by środek kręgu (2 px pod stopami) wypadał dokładnie w środku kafla
+const FEET=-2;
 const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:'#e8e8e8'};
 
 const bg=document.createElement('canvas');
@@ -235,10 +237,10 @@ function frame(now){
   for(const cl of state.clouds){const c=grid.center(cl.x,cl.y);items.push({d:cl.x+cl.y+.9,f:()=>ashCloud(g,c[0],c[1]+6,1.1,cl.x*7+cl.y)})}
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
   for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
-    items.push({d:v.gx+v.gy+.5,f:()=>drawCharacter(g,v.x+sh,v.y+8,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring:u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)'})});
-    overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#4ad04a':'#e04848';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
+    items.push({d:v.gx+v.gy+.5,f:()=>drawCharacter(g,v.x+sh,v.y+FEET,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring:u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)'})});
+    overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80+FEET-8;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#4ad04a':'#e04848';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
       if(u.id===cur.id&&!busy&&!state.result){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
-      if(u.team==='gracz')glow(g,v.x+8,v.y-50,34,'255,150,70',.55)})}
+      if(u.team==='gracz')glow(g,v.x+8,v.y-50+FEET-8,34,'255,150,70',.55)})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());
   g.setTransform(1,0,0,1,0,0);applyMood(g,cv.width,cv.height,mood);
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);overlay.forEach(f=>f());
@@ -248,6 +250,6 @@ function frame(now){
 function crossCell(x,y,col){const [t,r,b,l]=grid.corners(x,y),k=0.34,m=(a,b2)=>[a[0]+(b2[0]-a[0])*k,a[1]+(b2[1]-a[1])*k],n=(a,b2)=>[a[0]+(b2[0]-a[0])*(1-k),a[1]+(b2[1]-a[1])*(1-k)];g.strokeStyle=col;g.lineWidth=2;g.lineCap='round';g.beginPath();g.moveTo(...m(t,b));g.lineTo(...n(t,b));g.moveTo(...m(l,r));g.lineTo(...n(l,r));g.stroke()}
 function label(c,text,col){g.font='bold 15px system-ui';g.textAlign='center';const w=g.measureText(text).width+14;g.fillStyle='rgba(20,20,10,.88)';g.beginPath();g.roundRect(c[0]-w/2,c[1]-52,w,22,8);g.fill();g.fillStyle=col;g.fillText(text,c[0],c[1]-36)}
 newGame();resize();requestAnimationFrame(frame);
-window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,
+window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,ringCenter:(id)=>{const u=unitById(state,id),v=visual(u);return[v.x,v.y+FEET+2]},
   targets:(id)=>validTargets(state,'h',id),range:(id)=>rangeCells(me(),id),cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
 </script></body></html>
