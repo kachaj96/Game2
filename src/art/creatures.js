@@ -9,23 +9,30 @@ export const KOPACZE = ['kopacz', 'pancerny', 'szperacz', 'pluja', 'zerca'];
 export { DIRS };
 // zakresy sylwetki na rodzaj: skala, szerokość tułowia, wysokość tułowia, długość ramienia, głowa, liczba pazurów
 const PLAN = {
-  kopacz: { sc: [0.95, 1.1], bw: [11, 14], bh: [17, 21], arm: [13, 17], head: [7, 8.6], claws: [3, 4], hue: [18, 40], sat: [0.25, 0.4] },
-  pancerny: { sc: [1.22, 1.42], bw: [15, 18], bh: [18, 22], arm: [9, 12], head: [6, 7.2], claws: [2, 3], hue: [24, 44], sat: [0.18, 0.3] },
-  szperacz: { sc: [0.8, 0.92], bw: [8, 10], bh: [15, 18], arm: [15, 19], head: [7.4, 9], claws: [4, 5], hue: [30, 50], sat: [0.1, 0.2] },
-  pluja: { sc: [0.95, 1.06], bw: [9, 11], bh: [20, 24], arm: [9, 11], head: [6, 7.2], claws: [2, 3], hue: [6, 22], sat: [0.32, 0.45] },
-  zerca: { sc: [1, 1.12], bw: [9, 11], bh: [16, 20], arm: [13, 16], head: [7, 8.2], claws: [3, 4], hue: [320, 350], sat: [0.1, 0.2] },
+  kopacz: { sc: [0.95, 1.1], bw: [11, 14], bh: [17, 21], arm: [13, 17], head: [7, 8.6], claws: [3, 4], sh: [1.2, 1.35], wa: [0.7, 0.85] },
+  pancerny: { sc: [1.22, 1.42], bw: [15, 18], bh: [18, 22], arm: [9, 12], head: [6, 7.2], claws: [2, 3], sh: [1.0, 1.1], wa: [0.9, 1.0] },
+  szperacz: { sc: [0.8, 0.92], bw: [8, 10], bh: [15, 18], arm: [15, 19], head: [7.4, 9], claws: [4, 5], sh: [0.8, 0.95], wa: [0.55, 0.7] },
+  pluja: { sc: [0.95, 1.06], bw: [9, 11], bh: [20, 24], arm: [9, 11], head: [6, 7.2], claws: [2, 3], sh: [0.8, 0.95], wa: [1.05, 1.2] },
+  zerca: { sc: [1, 1.12], bw: [9, 11], bh: [16, 20], arm: [13, 16], head: [7, 8.2], claws: [3, 4], sh: [1.1, 1.25], wa: [0.5, 0.65] },
 };
+// odmiany barwy skóry: każdy rodzaj ma kilka, więc stwory z jednego lochu nie są do siebie podobne kolorem
+const MORPHS = {
+  glina: [[18, 34], [0.3, 0.45], [0.3, 0.38]], lupek: [[205, 232], [0.12, 0.22], [0.28, 0.36]], mech: [[72, 108], [0.22, 0.36], [0.25, 0.33]],
+  rdza: [[2, 16], [0.42, 0.56], [0.3, 0.38]], kosc: [[38, 50], [0.2, 0.3], [0.52, 0.64]], fiolet: [[262, 296], [0.16, 0.3], [0.3, 0.38]], siarka: [[46, 62], [0.4, 0.55], [0.34, 0.44]],
+};
+const KIND_MORPHS = { kopacz: ['glina', 'glina', 'lupek', 'mech', 'rdza'], pancerny: ['kosc', 'lupek', 'rdza', 'glina', 'mech'], szperacz: ['kosc', 'fiolet', 'mech', 'siarka', 'lupek'], pluja: ['rdza', 'siarka', 'glina', 'fiolet', 'rdza'], zerca: ['mech', 'fiolet', 'lupek', 'rdza', 'siarka'] };
+const BLIND_EYES = ['#e4ecf0', '#f0e8b0', '#c8e8c8', '#e8c8d8', '#d8c8f0'];
 
 export function genKopacz(seed, kind) {
   const r = rng(seed * 7919 + 31);
   kind = kind || r.pick(KOPACZE);
   const p = PLAN[kind];
-  const hue = r.range(...p.hue), sat = r.range(...p.sat), mid = hsl(hue, sat, r.range(0.3, 0.38));
+  const morph = r.pick(KIND_MORPHS[kind]), M = MORPHS[morph], hue = r.range(...M[0]), sat = r.range(...M[1]), mid = hsl(hue, sat, r.range(...M[2]));
   const sp = {
-    seed, kind, sc: r.range(...p.sc), bw: r.range(...p.bw), bh: r.range(...p.bh), arm: r.range(...p.arm), hr: r.range(...p.head), claws: r.int(...p.claws),
+    seed, kind, morph, sh: r.range(...p.sh), wa: r.range(...p.wa), sc: r.range(...p.sc), bw: r.range(...p.bw), bh: r.range(...p.bh), arm: r.range(...p.arm), hr: r.range(...p.head), claws: r.int(...p.claws),
     clawLen: r.range(5, 8.5), hunch: r.range(2, 6), spines: r.int(3, 7), scars: r.int(0, 3), horns: kind === 'zerca' ? 0 : r.int(0, 2), brow: r.range(0, 1),
-    pal: { mid, dark: shade(mid, -0.1), light: shade(mid, 0.1), belly: hsl(hue - 4, sat * 0.8, r.range(0.46, 0.56)), bone: hsl(r.range(36, 50), r.range(0.28, 0.4), r.range(0.76, 0.88)) },
-    eyeCol: kind === 'pluja' ? '#ff8a30' : kind === 'zerca' ? '#c83a3a' : '#e4ecf0',
+    pal: { mid, dark: shade(mid, -0.1), light: shade(mid, 0.1), belly: hsl(hue + r.range(-35, 35), Math.min(0.5, sat * 0.9), r.range(0.46, 0.58)), bone: hsl(r.range(34, 60), r.range(0.25, 0.42), r.range(0.74, 0.88)), acc: hsl(hue + r.range(110, 210), r.range(0.3, 0.5), r.range(0.4, 0.55)) },
+    eyeCol: kind === 'pluja' ? '#ff8a30' : kind === 'zerca' ? '#c83a3a' : r.pick(BLIND_EYES), stripes: r.int(0, 3),
   };
   if (kind === 'pancerny') sp.plates = r.int(5, 7);
   if (kind === 'szperacz') sp.feelers = r.int(2, 4);
@@ -33,6 +40,14 @@ export function genKopacz(seed, kind) {
   if (kind === 'zerca') { sp.neck = r.range(5, 9); sp.ribs = r.int(3, 4); }
   if (kind === 'kopacz') sp.ribs = r.int(2, 3);
   return sp;
+}
+
+// zamknięta gładka krzywa przez punkty (kwadratowe łuki przez środki odcinków), wypełniona i obrysowana
+function smooth(g, pts, fill, lw = 1.9) {
+  const n = pts.length, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], m0 = mid(pts[n - 1], pts[0]);
+  g.beginPath(); g.moveTo(m0[0], m0[1]);
+  for (let i = 0; i < n; i++) { const m = mid(pts[i], pts[(i + 1) % n]); g.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]); }
+  g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (lw) { g.lineWidth = lw; g.strokeStyle = '#3a2414'; g.lineJoin = 'round'; g.stroke(); }
 }
 
 export function drawKopacz(g, x, y, sp, o = {}) {
@@ -45,13 +60,14 @@ export function drawKopacz(g, x, y, sp, o = {}) {
   if (o.mirror) g.scale(-1, 1);
   g.scale(sp.sc, sp.sc);
   blob(0, 3, bw * 1.7, 5, '#000', 0.28);
-  // nogi: krótkie, z pazurkami u stóp
-  const lw = bw * 0.38;
+  // nogi: zgięte w kolanie, zwężone ku stopie, z pazurkami
   for (const sg of [-1, 1]) {
-    const lx = sg * bw * 0.55, st = sg * step * 0.3;
-    poly([[lx - lw, -10 + bob * 0.3], [lx + lw, -10 + bob * 0.3], [lx + lw * 0.9 + st, -1], [lx - lw * 0.9 + st, -1]], sg < 0 ? P.dark : P.mid, 1.6);
-    ell(lx + st, -0.6, lw * 1.25, 2.5, P.dark, 1.5);
-    for (let i = -1; i <= 1; i++) ln([[lx + st + i * lw * 0.75, 0.6], [lx + st + i * lw * 0.9, 3.2]], 1.4, P.bone);
+    const lx = sg * bw * 0.5, st = sg * step * 0.3, hip = [lx, -11 + bob * 0.3], knee = [lx + sg * 4.2 + st * 0.4, -6], foot = [lx + sg * 1.5 + st, -1.4];
+    const col = sg < 0 ? P.dark : P.mid;
+    ln([hip, knee, foot], bw * 0.62 + 2.4, '#3a2414'); ln([hip, knee, foot], bw * 0.62, col);
+    ln([[knee[0] - 1.2, knee[1] - 2.4], [knee[0] + 1.6, knee[1] - 1]], 1, P.light);
+    ell(foot[0] + sg * 0.8, foot[1] + 0.2, bw * 0.34, 2.5, P.dark, 1.5);
+    for (let i = -1; i <= 1; i++) ln([[foot[0] + sg * 0.8 + i * bw * 0.22, foot[1] + 1.4], [foot[0] + sg * 0.8 + i * bw * 0.28, foot[1] + 3.8]], 1.4, P.bone);
   }
   const head = () => {
     const hy = top + 3 + (sp.hunch * 0.4) - neck + (back ? -1 : 0), hr = sp.hr;
@@ -75,17 +91,19 @@ export function drawKopacz(g, x, y, sp, o = {}) {
     for (let i = -2; i <= 2; i++) poly([[i * hr * 0.2 - 1, my - open * 0.6], [i * hr * 0.2 + 1, my - open * 0.6], [i * hr * 0.2, my + 0.6]], P.bone, 0.7);
   };
   const body = () => {
-    ell(0, cy, bw, bh / 2, lg(-bw, top, bw, cy + bh / 2, P.light, P.dark), 1.9);
+    const sw = bw * sp.sh, ww = bw * sp.wa, bot = cy + bh / 2;
+    smooth(g, [[-sw * 0.55, top - 1.5], [0, top - 2.5], [sw * 0.55, top - 1.5], [sw, top + 3.5], [(sw + ww) / 2 + 1, cy + bh * 0.1], [ww, bot - 3], [ww * 0.55, bot + 0.5], [-ww * 0.55, bot + 0.5], [-ww, bot - 3], [-(sw + ww) / 2 - 1, cy + bh * 0.1], [-sw, top + 3.5]], lg(-sw, top, sw, bot, P.light, P.dark), 1.9);
+    for (let i = 0; i < sp.stripes; i++) { const sy = cy - bh * 0.1 + i * bh * 0.18; ln([[-ww * 0.7, sy], [0, sy + 2], [ww * 0.7, sy]], 2, P.acc); }
     if (!back) {
-      ell(0, cy + bh * 0.14, bw * 0.55, bh * 0.3, P.belly, 0); g.globalAlpha = 0.5; ell(0, cy + bh * 0.14, bw * 0.55, bh * 0.3, P.belly, 0); g.globalAlpha = 1;
-      for (let i = 0; i < (sp.ribs || 0); i++) { const ry = cy - bh * 0.2 + i * (bh * 0.2); ln([[-bw * 0.6, ry], [0, ry + 2.4], [bw * 0.6, ry]], sp.kind === 'zerca' ? 2 : 1.2, sp.kind === 'zerca' ? P.bone : P.dark); }
+      ell(0, cy + bh * 0.14, ww * 0.62, bh * 0.3, P.belly, 0);
+      for (let i = 0; i < (sp.ribs || 0); i++) { const ry = cy - bh * 0.2 + i * (bh * 0.2); ln([[-ww * 0.6, ry], [0, ry + 2.4], [ww * 0.6, ry]], sp.kind === 'zerca' ? 2 : 1.2, sp.kind === 'zerca' ? P.bone : P.dark); }
     }
     if (heavy) {
       const n = sp.plates;
       if (back) for (let i = 0; i < n; i++) { const py = top + 3 + i * ((bh - 3) / n), pw = bw * (0.95 - Math.abs(i - n * 0.4) * 0.07); ell(0, py + 3, pw, 4.2, lg(0, py, 0, py + 8, P.bone, shade(P.bone, -0.2)), 1.5); }
       else for (const s of [-1, 1]) { ell(s * bw * 0.85, top + 4, bw * 0.42, 5, P.bone, 1.6); ln([[s * bw * 0.6, top + 3], [s * bw * 1.1, top + 5]], 1, P.dark); }
     }
-    if (back) for (let i = 0; i < sp.spines; i++) { const sy = top + 2 + i * ((bh - 4) / sp.spines), w = 2.3 + (heavy ? 1 : 0); poly([[-w, sy + 3], [0, sy - 4.5 - (i % 2)], [w, sy + 3]], P.bone, 1.3); }
+    if (back) for (let i = 0; i < sp.spines; i++) { const sy = top + 2 + i * ((bh - 4) / sp.spines), w = 2.3 + (heavy ? 1 : 0); poly([[-w, sy + 3], [0, sy - 4.5 - (i % 2)], [w, sy + 3]], i % 2 ? P.bone : P.acc, 1.3); }
     if (sp.kind === 'pluja' && !back) {
       const sy = top + sp.hunch * 0.4 + sp.hr + 3, gr = g.createRadialGradient(0, sy, 0, 0, sy, sp.sac);
       gr.addColorStop(0, '#ffd070'); gr.addColorStop(0.55, '#ff7a28'); gr.addColorStop(1, '#a8300e');
@@ -94,7 +112,7 @@ export function drawKopacz(g, x, y, sp, o = {}) {
   };
   const arms = () => {
     for (const sg of [-1, 1]) {
-      const sx = sg * bw * 0.95, sy = top + 4, sw = step * sg * 0.35, hx = sg * (bw + 4.5), hy = sy + sp.arm + sw;
+      const sx = sg * bw * sp.sh * 0.92, sy = top + 4, sw = step * sg * 0.35, hx = sg * (bw * sp.sh + 4.5), hy = sy + sp.arm + sw;
       ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 6.6, '#3a2414'); ln([[sx, sy], [sx + sg * 3, (sy + hy) / 2], [hx, hy]], 4.6, sg < 0 ? P.light : P.mid);
       circ(hx, hy, 3, sg < 0 ? P.light : P.mid, 1.5);
       for (let i = 0; i < sp.claws; i++) { const a = (i / Math.max(1, sp.claws - 1) - 0.5) * 1.1 + sg * 0.15, tx = hx + Math.sin(a) * sp.clawLen, ty = hy + Math.cos(a) * sp.clawLen; ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 3.1, '#3a2414'); ln([[hx, hy], [hx + Math.sin(a) * sp.clawLen * 0.6 + sg, hy + Math.cos(a) * sp.clawLen * 0.5], [tx, ty]], 1.5, P.bone); }

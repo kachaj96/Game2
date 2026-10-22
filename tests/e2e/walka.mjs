@@ -9,7 +9,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); }
 const server = await startServer(8110);
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 860, height: 340 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 await page.goto('http://127.0.0.1:8110/www/walka.html');
@@ -66,14 +66,16 @@ assert.ok(await page.locator('#end').isEnabled());
 const btn = await page.locator('#end').boundingBox(); assert.ok(btn.height >= 48, `przycisk ${btn.height}px`);
 assert.deepEqual(errors, [], 'błędy strony');
 
-// 7. układ poziomy: plansza ma wypełniać ekran lepiej niż w pionie (porównanie zajętej szerokości i wysokości)
-const land = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
-const lp = await land.newPage(); await lp.goto('http://127.0.0.1:8110/www/walka.html'); await lp.waitForFunction(() => window.__game);
-const tl = await lp.evaluate(() => { const c = window.__game; return { a: c.cssCenter(0, 0), b: c.cssCenter(6, 6), l: c.cssCenter(0, 6), r: c.cssCenter(6, 0) }; });
-const boxL = await lp.locator('canvas#c').boundingBox();
+// 7. plansza mieści się w widoku telefonu w poziomie (z paskiem przeglądarki) i jest czytelnie duża
+const tl = await page.evaluate(() => { const c = window.__game; return { a: c.cssCenter(0, 0), b: c.cssCenter(6, 6), l: c.cssCenter(0, 6), r: c.cssCenter(6, 0) }; });
+const boxL = await page.locator('canvas#c').boundingBox();
 assert.ok(tl.l[0] > 0 && tl.r[0] < boxL.width && tl.a[1] > 0 && tl.b[1] < boxL.height, 'cała plansza mieści się w poziomie');
-assert.ok(tl.r[0] - tl.l[0] > 360 && tl.b[1] - tl.a[1] > 200, `plansza w poziomie jest czytelnie duża: ${Math.round(tl.r[0] - tl.l[0])} x ${Math.round(tl.b[1] - tl.a[1])} px`);
-const kafelek = (tl.r[0] - tl.l[0]) / 12; assert.ok(kafelek >= 28, `szerokość kafla ${Math.round(kafelek * 2)} px, min. 56`);
-await lp.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-poziomo.png') });
+assert.ok(tl.r[0] - tl.l[0] > 330 && tl.b[1] - tl.a[1] > 160, `plansza jest czytelnie duża: ${Math.round(tl.r[0] - tl.l[0])} x ${Math.round(tl.b[1] - tl.a[1])} px`);
+const kafelek = (tl.r[0] - tl.l[0]) / 12; assert.ok(kafelek >= 24, `szerokość kafla ${Math.round(kafelek * 2)} px, min. 48`);
+await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-poziomo.png') });
+// 8. w pionie jest tylko prośba o obrót
+const pc = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+const pp = await pc.newPage(); await pp.goto('http://127.0.0.1:8110/www/walka.html'); await pp.waitForFunction(() => window.__game);
+assert.equal(await pp.locator('#rotate').isVisible(), true, 'w pionie widać prośbę o obrót');
 await browser.close(); server.close();
 console.log('e2e walka: OK');

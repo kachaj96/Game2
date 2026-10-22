@@ -9,12 +9,12 @@ canvas#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;disp
 #hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;display:flex;gap:14px;pointer-events:none}
 #msg{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));max-width:42vw;color:#c6d6a6;font-size:13px;text-align:right;pointer-events:none}
 #msg:empty{display:none}
-#foe{left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 50px);display:none;min-width:150px}
+#foe{left:max(8px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));display:none;min-width:150px;pointer-events:none}
 #foe b{display:block;margin-bottom:4px}
 #foe .rs{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
 #foe .r{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px}
 #foe canvas{width:30px;height:30px}
-#card{left:50%;transform:translateX(-50%);bottom:calc(var(--s) + 34px);max-width:min(94vw,540px);display:none;font-size:14px;line-height:1.4;text-align:center}
+#card{left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 50px);width:max-content;max-width:46vw;display:none;font-size:13px;line-height:1.35;text-align:left;pointer-events:none}
 #card small{color:#a89878;display:block}
 #bar{position:absolute;left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));display:flex;align-items:center;gap:6px;background:rgba(10,14,8,.85);border-radius:18px;padding:6px 8px;touch-action:none}
 #slots{display:flex;gap:6px;min-width:calc(var(--s) * 6 + 30px)}
@@ -26,15 +26,13 @@ canvas#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;disp
 button{font-family:inherit}
 #end{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:min(170px,26vw);height:calc(var(--s) + 12px);border:0;border-radius:14px;background:#3b6a2a;color:#fff;font:700 16px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.4);touch-action:manipulation}
 #end:disabled{background:#2a3324;color:#6a7a5a;box-shadow:none}
-@media (orientation:landscape) and (min-width:600px){
   :root{--s:54px}
   #bar{left:auto;right:max(10px,env(safe-area-inset-right));transform:none;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 66px);display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"slots slots" "prev next";gap:6px;padding:8px}
   #slots{grid-area:slots;display:grid;grid-template-columns:repeat(3,var(--s));min-width:0}
   #prev{grid-area:prev;width:auto;height:40px}#next{grid-area:next;width:auto;height:40px}
   #end{width:calc(var(--s) * 3 + 12px + 16px);height:56px}
-  #card{left:max(8px,env(safe-area-inset-left));transform:none;bottom:max(10px,env(safe-area-inset-bottom));max-width:36vw;text-align:left}
-}
-@media (max-width:760px) and (orientation:portrait){#msg{top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:max(8px,env(safe-area-inset-left));right:auto;text-align:left;max-width:78vw}#foe{top:calc(max(8px,env(safe-area-inset-top)) + 100px)}#end{bottom:calc(var(--s) + 34px + 10px);width:min(150px,36vw);height:48px}}
+#rotate{display:none;position:fixed;inset:0;z-index:9;background:#0c1210;align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
+@media (orientation:portrait){#rotate{display:flex}}
 #banner{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(6,8,6,.7);font:800 44px Georgia,serif}
 #banner button{background:#b4501c;width:220px;height:58px;border:0;border-radius:14px;color:#fff;font:700 17px system-ui}
 </style></head><body><div id="app">
@@ -45,6 +43,7 @@ button{font-family:inherit}
 <div id="card" class="pill"></div>
 <div id="bar"><span id="pgi"></span><button class="pg" id="prev" aria-label="Poprzednia strona">‹</button><div id="slots"></div><button class="pg" id="next" aria-label="Następna strona">›</button></div>
 <button id="end">Koniec tury</button>
+<div id="rotate">Obróć telefon do poziomu</div>
 <div id="banner"><span id="bt"></span><button id="again">Jeszcze raz</button></div></div>
 <script type="module">
 import {IsoGrid} from '../src/grid.js';
@@ -60,7 +59,7 @@ import {applyCommand,legalMoves,ERRORS} from '../src/game/commands.js';
 import {findPath} from '../src/game/pathfinding.js';
 import {chooseCommand} from '../src/game/ai.js';
 import {CLASSES,ELEMENTS,DEV_SPELLS,findSpellDef} from '../src/game/classdata.js';
-import {castProblem,validTargets,damageRange,damageRangeVs,elementOfSpell,spellData,implemented} from '../src/game/spells.js';
+import {castProblem,validTargets,sightBlockers,damageRange,damageRangeVs,elementOfSpell,spellData,implemented} from '../src/game/spells.js';
 import {spawn} from '../src/game/bestiary.js';
 import {loadCharacter} from '../src/game/save.js';
 import {unitFromCharacter,learnSpell,toggleEquipped} from '../src/game/progression.js';
@@ -92,9 +91,8 @@ const bg=document.createElement('canvas');
 function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');
   N.ground(b,bg.width,bg.height,7,{biome:'dark'});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400),null,{biome:'dark'});
   b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawGridLines(b,grid,'rgba(255,255,255,.22)')}
-const isLand=()=>matchMedia('(orientation:landscape) and (min-width:600px)').matches;
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr));
-  const bar=$('bar').getBoundingClientRect(),land=isLand(),topPad=14*dpr,botPad=(land?14:bar.height+26)*dpr,rightPad=(land?bar.width+22:0)*dpr;
+  const bar=$('bar').getBoundingClientRect(),topPad=14*dpr,botPad=14*dpr,rightPad=(bar.width+22)*dpr;
   const availW=cv.width-rightPad,availH=cv.height-botPad-topPad,s=Math.min(availW/WORLD.w,availH/WORLD.h);
   view={s,ox:(availW-WORLD.w*s)/2,oy:topPad+(availH-WORLD.h*s)/2};renderBg()}
 addEventListener('resize',resize);
@@ -136,11 +134,10 @@ function renderFoe(){
 function renderCard(){
   const box=$('card');if(!selSpell){box.style.display='none';return}
   const h=me(),def=findSpellDef(h.classId,selSpell),d=spellData(h,selSpell).data,el=ELEMENTS[def.element],[lo,hi]=damageRange(h,d,def.element);
-  let dm=`obrażenia ${lo}-${hi}`,sub='';
+  let dm=`obrażenia ${lo}-${hi}`;
   if(preview&&preview.kind==='cast'){const t=state.units.find(q=>q.hp>0&&q.x===preview.x&&q.y===preview.y),kn=t&&state.known[t.id]?.[def.element];
-    if(kn!==undefined){const [a,b]=damageRangeVs(h,d,def.element,t);dm=`obrażenia ${a}-${b} (odporność ${kn>0?'+':''}${kn}%)`}else dm+=' (odporność nieznana)';sub='Dotknij ponownie, by rzucić'}
-  else sub='Wybierz cel na podświetlonych kaflach';
-  box.style.display='block';box.innerHTML=`<b style="color:${COL[def.element]}">${def.name}</b> <span style="color:${COL[def.element]}">(${el.name})</span> · ${d.pa} PA · zasięg ${d.min}-${d.max}${d.line?' w linii':''}${d.los?', widoczność':''}${d.cd?` · odnowienie ${d.cd}`:''}<br>${dm}${d.push?` · odpycha o ${d.push}`:''}<small>${sub}</small>`;
+    if(kn!==undefined){const [a,b]=damageRangeVs(h,d,def.element,t);dm=`obrażenia ${a}-${b} (odporność ${kn>0?'+':''}${kn}%)`}else dm+=' (odporność nieznana)';}
+  box.style.display='block';box.innerHTML=`<b style="color:${COL[def.element]}">${def.name}</b> <span style="color:${COL[def.element]}">(${el.name})</span> · ${d.pa} PA · zasięg ${d.min}-${d.max}${d.line?' w linii':''}${d.los?', widoczność':''}${d.cd?` · odnowienie ${d.cd}`:''}<br>${dm}${d.push?` · odpycha o ${d.push}`:''}`;
 }
 function hud(){const u=currentUnit(state),h=me();
   $('who').textContent=`Runda ${state.turn.round}: ${u.name}`;$('pts').textContent=`Życie ${h.hp}/${h.maxHp}   PM ${h.pm}/${h.maxPm}   PA ${h.pa}/${h.maxPa}`;
@@ -151,7 +148,7 @@ function pickSpell(id){
   if(!inf.ready&&selSpell!==id){say(inf.reason);return}
   selSpell=selSpell===id?null:id;preview=null;inspect=null;
   if(selSpell){const pi=Math.floor(spellList().findIndex(x=>x.k.id===id)/PAGE);page=pi}
-  say(selSpell?'Wybierz cel na podświetlonych kaflach.':'Wybór czaru anulowany.');hud()}
+  say(selSpell?'Wybierz cel na podświetlonych kaflach.'+(spellData(me(),selSpell).data.los?' Czerwone pola: widok zasłonięty, tam nie trafisz.':''):'Wybór czaru anulowany.');hud()}
 const pathTo=(u,c)=>{const p=findPath(gridOf(state),u,c,occupied(state,u.id));return p&&p.length<=u.pm?p:null};
 
 function act(cmd){
@@ -208,6 +205,13 @@ function visual(u){
     return{x:A[0]+(B[0]-A[0])*f,y:A[1]+(B[1]-A[1])*f,walk:(anim.t*1.5)%1,gx:a.x+(b.x-a.x)*f,gy:a.y+(b.y-a.y)*f}}
   const [x,y]=grid.center(lp.x,lp.y);return{x,y,walk:undefined,gx:lp.x,gy:lp.y};
 }
+function rangeCells(cur,id){const t=validTargets(state,cur.id,id),d=spellData(cur,id).data,ec=ELEMENTS[findSpellDef(cur.classId,id).element].color,gr=gridOf(state),sb=d.los?sightBlockers(state):null;
+  const inRange=[],hidden=[],blockers=[];
+  for(let y=0;y<7;y++)for(let x=0;x<7;x++){
+    if(d.los&&(gr.isBlocked(x,y)||sb.has(gr.key(x,y)))){blockers.push({x,y});continue}
+    const dd=Math.abs(x-cur.x)+Math.abs(y-cur.y);if(dd<d.min||dd>d.max||(d.line&&x!==cur.x&&y!==cur.y))continue;
+    (d.los&&castProblem(state,cur.id,id,{x,y})==='no_los'?hidden:inRange).push({x,y})}
+  return{t,inRange,hidden,blockers,ec}}
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -216,9 +220,11 @@ function frame(now){
   g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);g.drawImage(bg,0,0);
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
   const cur=currentUnit(state),overlay=[],mine=mineNow();
-  if(mine&&selSpell){const t=validTargets(state,cur.id,selSpell),d=spellData(cur,selSpell).data,ec=ELEMENTS[findSpellDef(cur.classId,selSpell).element].color;
-    const inRange=[];for(let y=0;y<7;y++)for(let x=0;x<7;x++){const dd=Math.abs(x-cur.x)+Math.abs(y-cur.y);if(dd>=d.min&&dd<=d.max&&(!d.line||x===cur.x||y===cur.y))inRange.push({x,y})}
-    fillCells(g,grid,inRange,ec+'22');fillCells(g,grid,t,ec+'77');for(const c of t)drawCellOutline(g,grid,c.x,c.y,ec,1.8)}
+  if(mine&&selSpell){const {t,inRange,hidden,blockers,ec}=rangeCells(cur,selSpell);
+    fillCells(g,grid,inRange,ec+'44');fillCells(g,grid,t,ec+'88');for(const c of t)drawCellOutline(g,grid,c.x,c.y,ec,1.8);
+    // pola zasłonięte (tam nie trafisz) i pola, które zasłaniają widok
+    fillCells(g,grid,hidden,'rgba(10,0,0,.58)');for(const c of hidden)crossCell(c.x,c.y,'rgba(255,100,80,.95)');
+    fillCells(g,grid,blockers,'rgba(255,60,40,.3)');for(const c of blockers)drawCellOutline(g,grid,c.x,c.y,'rgba(255,100,80,.8)',1.6)}
   else if(mine){const mv=[...legalMoves(state,cur.id).values()];fillCells(g,grid,mv,'rgba(90,150,255,.34)');for(const m of mv)drawCellOutline(g,grid,m.x,m.y,'rgba(170,210,255,.6)',1.2)}
   if(preview&&!busy){
     if(preview.kind==='move'&&preview.path){fillCells(g,grid,preview.path,'rgba(255,220,90,.42)');drawCellOutline(g,grid,preview.x,preview.y,'#ffe066',3);const c=grid.center(preview.x,preview.y);overlay.push(()=>label(c,preview.cost+' PM','#ffe066'))}
@@ -239,8 +245,9 @@ function frame(now){
   for(const f of floats){g.globalAlpha=Math.max(0,1-f.t/1.1);g.font='bold 24px system-ui';g.textAlign='center';g.lineWidth=5;g.strokeStyle='#000';g.strokeText(f.text,f.x,f.y-f.t*34);g.fillStyle=f.color;g.fillText(f.text,f.x,f.y-f.t*34);g.globalAlpha=1}
   requestAnimationFrame(frame);
 }
+function crossCell(x,y,col){const [t,r,b,l]=grid.corners(x,y),k=0.34,m=(a,b2)=>[a[0]+(b2[0]-a[0])*k,a[1]+(b2[1]-a[1])*k],n=(a,b2)=>[a[0]+(b2[0]-a[0])*(1-k),a[1]+(b2[1]-a[1])*(1-k)];g.strokeStyle=col;g.lineWidth=2;g.lineCap='round';g.beginPath();g.moveTo(...m(t,b));g.lineTo(...n(t,b));g.moveTo(...m(l,r));g.lineTo(...n(l,r));g.stroke()}
 function label(c,text,col){g.font='bold 15px system-ui';g.textAlign='center';const w=g.measureText(text).width+14;g.fillStyle='rgba(20,20,10,.88)';g.beginPath();g.roundRect(c[0]-w/2,c[1]-52,w,22,8);g.fill();g.fillStyle=col;g.fillText(text,c[0],c[1]-36)}
 newGame();resize();requestAnimationFrame(frame);
 window.__game={get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,
-  targets:(id)=>validTargets(state,'h',id),cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
+  targets:(id)=>validTargets(state,'h',id),range:(id)=>rangeCells(me(),id),cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
 </script></body></html>

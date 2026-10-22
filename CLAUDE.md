@@ -7,7 +7,7 @@ Hybryda w fazach: stały bohater i świat do eksploracji, Pogrzebana arena jako 
 - Logika gry mieszka w `src/game/`, jest deterministyczna i nie dotyka canvasa, DOM ani `Math.random()`. Zmiany stanu to komendy.
 - Żadnej funkcji zależnej od najechania myszą: dotyk jest podstawą (pierwsze dotknięcie pokazuje podgląd, drugie potwierdza).
 - Mroczny nastrój osiągamy oświetleniem i paletą (`src/art/mood.js`: `applyMood`, `glow`), nie zmianą kształtów.
-- Walka jest w poziomie, interfejs to nakładki na planszy. Zmiany układu sprawdzaj `npm run e2e` (emulacja telefonu i dotyku) i patrząc na `docs/podglad/walka*.png`.
+- Gra działa tylko w poziomie (w pionie jest prośba o obrót). Walka: interfejs to nakładki na planszy, które nie mogą przechwytywać dotknięć (pointer-events:none dla kart informacyjnych). Zmiany układu sprawdzaj `npm run e2e` (emulacja telefonu i dotyku) i patrząc na `docs/podglad/walka*.png`.
 
 - Klasy, czary, przeszłości i cechy to dane w `src/game/classdata.js` z testami spójności (np. każdy poziom czaru musi coś zmieniać). Nowa klasa = dane + wygląd w `src/art/classes.js` + testy. Klasy i wygląd zatwierdzone, liczby czarów do strojenia po walkach, patrz `docs/KLASY.md`.
 

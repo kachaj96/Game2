@@ -11,7 +11,7 @@ const server = await startServer(8112);
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const errors = [];
 const open = async (scenario) => {
-  const ctx = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ viewport: { width: 860, height: 340 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://127.0.0.1:8112/www/walka.html?scenario=${scenario}`); await page.waitForFunction(() => window.__game);
   const tapCell = async (x, y) => { const [cx, cy] = await page.evaluate(([x, y]) => window.__game.cssCenter(x, y), [x, y]); const b = await page.locator('canvas#c').boundingBox(); await page.touchscreen.tap(b.x + cx, b.y + cy); };
@@ -54,6 +54,14 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
   const { page, tapCell, S } = await open('wall');
   await page.locator('#slot-zar').tap();
   assert.deepEqual(await page.evaluate(() => window.__game.targets('zar')), [], 'ściana zasłania wroga');
+  // zasięg pokazuje też pola zasłonięte (tam nie trafisz) i to, co zasłania widok
+  const rg = await page.evaluate(() => window.__game.range('zar')); const key = (a) => a.map((c) => `${c.x},${c.y}`).sort();
+  assert.deepEqual(key(rg.blockers), ['3,4'], 'ściana oznaczona jako zasłona');
+  assert.ok(key(rg.hidden).includes('5,4') && key(rg.hidden).includes('4,4'), 'pola za ścianą oznaczone jako zasłonięte');
+  assert.ok(!key(rg.hidden).includes('1,2') && key(rg.inRange).includes('1,2'), 'pole z wolną linią widzenia normalnie w zasięgu');
+  assert.match(await page.locator('#msg').textContent(), /zasłonięty/i, 'legenda czerwonych pól');
+  const under = await page.evaluate(() => { const r = document.getElementById('card').getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).id; });
+  assert.equal(under, 'c', 'karta czaru nie przechwytuje dotknięć (pod nią jest plansza)');
   await tapCell(5, 4); assert.match(await page.locator('#msg').textContent(), /nie widzisz celu/i);
   assert.equal(await page.evaluate(() => window.__game.preview), null); assert.equal(unit(await S(), 'e1').hp, 22);
   assert.equal(unit(await S(), 'h').pa, 6, 'nieudana próba nie kosztuje PA');
@@ -72,7 +80,7 @@ const unit = (s, id) => s.units.find((u) => u.id === id);
 }
 // --- scenariusz "push": Grabarz odpycha strażnika o 2 kafle, ściana zatrzymuje go po 1 i zadaje obrażenia ---
 {
-  const ctx = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ viewport: { width: 860, height: 340 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('http://127.0.0.1:8112/www/walka.html?scenario=push&hero=grabarz'); await page.waitForFunction(() => window.__game);
   const tapCell = async (x, y) => { const [cx, cy] = await page.evaluate(([x, y]) => window.__game.cssCenter(x, y), [x, y]); const b = await page.locator('canvas#c').boundingBox(); await page.touchscreen.tap(b.x + cx, b.y + cy); };

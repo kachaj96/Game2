@@ -14,7 +14,7 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const errors = [];
 const seed = P.setLevel(P.newCharacter({ name: 'Wiera', classId: 'zalobnik', origin: 'wygnaniec', traits: [], look: { female: true, face: 3, hairStyle: 'long', hair: '#c8c8d0', skin: '#f0c49a', colors: ['#2a2438', '#e07a3a', '#ff9a4a'] } }), 10);
 assert.ok(P.validateCharacter(seed));
-const ctx = await browser.newContext({ viewport: { width: 960, height: 600 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 880, height: 360 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 await ctx.addInitScript(([k, v]) => { if (!localStorage.getItem(k)) localStorage.setItem(k, v); }, [SAVE_KEY, JSON.stringify(seed)]);
 const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text()); });
 await page.goto('http://127.0.0.1:8114/www/postac.html'); await page.waitForFunction(() => window.__postac);

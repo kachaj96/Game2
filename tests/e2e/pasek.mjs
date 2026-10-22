@@ -10,7 +10,7 @@ try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = awa
 const server = await startServer(8113);
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const errors = [];
-const ctx = await browser.newContext({ viewport: { width: 860, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 860, height: 340 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text()); });
 await page.goto('http://127.0.0.1:8113/www/walka.html?scenario=cast&spells=all'); await page.waitForFunction(() => window.__game);
 const tapCell = async (x, y) => { const [cx, cy] = await page.evaluate(([x, y]) => window.__game.cssCenter(x, y), [x, y]); const b = await page.locator('canvas#c').boundingBox(); await page.touchscreen.tap(b.x + cx, b.y + cy); };
