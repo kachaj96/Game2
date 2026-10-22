@@ -1,57 +1,64 @@
 <!doctype html><html lang="pl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Kreator postaci</title>
 <style>
-:root{--bg:#161014;--panel:#241a1c;--edge:#5a4030;--ink:#f0e6d0;--dim:#a89878;--ember:#e07a3a}
-*{box-sizing:border-box}html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 30%,#2a1c1a,#120d10);color:var(--ink);font:15px system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
-#app{display:grid;grid-template-columns:108px minmax(200px,1fr) minmax(330px,500px);gap:8px;height:100%;padding:8px;max-width:1280px;margin:0 auto}
-#rotate{display:none;position:fixed;inset:0;z-index:9;background:#120d10;color:var(--ink);align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
+:root{--bg:#120e10;--ink:#f0e6d0;--dim:#a89878;--ember:#e07a3a;--brass:#b08a3a;--edge:#3a3234;--panel:#1f1a1b}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 20%,#241c1e,#0c090a);color:var(--ink);font:15px system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button{touch-action:manipulation;font-family:inherit;color:var(--ink)}
+#app{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,440px);grid-template-rows:minmax(0,1fr) 64px;gap:6px;height:100%;padding:6px;max-width:1280px;margin:0 auto}
+#rotate{display:none;position:fixed;inset:0;z-index:9;background:#120d10;align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
 @media (orientation:portrait){#rotate{display:flex}}
-.panel{background:var(--panel);border:2px solid var(--edge);border-radius:14px;padding:8px;overflow:hidden;min-height:0}
-h2{margin:0 0 8px;font:700 13px system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-#classes{display:flex;flex-direction:column;gap:6px}
-.card{flex:1 1 0;min-height:0;overflow:hidden;border:2px solid var(--edge);border-radius:12px;background:#1a1214;color:var(--ink);padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;font:600 13px system-ui;touch-action:manipulation}
-.card canvas{flex:1 1 0;min-height:0;width:100%;object-fit:contain}
-.card span{white-space:nowrap;font-size:13px}
-.card.on{border-color:var(--ember);background:#2c1c18;box-shadow:0 0 12px rgba(224,122,58,.35)}
-#stage{position:relative;display:flex;flex-direction:column;padding:0;overflow:hidden}
-#view{flex:1;min-height:0;width:100%;display:block}
-#rot{position:absolute;left:0;right:0;bottom:56px;display:flex;justify-content:center;gap:12px}
-#name{display:flex;gap:8px;padding:6px}
-#name input{flex:1;min-width:0;height:42px;border-radius:10px;border:2px solid var(--edge);background:#120c0e;color:var(--ink);font:600 17px system-ui;padding:0 12px;text-align:center}
-button{touch-action:manipulation;font-family:inherit}
-.btn{min-width:42px;height:42px;border-radius:10px;border:2px solid var(--edge);background:#2c2022;color:var(--ink);font:700 15px system-ui;padding:0 12px}
-.btn.on{border-color:var(--ember);background:#4a2a1c}
-.btn.go{background:#b4501c;border-color:#e07a3a;font-size:17px;height:46px;width:100%}
+.fr{background:var(--panel);border:10px solid #2c2628;border-image:var(--f-panel) 16 fill/10px stretch;min-height:0;min-width:0;position:relative}
+#stage{grid-column:1;grid-row:1;overflow:hidden;padding:0}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cname{position:absolute;left:8px;top:6px;max-width:62%;pointer-events:none;text-shadow:0 2px 4px #000}
+#cname b{display:block;font:700 21px Georgia,serif;letter-spacing:.03em}#cname small{display:block;color:var(--dim);font-size:12px;line-height:1.3}
+#left,#right{position:absolute;top:50%;margin-top:-23px}#left{left:6px}#right{right:6px}
+#walk{position:absolute;right:6px;bottom:6px}
+#opts{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:6px;padding:0}
+#bottom{grid-column:1/-1;grid-row:2;display:flex;align-items:center;gap:8px;min-width:0}
+#classes{display:flex;gap:6px;flex:none}
+.med{width:50px;height:50px;border-radius:50%;padding:0;border:3px solid #4a4244;background:#1a1516;overflow:hidden;position:relative;flex:none}
+.med canvas{width:100%;height:100%;display:block}
+.med.on{border-color:var(--brass);box-shadow:0 0 0 2px #0b0909,0 0 12px rgba(224,180,74,.55)}
+.med.locked{opacity:.55}
+#nm{flex:1;min-width:110px;height:44px;border:2px solid #4a4244;border-radius:8px;background:#0f0b0c;color:var(--ink);font:600 17px system-ui;padding:0 10px;text-align:center}
+.btn{min-width:42px;height:42px;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 15px system-ui;padding:0 8px;display:inline-flex;align-items:center;justify-content:center}
+.btn.on{border-image-source:var(--f-on)}
+.btn.go{height:46px;padding:0 14px;font-size:16px;flex:none;border-image-source:var(--f-on);color:#fff}
+#tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;flex:none;padding:6px 6px 0}
+.tab{height:40px;min-width:0;border:6px solid transparent;border-image:var(--f-btn) 16 fill/6px stretch;background:#2a2425;color:var(--dim);font:700 12.5px system-ui;padding:0}
+.tab.on{border-image-source:var(--f-on);color:var(--ink)}
+#body{flex:1 1 0;min-height:0;overflow:auto;padding:4px 8px 6px}
+h2{margin:0 0 6px;font:700 12px system-ui;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
 .row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-#opts{display:flex;flex-direction:column;gap:6px}
-#tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;flex:none}
-.tab{height:40px;min-width:0;border:2px solid var(--edge);border-radius:10px;background:#1a1214;color:var(--dim);font:700 12.5px system-ui;padding:0 1px}
-.tab.on{border-color:var(--ember);color:var(--ink);background:#2c1c18}
-#body{flex:1 1 0;min-height:0;overflow:auto;padding-right:2px}
-#foot{flex:none}
-.hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.hd h2{margin:0}
-.th{width:44px;height:44px;border:2px solid var(--edge);border-radius:10px;background:#1a1214;padding:0;overflow:hidden}
-.th.on{border-color:var(--ember)}
-.sw{width:38px;height:38px;border-radius:50%;border:3px solid var(--edge);padding:0}
+.hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.hd h2{margin:0}.hd .row{margin:0}
+.th{width:44px;height:44px;border:2px solid #4a4244;border-radius:8px;background:#1a1516;padding:0;overflow:hidden}
+.th.on{border-color:var(--brass);box-shadow:0 0 8px rgba(224,180,74,.5)}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid #4a4244;padding:0}
 .sw.on{border-color:#fff}
-.org{width:100%;text-align:left;border:2px solid var(--edge);border-radius:10px;background:#1a1214;color:var(--ink);padding:6px 10px;margin-bottom:6px}
+.org{width:100%;text-align:left;border:2px solid #4a4244;border-radius:8px;background:#1a1516;padding:6px 10px;margin-bottom:6px}
 .org .t{display:flex;justify-content:space-between;gap:8px}.org span{display:block;color:var(--dim);font-size:12px;line-height:1.3}.org i{color:var(--ember);font-style:normal;font-size:12px;white-space:nowrap}
-.org.on{border-color:var(--ember);background:#2c1c18}
-.traits{display:grid;grid-template-columns:1fr 1fr;gap:5px}.chip{height:auto;min-height:44px;text-align:left;padding:4px 8px;line-height:1.2;font-size:14px;min-width:0}.chip small{display:block;color:var(--dim);font-weight:400;font-size:11.5px}
+.org.on{border-color:var(--brass);background:#2a2116}
+.traits{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.chip{height:auto;min-height:44px;text-align:left;padding:2px 4px;line-height:1.2;font-size:14px;min-width:0;display:block}.chip small{display:block;color:var(--dim);font-weight:400;font-size:11.5px}
 #sum{font-size:14px;line-height:1.55;color:var(--dim)}#sum b{color:var(--ink)}
-#msg{color:var(--ember);min-height:16px;font-size:13px;margin:0 0 6px}
+#msg{color:var(--ember);min-height:16px;font-size:12.5px;margin:0 0 5px}
 </style></head><body><div id="app">
-<div class="panel" id="classes"><h2 style="display:none">Klasa</h2></div>
-<div class="panel" id="stage"><canvas id="view"></canvas><div id="rot"><button class="btn" id="left">⟲</button><button class="btn" id="walk">Chód</button><button class="btn" id="right">⟳</button></div>
-<div id="name"><input id="nm" maxlength="24" aria-label="Imię"><button class="btn" id="rnd">Losuj</button></div></div>
-<div class="panel" id="opts"><div id="tabs"></div><div id="body"></div><div id="foot"></div></div></div><div id="rotate">Obróć telefon do poziomu</div>
+<div class="fr" id="stage"><canvas id="view"></canvas>
+<div id="cname"><b id="cn"></b><small id="cr"></small></div>
+<button class="btn" id="left" aria-label="Obróć w lewo">‹</button><button class="btn" id="right" aria-label="Obróć w prawo">›</button><button class="btn" id="walk">Chód</button></div>
+<div class="fr" id="opts"><div id="tabs"></div><div id="body"></div></div>
+<div id="bottom"><div id="classes"></div><input id="nm" maxlength="24" aria-label="Imię"><button class="btn" id="rnd">Losuj</button><button class="btn go" id="go">Zejdź do areny</button></div></div>
+<div id="rotate">Obróć telefon do poziomu</div>
 <script type="module">
-import {heroSpec,CLASS_IDS,CLASS_LOOKS,SKIN_TONES,HAIR_COLORS,HAIR_NAMES,facesFor,HAIR_BY_GENDER,SWATCHES,COLOR_SLOTS,randomHeroOpts,randomName} from '../src/art/classes.js';
+import {heroSpec,CLASS_IDS,CLASS_SLOTS,CLASS_LOOKS,SKIN_TONES,HAIR_COLORS,HAIR_NAMES,facesFor,HAIR_BY_GENDER,SWATCHES,COLOR_SLOTS,randomHeroOpts,randomName} from '../src/art/classes.js';
 import {drawCharacter,DIRS} from '../src/art/characters.js';
 import {CLASSES,ORIGINS,TRAITS,MAX_TRAITS,startStats} from '../src/game/classdata.js';
 import {glow} from '../src/art/mood.js';
+import {installFrames,drawLock} from '../src/art/ui.js';
 import {newCharacter} from '../src/game/progression.js';
 import {saveCharacter} from '../src/game/save.js';
+installFrames();
 const $=id=>document.getElementById(id),el=(t,a={},k=[])=>{const e=document.createElement(t);Object.assign(e,a);k.forEach(c=>e.append(c));return e};
 const ORDER=['SE','SW','NW','NE'];
 const TABS=[['twarz','Twarz'],['wlosy','Włosy'],['stroj','Strój'],['org','Historia'],['cechy','Cechy'],['gotowe','Gotowe']];
@@ -60,21 +67,28 @@ const st={classId:'grabarz',female:false,face:1,hairStyle:'short',hair:HAIR_COLO
 const spec=(over={})=>heroSpec(st.classId,{...st,seed:st.heroSeed,...over});
 const dirOpt=()=>DIRS[ORDER[st.dir]];
 
-function thumb(cv,sp,K0=2.9){const K=K0*cv.width/58;const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.fillStyle='#241a1c';g.fillRect(0,0,cv.width,cv.height);
+function thumb(cv,sp,K0=2.9){const K=K0*cv.width/58;const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.fillStyle='#1a1516';g.fillRect(0,0,cv.width,cv.height);
   drawCharacter(g,cv.width/2,cv.height*0.52+35*sp.sc*K,{...sp,sc:sp.sc*K,hat:null},{...DIRS.SE})}
-function portrait(cv,id){const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);const sp=heroSpec(id,{face:1,colors:CLASS_LOOKS[id].colors});drawCharacter(g,cv.width/2,cv.height-6,{...sp,sc:sp.sc*0.93},{...DIRS.SE})}
+// medalion klasy: popiersie na tle w kolorze klasy; zablokowany slot to kłódka
+function medal(cv,slot){const g=cv.getContext('2d'),W=cv.width;g.clearRect(0,0,W,W);
+  const gr=g.createRadialGradient(W/2,W*.4,4,W/2,W/2,W*.7);
+  if(slot.locked){gr.addColorStop(0,'#2a2426');gr.addColorStop(1,'#151112');g.fillStyle=gr;g.fillRect(0,0,W,W);drawLock(g,W/2,W/2,W*.42);return}
+  const L=CLASS_LOOKS[slot.id];gr.addColorStop(0,L.colors[1]+'88');gr.addColorStop(1,'#151112');g.fillStyle=gr;g.fillRect(0,0,W,W);
+  const sp=heroSpec(slot.id,{face:1,colors:L.colors});drawCharacter(g,W/2,W*1.02,{...sp,sc:sp.sc*W/58},{...DIRS.SE})}
+function thumbBtn(id,on,fn,over,title){const cv=el('canvas',{width:88,height:88});cv.style.cssText='width:100%;height:100%;display:block';const b=el('button',{className:'th'+(on?' on':''),id,title},[cv]);b.onclick=fn;thumb(cv,spec(over));return b}
+
 function build(){
-  const cl=$('classes');cl.querySelectorAll('.card').forEach(n=>n.remove());
-  for(const id of CLASS_IDS){const c=CLASSES[id],cv=el('canvas',{width:70,height:86});const b=el('button',{className:'card'+(st.classId===id?' on':''),id:'cls-'+id},[cv,el('span',{textContent:c.name})]);
-    b.onclick=()=>{st.classId=id;st.colors=[...CLASS_LOOKS[id].colors];render()};cl.append(b);portrait(cv,id)}
+  const cl=$('classes');cl.innerHTML='';
+  for(const sl of CLASS_SLOTS){const cv=el('canvas',{width:100,height:100}),b=el('button',{className:'med'+(sl.locked?' locked':'')+(st.classId===sl.id?' on':''),id:'cls-'+sl.id,title:sl.locked?'Wkrótce':CLASSES[sl.id].name},[cv]);
+    if(sl.locked)b.setAttribute('aria-disabled','true');else b.onclick=()=>{st.classId=sl.id;st.colors=[...CLASS_LOOKS[sl.id].colors];render()};cl.append(b);medal(cv,sl)}
+  $('cn').textContent=CLASSES[st.classId].name;$('cr').textContent=CLASS_LOOKS[st.classId].note;
   const tb=$('tabs');tb.innerHTML='';
   for(const [id,t] of TABS){const b=el('button',{className:'tab'+(st.tab===id?' on':''),textContent:t,id:'tab-'+id});b.onclick=()=>{st.tab=id;st.saved=undefined;render()};tb.append(b)}
   const o=$('body'),keep=st._tab===st.tab?o.scrollTop:0;st._tab=st.tab;o.innerHTML='';
   const sec=(t,k)=>{o.append(el('h2',{textContent:t}));const r=el('div',{className:'row'},k);o.append(r);return r};
-  const thumbBtn=(id,on,fn,over,title)=>{const cv=el('canvas',{width:88,height:88});cv.style.cssText='width:100%;height:100%;display:block';const b=el('button',{className:'th'+(on?' on':''),id,title},[cv]);b.onclick=fn;thumb(cv,spec(over));return b};
   if(st.tab==='twarz'){
     const hd=el('div',{className:'hd'},[el('h2',{textContent:'Płeć'})]);
-    const gb=el('div',{className:'row'});gb.style.margin='0';[['♂',false],['♀',true]].forEach(([t,v])=>{const b=el('button',{className:'btn'+(st.female===v?' on':''),textContent:t,id:v?'female':'male'});b.onclick=()=>{st.female=v;const hs=HAIR_BY_GENDER[v?'f':'m'];if(!hs.includes(st.hairStyle))st.hairStyle=hs[0];if(v)st.beard=null;render()};gb.append(b)});hd.append(gb);o.append(hd);
+    const gb=el('div',{className:'row'});[['♂',false],['♀',true]].forEach(([t,v])=>{const b=el('button',{className:'btn'+(st.female===v?' on':''),textContent:t,id:v?'female':'male'});b.onclick=()=>{st.female=v;const hs=HAIR_BY_GENDER[v?'f':'m'];if(!hs.includes(st.hairStyle))st.hairStyle=hs[0];if(v)st.beard=null;render()};gb.append(b)});hd.append(gb);o.append(hd);
     sec('Głowa',facesFor(st.female).map((_,i)=>thumbBtn('face-'+i,st.face===i,()=>{st.face=i;render()},{face:i})));
     sec('Karnacja',SKIN_TONES.map((c,i)=>{const b=el('button',{className:'sw'+(st.skin===c?' on':''),id:'sk-'+i});b.style.background=c;b.onclick=()=>{st.skin=c;render()};return b}));
   }
@@ -90,7 +104,7 @@ function build(){
     ORIGINS.forEach((x,i)=>{const b=el('button',{className:'org'+(st.origin===i?' on':''),id:'org-'+i},[el('div',{className:'t'},[el('b',{textContent:x.name}),el('i',{textContent:x.bonusText})]),el('span',{textContent:x.story})]);b.onclick=()=>{st.origin=i;render()};o.append(b)});
   }
   if(st.tab==='cechy'){
-    o.append(el('h2',{textContent:`Wybierz ${MAX_TRAITS}: każda ma plus i skazę`}));o.append(el('div',{id:'msg'}));
+    o.append(el('div',{id:'msg',textContent:`Wybierz ${MAX_TRAITS} cechy: każda ma plus i skazę.`}));
     const tr=el('div',{className:'traits'});TRAITS.forEach(t=>{const on=st.traits.includes(t.id);const fmt=d=>Object.entries(d).map(([k,v])=>`${v>0?'+':''}${v} ${({hp:'życia',initiative:'inicjatywy',earth:'mocy Ziemi',fire:'mocy Ognia',water:'mocy Wody',air:'mocy Powietrza',resistAll:'odporności'})[k]}`).join(', ');
       const b=el('button',{className:'btn chip'+(on?' on':''),id:'tr-'+t.id},[document.createTextNode(t.name),el('small',{textContent:`${fmt(t.plus)}; ${fmt(t.minus)}`})]);
       b.onclick=()=>{if(on)st.traits=st.traits.filter(x=>x!==t.id);else if(st.traits.length>=MAX_TRAITS){$('msg').textContent=`Maksymalnie ${MAX_TRAITS} cechy. Odznacz jedną.`;return}else st.traits=[...st.traits,t.id];render()};tr.append(b)});o.append(tr);
@@ -101,24 +115,34 @@ function build(){
       +(st.saved===true?'<br><b style="color:var(--ember)">Bohater zapisany.</b> <a href="postac.html" style="color:#ffb070">Karta postaci</a> · <a href="walka.html" style="color:#ffb070">Do walki</a>':st.saved===false?'<br><b style="color:#e08a6a">Nie udało się zapisać postaci (przeglądarka blokuje pamięć).</b>':'');
     o.append(sm);
   }
-  const ft=$('foot');ft.innerHTML='';const go=el('button',{className:'btn go',textContent:'Zejdź do areny',id:'go'});
-  go.onclick=()=>{const s=stats();window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};const look={female:st.female,skin:st.skin,hair:st.hair,hairStyle:st.hairStyle,beard:st.beard,face:st.face,colors:[...st.colors]},ch=newCharacter({name:st.name||'Bezimienny',classId:st.classId,origin:ORIGINS[st.origin].id,traits:st.traits,look}),ok=saveCharacter(ch);window.__saved=ok;st.saved=ok;st.tab='gotowe';render();console.log(JSON.stringify(window.__hero))};ft.append(go);
   o.scrollTop=keep;
 }
+$('go').onclick=()=>{const s=stats();window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};const look={female:st.female,skin:st.skin,hair:st.hair,hairStyle:st.hairStyle,beard:st.beard,face:st.face,colors:[...st.colors]},ch=newCharacter({name:st.name||'Bezimienny',classId:st.classId,origin:ORIGINS[st.origin].id,traits:st.traits,look}),ok=saveCharacter(ch);window.__saved=ok;st.saved=ok;st.tab='gotowe';render();console.log(JSON.stringify(window.__hero))};
 function render(){build();$('nm').value=st.name}
 $('nm').oninput=e=>{st.name=e.target.value;const b=$('sum')&&$('sum').querySelector('b');if(b)b.textContent=st.name||'Bezimienny'};
-$('rnd').onclick=()=>{st.nameSeed++;st.heroSeed++;const r=randomHeroOpts(st.nameSeed);Object.assign(st,{female:r.female,skin:r.skin,hair:r.hair,hairStyle:(HAIR_BY_GENDER[r.female?'f':'m']).includes(r.hairStyle)?r.hairStyle:HAIR_BY_GENDER[r.female?'f':'m'][0],beard:null,face:r.face,colors:r.colors,name:randomName(st.nameSeed)});render()};
+$('rnd').onclick=()=>{st.nameSeed++;st.heroSeed++;const r=randomHeroOpts(st.nameSeed),hs=HAIR_BY_GENDER[r.female?'f':'m'];Object.assign(st,{female:r.female,skin:r.skin,hair:r.hair,hairStyle:hs.includes(r.hairStyle)?r.hairStyle:hs[0],beard:null,face:r.face,colors:r.colors,name:randomName(st.nameSeed)});render()};
 $('left').onclick=()=>{st.dir=(st.dir+3)%4};$('right').onclick=()=>{st.dir=(st.dir+1)%4};
 $('walk').onclick=()=>{st.walk=!st.walk;$('walk').classList.toggle('on',st.walk)};
 const cv=$('view'),g=cv.getContext('2d');
 function fit(){const r=cv.getBoundingClientRect(),d=Math.min(2,devicePixelRatio||1);cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d)}
 addEventListener('resize',fit);
-function frame(now){const W=cv.width,H=cv.height;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);
-  const grad=g.createRadialGradient(W/2,H*.55,10,W/2,H*.55,Math.max(W,H)*.6);grad.addColorStop(0,'#3a2a26');grad.addColorStop(1,'#140e10');g.fillStyle=grad;g.fillRect(0,0,W,H);
-  const sp=spec(),sc=Math.min(H*.6/90,W*.55/46),cx=W/2,fy=H*.78;
-  g.fillStyle='rgba(0,0,0,.4)';g.beginPath();g.ellipse(cx,fy+4,sc*16,sc*5,0,0,7);g.fill();
-  drawCharacter(g,cx,fy,{...sp,sc:sp.sc*sc/1.0},{...dirOpt(),t:st.walk?(now/700)%1:undefined});
-  requestAnimationFrame(frame)}
+// scena: łuk areny z pochodniami, podest z żelaza i kości, poświata w kolorze klasy
+function scene(W,H,now){
+  g.fillStyle='#0d0a0b';g.fillRect(0,0,W,H);
+  const col=CLASS_LOOKS[st.classId].colors[1],cx=W/2,fy=H*.82,rx=Math.min(W*.3,H*.5);
+  g.fillStyle='#17110f';g.beginPath();g.moveTo(cx-rx,fy);g.lineTo(cx-rx,H*.3);g.arc(cx,H*.3,rx,Math.PI,0);g.lineTo(cx+rx,fy);g.closePath();g.fill();
+  g.lineWidth=Math.max(3,H*.016);g.strokeStyle='#3a3234';g.stroke();g.lineWidth=1.5;g.strokeStyle='#d8ccb033';g.stroke();
+  for(let i=0;i<9;i++){const a=Math.PI+i/8*Math.PI;g.beginPath();g.moveTo(cx+Math.cos(a)*rx*.96,H*.3+Math.sin(a)*rx*.96);g.lineTo(cx+Math.cos(a)*rx*1.1,H*.3+Math.sin(a)*rx*1.1);g.lineWidth=2;g.strokeStyle='#4a4244';g.stroke()}
+  glow(g,cx,H*.55,H*.55,col.replace('#','').match(/../g).map(h=>parseInt(h,16)).join(','),.34);
+  for(const s of [-1,1]){const tx=cx+s*(rx+W*.08),ty=H*.5,f=Math.sin(now/130+s)*2;g.fillStyle='#3a3234';g.fillRect(tx-2,ty,4,H*.22);glow(g,tx,ty-4,H*.2+f*3,'255,150,60',.55);g.fillStyle='#ffb040';g.beginPath();g.ellipse(tx,ty-5,4,7+f,0,0,7);g.fill()}
+  g.fillStyle='#14100f';g.fillRect(0,fy-4,W,H-fy+4);
+  const sp=spec(),sc=Math.min(H*.62/90,W*.5/46);
+  g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.ellipse(cx,fy+4,sc*22,sc*7,0,0,7);g.fill();
+  g.beginPath();g.ellipse(cx,fy+2,sc*20,sc*6.2,0,0,7);g.fillStyle='#2c2628';g.fill();g.lineWidth=2;g.strokeStyle='#d8ccb0';g.stroke();
+  g.beginPath();g.ellipse(cx,fy+2,sc*15,sc*4.4,0,0,7);g.lineWidth=1.2;g.strokeStyle=col;g.stroke();
+  drawCharacter(g,cx,fy,{...sp,sc:sp.sc*sc},{...dirOpt(),t:st.walk?(now/700)%1:undefined});
+}
+function frame(now){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);scene(cv.width,cv.height,now);requestAnimationFrame(frame)}
 fit();render();requestAnimationFrame(frame);
 window.__kreator={get state(){return st},get hero(){return window.__hero||null},spec};
 </script></body></html>

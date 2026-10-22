@@ -4,6 +4,7 @@ import { rng } from '../../src/art/rng.js';
 import { genBuilding, drawBuilding, KINDS } from '../../src/art/buildings.js';
 import { genCharacter, drawCharacter, ROLES, DIRS } from '../../src/art/characters.js';
 import { genKopacz, drawKopacz, KOPACZE } from '../../src/art/creatures.js';
+import { drawPlate, drawLock } from '../../src/art/ui.js';
 import * as N from '../../src/art/nature.js';
 import { PROPS } from '../../src/art/props.js';
 import { applyMood, glow, MOODS } from '../../src/art/mood.js';
@@ -94,4 +95,12 @@ test('Kopacze: każdy rodzaj, 4 kierunki i klatki chodu rysują się bez błęd�
     const g = mockCtx(); drawKopacz(g, 100, 100, genKopacz(s * 5, k), { ...d, t, ring: s % 2 ? 'rgb(220,60,50)' : undefined });
     assert.ok(g.__state.calls > 40); clean(g, `${k}#${s}`);
   }
+});
+
+test('oprawa interfejsu: ramki i kłódka rysują się bez błędów, rodzaje różnią się wyglądem', () => {
+  const rec = (kind) => { const out = []; const g = new Proxy({}, { get: (t, p) => (p in t ? t[p] : p === 'createLinearGradient' ? () => ({ addColorStop(o, c) { out.push(c); } }) : (...a) => { out.push(`${String(p)}:${a.join(',')}`); }), set: (t, p, v) => { if (p === 'strokeStyle' || p === 'fillStyle') out.push(String(v)); t[p] = v; return true; } }); drawPlate(g, 48, kind); return JSON.stringify(out); };
+  assert.equal(rec('panel'), rec('panel'));
+  assert.equal(new Set(['panel', 'btn', 'on'].map(rec)).size, 3);
+  for (const kind of ['panel', 'btn', 'on']) { const g = mockCtx(); drawPlate(g, 48, kind); assert.ok(g.__state.calls > 20); clean(g, kind); }
+  const g = mockCtx(); drawLock(g, 20, 20, 24); clean(g, 'kłódka');
 });

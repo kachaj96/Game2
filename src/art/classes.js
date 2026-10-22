@@ -51,6 +51,9 @@ export const CLASS_LOOKS = {
   },
 };
 export const CLASS_IDS = Object.keys(CLASS_LOOKS);
+// Rząd klas w kreatorze jak w Dofusie: gotowe klasy, potem zarezerwowane sloty na kolejne (zablokowane do czasu dodania).
+export const CLASS_SLOT_COUNT = 8;
+export const CLASS_SLOTS = [...CLASS_IDS.map((id) => ({ id, locked: false })), ...Array.from({ length: CLASS_SLOT_COUNT - CLASS_IDS.length }, (_, i) => ({ id: `wkrotce${i + 1}`, locked: true }))];
 
 export function heroSpec(classId, o = {}) {
   const L = CLASS_LOOKS[classId]; if (!L) throw new Error(`Nieznana klasa: ${classId}`);

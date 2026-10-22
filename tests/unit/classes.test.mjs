@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BASE, CLASSES, CLASS_LIST, MAX_SPELL_LEVEL, spellAt, spellUpgradeCost } from '../../src/game/classdata.js';
-import { heroSpec, randomHeroOpts, randomName, CLASS_IDS, CLASS_LOOKS, FACES, HAIR_STYLES, SWATCHES, SKIN_TONES } from '../../src/art/classes.js';
+import { CLASS_SLOTS, CLASS_SLOT_COUNT, heroSpec, randomHeroOpts, randomName, CLASS_IDS, CLASS_LOOKS, FACES, HAIR_STYLES, SWATCHES, SKIN_TONES } from '../../src/art/classes.js';
 import { drawCharacter, DIRS } from '../../src/art/characters.js';
 import { mockCtx } from './mockctx.mjs';
 
@@ -152,4 +152,11 @@ test('sylwetka: kobieta ma węższe ramiona i talię, mężczyzna szersze ramion
   assert.ok(maxX(m, -27) > maxX(f, -27) * 1.15, 'ramiona męskie szersze');
   assert.ok(maxX(m, -19) > maxX(f, -19) * 1.15, 'talia kobieca węższa');
   assert.ok(maxX(f, -12) > maxX(f, -19) * 1.2, 'biodra szersze od talii u kobiety');
+});
+
+test('sloty klas: pierwsze to gotowe klasy, reszta zarezerwowana, razem tyle co w rzędzie kreatora', () => {
+  assert.equal(CLASS_SLOTS.length, CLASS_SLOT_COUNT);
+  assert.deepEqual(CLASS_SLOTS.filter((s) => !s.locked).map((s) => s.id), CLASS_IDS);
+  assert.ok(CLASS_SLOTS.slice(CLASS_IDS.length).every((s) => s.locked && !CLASS_LOOKS[s.id]), 'zablokowane sloty nie mają jeszcze klasy');
+  assert.equal(new Set(CLASS_SLOTS.map((s) => s.id)).size, CLASS_SLOT_COUNT);
 });

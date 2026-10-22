@@ -1,6 +1,7 @@
 # Plan: interfejs w klimacie Dofusa (do akceptacji)
 
-Status: **czeka na akceptację**. Zrobione już: twarze i różnice płci w postaciach, środek kafla w walce. Poniżej to, co zostało.
+Status: **zatwierdzony**. Decyzje autora: kreator bliżej Dofusa 1:1 (rząd klas na dole, sloty na kolejne klasy), kolejka tur w lewym górnym rogu, ramki mroczne (kute żelazo i kość z mosiężnym akcentem), kolejna rodzina wrogów to owady i pajęczaki.
+Zrobione: twarze i różnice płci, środek kafla, oprawa `src/art/ui.js`, kreator ze sceną i rzędem 8 slotów klas (3 gotowe, 5 zablokowanych), ramki w walce, kolejka tur. Zostaje: strzałki ‹ › przy częściach wyglądu i interfejs wyglądu dla nie-humanoidów.
 
 ## Wnioski z uwag
 - Kreator to teraz zakładki z przyciskami. Dofus to **duża postać na scenie**, klasy jako **duże portrety/emblematy**, wybór części przez **strzałki** i **palety kolorów**, ozdobna ramka. Brakuje nam nastroju i "wow" przy pierwszym uruchomieniu.
