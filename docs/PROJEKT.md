@@ -24,6 +24,19 @@ Dokument żyje. Każda decyzja ma datę i powód, żeby dało się ją później
 
 **Szkic fabuły: Pogrzebana arena.** Pod ruinami miasta leży arena, na której pokonani wracają jako przeciwnicy. Bohater schodzi coraz głębiej, by dowiedzieć się, kto prowadzi turniej i czemu nikt z niego nie wrócił. Pozorna śmierć i kolejne runy mają w świecie sens: każdy powrót to kolejne zejście. Tekst gry nie zdradza zwrotów fabuły z góry, odkrywają się wraz z postępem.
 
+## Decyzje, runda 3 (22.10.2026)
+
+| Pytanie | Decyzja | Konsekwencja |
+|---|---|---|
+| Klasy na starcie | Wojownik, Łowca, Mag | Trzy zestawy czarów do zaprojektowania. Role istnieją już w generatorze postaci. Dalsze klasy (np. nekromanta, pasujący do fabuły) jako odblokowania |
+| Co zostaje po porażce | Odblokowane klasy i czary, waluta na stałe ulepszenia, start od głębszego piętra | Meta-postęp zapisywany lokalnie, osobno od stanu runu. Zob. napięcie niżej |
+| Długość runu | Krótki: 5 do 6 aren, ok. 15 minut | Mało aren, więc każda musi być wyrazista. Mniej treści do wytworzenia na start |
+| Współpraca | Przez internet z kodem pokoju (docelowo, nie teraz) | Potrzebny mały serwer pośredniczący. Każdy gracz ma swojego bohatera, więc "jeden bohater" zostaje. Logika deterministyczna jest warunkiem, serwer dopiero na końcu |
+
+**Napięcie 1: start od głębszego piętra kontra run 5 do 6 aren.** Przy tak krótkim runie pominięcie kilku aren usuwa większość rozgrywki. Propozycja do zatwierdzenia: skrót tylko po pokonaniu bossa danego piętra i tylko do połowy runu, a nie na dowolną głębokość.
+
+**Napięcie 2: waluta na stałe ulepszenia.** Przy krótkich runach łatwo o grind, w którym liczy się liczba podejść, nie umiejętność. Do rozstrzygnięcia: ulepszenia dają szerokość (więcej opcji), a nie siłę (więcej obrażeń).
+
 ## Odkrycia z prototypu walki (22.10.2026)
 
 - **Izometria jest szeroka, więc telefon w pionie marnuje ponad połowę ekranu.** Walka powinna być w poziomie, interfejs jako nakładki na planszy, nie paski. W pionie zostają menu. Plansza 7x7 w poziomie ma kafel ok. 62 px szerokości, co jest granicą wygody dla dotyku.
@@ -45,7 +58,7 @@ Dokument żyje. Każda decyzja ma datę i powód, żeby dało się ją później
 
 ## Otwarte pytania
 
-- Klasy startowe: ile, jak się różnią (propozycja do omówienia: mag, wojownik, łowca, co pasuje do ról w generatorze postaci).
-- Co dokładnie zostaje po porażce: odblokowania klas i czarów, waluta, ulepszenia stałe?
-- Współpraca w jednej sieci: odpowiedź użytkownika urwała się na słowie "albo", do dokończenia.
+- Postacie: użytkownik chce dopisać własne uwagi po serii odpowiedzi (kreator, tożsamość bohatera, różnice między klasami). Czekamy na to przed projektowaniem czarów.
+- Czary klas Wojownik, Łowca, Mag: koszt PA, zasięg, odnowienie, efekt. Do zaprojektowania po uwagach o postaciach.
+- Dwa napięcia z rundy 3 (skrót od głębszego piętra, waluta na ulepszenia).
 - Fabuła: kim jest bohater, kto prowadzi turniej, czemu bohater wraca po śmierci.
