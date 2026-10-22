@@ -47,6 +47,10 @@ assert.equal(hero.name, 'Wiera'); assert.equal(hero.classId, 'zalobnik'); assert
 assert.deepEqual([hero.stats.pa, hero.stats.pm], [6, 3]);
 assert.equal(hero.stats.hp, 38 - 4); assert.equal(hero.stats.initiative, 28 + 5); assert.equal(hero.stats.air, 4); assert.equal(hero.stats.fire, -4); assert.equal(hero.stats.spellPoints, 1);
 assert.equal(hero.look.role, 'mage'); assert.equal(JSON.parse(JSON.stringify(hero)).look.hat.kind, 'veilhat', 'wygląd klasy przetrwał zapis');
+// 8b. bohater jest zapisany w pamięci przeglądarki i widoczny na karcie postaci
+assert.equal(await page.evaluate(() => window.__saved), true); const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('arena.character.v1')));
+assert.equal(stored.name, 'Wiera'); assert.equal(stored.classId, 'zalobnik'); assert.equal(stored.level, 1); assert.deepEqual(stored.traits, ['szybki', 'cichy']);
+assert.equal(typeof stored.look.female, 'boolean'); assert.equal(stored.look.colors.length, 3); assert.equal(stored.look.skin, (await page.evaluate(() => window.__kreator.state.skin)), 'wygląd z kreatora trafił do zapisu');
 // 9. przewijanie panelu nie wraca na górę po wyborze (regresja)
 await page.evaluate(() => { document.getElementById('opts').scrollTop = 400; }); const top0 = await page.evaluate(() => document.getElementById('opts').scrollTop);
 await tap('tr-szybki'); const top1 = await page.evaluate(() => document.getElementById('opts').scrollTop); assert.ok(top0 > 100 && top1 > 100, `scrollTop ${top0} -> ${top1}`);

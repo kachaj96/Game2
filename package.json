@@ -8,7 +8,7 @@
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "start": "node tools/serve.mjs",
     "shots": "node tools/shot.mjs",
-    "e2e": "node tests/e2e/walka.mjs && node tests/e2e/kreator.mjs && node tests/e2e/czary.mjs && node tests/e2e/pasek.mjs"
+    "e2e": "node tests/e2e/walka.mjs && node tests/e2e/kreator.mjs && node tests/e2e/czary.mjs && node tests/e2e/pasek.mjs && node tests/e2e/postac.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

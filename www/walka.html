@@ -62,13 +62,18 @@ import {chooseCommand} from '../src/game/ai.js';
 import {CLASSES,ELEMENTS,DEV_SPELLS,findSpellDef} from '../src/game/classdata.js';
 import {castProblem,validTargets,damageRange,damageRangeVs,elementOfSpell,spellData,implemented} from '../src/game/spells.js';
 import {spawn} from '../src/game/bestiary.js';
+import {loadCharacter} from '../src/game/save.js';
+import {unitFromCharacter,learnSpell,toggleEquipped} from '../src/game/progression.js';
 
 const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
-const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'noc',scenario=Q.get('scenario')||'default',HERO=Q.get('hero')||'zalobnik',ALL=Q.get('spells')==='all',PAGE=6;
+const Q=new URLSearchParams(location.search),mood=Q.get('mood')||'noc',scenario=Q.get('scenario')||'default',ALL=Q.get('spells')==='all',PAGE=6;
+// zapisana postać z kreatora i karty postaci (pomijana, gdy podano ?hero=)
+let SAVED=Q.get('hero')?null:loadCharacter();if(SAVED&&ALL)for(const sp of DEV_SPELLS)SAVED=toggleEquipped(learnSpell(SAVED,sp.id),sp.id);
+const HERO=SAVED?SAVED.classId:(Q.get('hero')||'zalobnik');
 const WORLD={w:540,h:356},grid=new IsoGrid(7,7,{x:WORLD.w/2,y:84});
 let view={s:1,ox:0,oy:0};
 const guard=(id,x,y,seed,arch='straznik')=>spawn(arch,id,x,y,{role:'warrior',seed});
-const hero=(x,y)=>({id:'h',team:'gracz',name:'Ty',classId:HERO,seed:3,x,y,initiative:99,...(ALL?{spells:[...CLASSES[HERO].spells,...DEV_SPELLS].map(s=>({id:s.id,level:1}))}:{})});
+const hero=(x,y)=>SAVED?unitFromCharacter(SAVED,{seed:3,x,y,initiative:99,name:SAVED.name},{allowDev:ALL}):({id:'h',team:'gracz',name:'Ty',classId:HERO,seed:3,x,y,initiative:99,...(ALL?{spells:[...CLASSES[HERO].spells,...DEV_SPELLS].map(s=>({id:s.id,level:1}))}:{})});
 const SCEN={
   default:{blocked:[{x:3,y:2},{x:4,y:2},{x:2,y:4},{x:4,y:4},{x:0,y:3}],units:[hero(1,5),guard('e1',5,1,9),guard('e2',5,3,21,'popielny')]},
   cast:{blocked:[],units:[hero(2,4),guard('e1',5,4,9)]},
@@ -77,7 +82,7 @@ const SCEN={
 };
 let state,look,facing,lastPos,preview=null,selSpell=null,anim=null,busy=false,pendingResult=null,floats=[],shake=new Map(),page=0,inspect=null,swiped=false;
 function newGame(){const sc=SCEN[scenario]||SCEN.default;state=createState({cols:7,rows:7,seed:42,blocked:sc.blocked,units:sc.units});
-  look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec(HERO,{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):genCharacter(u.seed,u.role)]));
+  look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec(HERO,SAVED?{...SAVED.look,seed:3}:{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):genCharacter(u.seed,u.role)]));
   facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
   preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say('Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
 const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół

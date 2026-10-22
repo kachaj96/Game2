@@ -6,7 +6,7 @@
 
 - Każda klasa startuje z **6 PA i 3 PM**. Ekwipunek może je zwiększać. Liczby jak w Dofusie są sprawdzone (czary po 2 do 4 PA dają dwa, trzy rzuty na turę), więc ich nie zmieniam. Różnicę względem Dofusa dają mechaniki: groby, zasady czarów i świat.
 - Każda klasa ma **3 czary po 5 poziomów**. Za każdy poziom bohatera dostajesz **1 punkt czaru**. Podniesienie czaru z poziomu n na n+1 kosztuje n punktów, czyli pełny rozwój jednego czaru to 10 punktów, wszystkich trzech 30.
-- Za każdy poziom bohatera dostajesz też **5 punktów cech**: życie, siła, zręczność, moc, wytrzymałość. Klasa ma cechę główną (Grabarz siła, Tropiciel zręczność, Żałobnik moc).
+- Za każdy poziom bohatera dostajesz też **5 punktów cech**: Witalność oraz moc Ziemi, Ognia, Wody i Powietrza (+1% obrażeń żywiołu za punkt). Klasa ma przewodni żywioł (Grabarz Ziemia, Tropiciel Powietrze, Żałobnik Ogień), ale żadna cecha nie jest zablokowana. Szczegóły w `docs/PLAN_ZYWIOLY.md`.
 - Wszystkie cztery wybrane mechaniki są w czarach: odpychanie (Zrzut Ziemi, Podmuch Popiołu), linia widzenia (Bełt, Żar, chmura popiołu), pułapki i glify (Dół, Sidła, Stos Pogrzebowy), odnowienia i limity punktów (wszystkie).
 - Klasy nie różnią się sposobem poruszania mechanicznie, tylko wizualnie: Grabarz stąpa ciężko, Tropiciel się skrada, Żałobnik płynie tuż nad ziemią.
 
@@ -22,9 +22,9 @@ Kopie groby, zanim ktoś w nie wpadnie. Walczy z bliska i ustawia przeciwników 
 
 **Wygląd i ruch.** Szeroki kapelusz, jeden wielki naramiennik, łopata-topór, latarnia u pasa. Ciężki, miarowy krok.
 
-**Start:** życie 62 (+7 za poziom), inicjatywa 15, 6 PA, 3 PM.
+**Start:** życie 62 (+7 za poziom), inicjatywa 15, 6 PA, 3 PM. Przewodni żywioł: Ziemia.
 
-**Cios Łopatą** (damage): Uderzenie z bliska. Najmocniejszy cios na PA wśród klas startowych, ale wymaga stania przy przeciwniku.
+**Cios Łopatą** (Ziemia; damage): Uderzenie z bliska. Najmocniejszy cios na PA wśród klas startowych, ale wymaga stania przy przeciwniku.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -34,7 +34,7 @@ Kopie groby, zanim ktoś w nie wpadnie. Walczy z bliska i ustawia przeciwników 
 | 4 | 3 | 1-1 | 0 | 2 | 21-26 obr. |
 | 5 | 3 | 1-1 | 0 | 2 | 24-30 obr. |
 
-**Zrzut Ziemi** (push): Odpycha cel w linii. Zderzenie z przeszkodą lub jednostką zadaje dodatkowe obrażenia za każdy niewykorzystany kafel.
+**Zrzut Ziemi** (Ziemia; push): Odpycha cel w linii. Zderzenie z przeszkodą lub jednostką zadaje dodatkowe obrażenia za każdy niewykorzystany kafel.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -44,7 +44,7 @@ Kopie groby, zanim ktoś w nie wpadnie. Walczy z bliska i ustawia przeciwników 
 | 4 | 3 | 1-4 w linii | 2 | 1 | 9-12 obr.; odpycha o 3, zderzenie 6 za kafel |
 | 5 | 3 | 1-5 w linii | 2 | 1 | 10-13 obr.; odpycha o 3, zderzenie 7 za kafel |
 
-**Dół** (trap): Kopie dół na kaflu. Kto w niego wpadnie, traci wszystkie punkty ruchu i obrywa.
+**Dół** (Ziemia; trap): Kopie dół na kaflu. Kto w niego wpadnie, traci wszystkie punkty ruchu i obrywa.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -60,9 +60,9 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 
 **Wygląd i ruch.** Kaptur, chusta na twarzy, długi płaszcz, kusza i kołczan. Skrada się pochylony.
 
-**Start:** życie 46 (+5 za poziom), inicjatywa 40, 6 PA, 3 PM.
+**Start:** życie 46 (+5 za poziom), inicjatywa 40, 6 PA, 3 PM. Przewodni żywioł: Powietrze.
 
-**Bełt** (damage, los): Strzał z kuszy. Wymaga linii widzenia.
+**Bełt** (Powietrze; damage, los): Strzał z kuszy. Wymaga linii widzenia.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -72,7 +72,7 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 | 4 | 3 | 3-8, widoczność | 0 | 2 | 17-22 obr. |
 | 5 | 3 | 3-9, widoczność | 0 | 2 | 19-25 obr. |
 
-**Sidła** (trap): Zastawia pułapkę. Kto w nią wejdzie, obrywa i traci 2 PM w następnej turze.
+**Sidła** (Ziemia; trap): Zastawia pułapkę. Kto w nią wejdzie, obrywa i traci 2 PM w następnej turze.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -82,7 +82,7 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 | 4 | 2 | 1-6 | 2 | 1 | pułapka 14-19 obr., 5 t., -2 PM, max 3 |
 | 5 | 2 | 1-6 | 1 | 1 | pułapka 16-22 obr., 6 t., -2 PM, max 4 |
 
-**Skok w Cień** (position): Odskok do tyłu w linii, ponad jednostkami. Od 4. poziomu zostawia sidła w miejscu startu.
+**Skok w Cień** (Zwykłe; position): Odskok do tyłu w linii, ponad jednostkami. Od 4. poziomu zostawia sidła w miejscu startu.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -98,9 +98,9 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 
 **Wygląd i ruch.** Wysoka sylwetka, kapelusz z woalem, szata w kolorze żałoby, laska z żarem. Płynie tuż nad ziemią.
 
-**Start:** życie 38 (+4 za poziom), inicjatywa 28, 6 PA, 3 PM.
+**Start:** życie 38 (+4 za poziom), inicjatywa 28, 6 PA, 3 PM. Przewodni żywioł: Ogień.
 
-**Żar** (damage, los): Kula żaru. Przy świeżym grobie obok celu uderza mocniej. Wymaga linii widzenia.
+**Żar** (Ogień; damage, los): Kula żaru. Przy świeżym grobie obok celu uderza mocniej. Wymaga linii widzenia.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -110,17 +110,17 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 | 4 | 3 | 2-7, widoczność | 0 | 2 | 18-23 obr.; przy grobie +40% |
 | 5 | 3 | 2-8, widoczność | 0 | 2 | 21-26 obr.; przy grobie +50% |
 
-**Podmuch Popiołu** (push, los): Odpycha cel w linii i zostawia chmurę popiołu, która zasłania linię widzenia.
+**Podmuch Popiołu** (Powietrze; push, los): Odpycha cel w linii i zostawia chmurę popiołu, która zasłania linię widzenia.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
-| 1 | 3 | 1-4 w linii | 2 | 1 | 4-6 obr.; odpycha o 3; chmura 1 t. |
-| 2 | 3 | 1-4 w linii | 2 | 1 | 5-7 obr.; odpycha o 3; chmura 1 t. |
-| 3 | 3 | 1-5 w linii | 2 | 1 | 6-8 obr.; odpycha o 3; chmura 2 t. |
-| 4 | 3 | 1-5 w linii | 2 | 1 | 7-10 obr.; odpycha o 4; chmura 2 t. |
-| 5 | 3 | 1-6 w linii | 1 | 1 | 8-12 obr.; odpycha o 4; chmura 2 t. |
+| 1 | 3 | 1-4 w linii | 2 | 1 | 4-6 obr.; odpycha o 3, zderzenie 3 za kafel; chmura 1 t. |
+| 2 | 3 | 1-4 w linii | 2 | 1 | 5-7 obr.; odpycha o 3, zderzenie 3 za kafel; chmura 1 t. |
+| 3 | 3 | 1-5 w linii | 2 | 1 | 6-8 obr.; odpycha o 3, zderzenie 4 za kafel; chmura 2 t. |
+| 4 | 3 | 1-5 w linii | 2 | 1 | 7-10 obr.; odpycha o 4, zderzenie 4 za kafel; chmura 2 t. |
+| 5 | 3 | 1-6 w linii | 1 | 1 | 8-12 obr.; odpycha o 4, zderzenie 5 za kafel; chmura 2 t. |
 
-**Stos Pogrzebowy** (glyph): Zapala stos, który wybucha po turze. Postawiony na grobie zadaje o połowę więcej i pochłania grób.
+**Stos Pogrzebowy** (Ogień; glyph): Zapala stos, który wybucha po turze. Postawiony na grobie zadaje o połowę więcej i pochłania grób.
 
 | Poziom | PA | Zasięg | Odnowienie | Limit na turę | Efekt |
 |---|---|---|---|---|---|
@@ -137,7 +137,7 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 | Dziecko Cmentarza | Wychowałeś się wśród grobów. Martwych się nie boisz, żywych coraz mniej. | +8 życia |
 | Wygnaniec z Dróg | Wypędzono cię z trzech miast. W czwartym nikt nie zadaje pytań, a arena nie pyta o przeszłość. | +6 inicjatywy |
 | Uczeń Spalonej Biblioteki | Ocalało kilka kart. Resztę znasz na pamięć, i to cię przeraża. | +1 punkt czaru na start |
-| Strażnik Zamkniętej Bramy | Pilnowałeś wejścia, aż coś stamtąd wyszło. Teraz schodzisz sprawdzić co. | +2 wytrzymałości |
+| Strażnik Zamkniętej Bramy | Pilnowałeś wejścia, aż coś stamtąd wyszło. Teraz schodzisz sprawdzić co. | +5% odporności na wszystkie żywioły |
 
 ### Cechy (wybierasz dwie)
 
@@ -145,10 +145,10 @@ Poluje w ciemności. Trzyma dystans, zastawia sidła i znika, zanim ktoś go dos
 |---|---|---|---|
 | Twardy | Znosi więcej, wolniej reaguje. | +6 życia | -3 inicjatywy |
 | Szybki | Pierwszy w kolejce, kruchszy. | +5 inicjatywy | -4 życia |
-| Zawzięty | Bije mocniej, gorzej się osłania. | +3 siły | -2 wytrzymałości |
-| Cichy | Celny i zwinny, słabszy w czarach. | +3 zręczności | -2 mocy |
-| Naznaczony | Arena zostawiła na nim ślad: moc kosztem życia. | +3 mocy | -4 życia |
-| Ostrożny | Odporny, mniej agresywny. | +2 wytrzymałości | -2 siły |
+| Zawzięty | Bije mocniej ziemią, mniej wytrzymuje. | +4 mocy Ziemi | -4 życia |
+| Cichy | Pewny w wietrze, słabszy w ogniu. | +4 mocy Powietrza | -4 mocy Ognia |
+| Naznaczony | Arena zostawiła ślad: ogień kosztem życia. | +4 mocy Ognia | -4 życia |
+| Ostrożny | Odporny na żywioły, słabszy w ziemi. | +5 odporności | -4 mocy Ziemi |
 
 ## Kreator postaci
 

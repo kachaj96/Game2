@@ -7,6 +7,7 @@ Gotowe: grafika, siatka izometryczna (`src/grid.js`), logika ruchu i tur (`src/g
 
 | Co | Gdzie | Co umie |
 |---|---|---|
+| Postęp | `src/game/progression.js`, `src/game/save.js` | poziomy, punkty cech i czarów (koszt rośnie z wartością), życie z Witalności, walidowany zapis w przeglądarce. Karta postaci: `www/postac.html` |
 | Klasy | `src/game/classdata.js`, `src/art/classes.js` | PROPOZYCJA: Grabarz, Tropiciel, Żałobnik. 3 czary po 5 poziomów, kreator postaci. Szczegóły w `docs/KLASY.md` |
 | Siatka | `src/grid.js` | `IsoGrid`: ekran <-> siatka, komórka pod kursorem, blokady, sąsiedzi, głębokość do sortowania |
 | Budynki | `src/art/buildings.js` | 6 rodzajów (chata, kamienica, karczma, sklep, wieża, gospodarstwo), losowe materiały, dachy, balkony, markizy, szyldy |

@@ -1,0 +1,86 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Karta postaci</title>
+<style>
+:root{--bg:#161014;--panel:#241a1c;--edge:#5a4030;--ink:#f0e6d0;--dim:#a89878;--ember:#e07a3a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 50% 20%,#2a1c1a,#120d10);color:var(--ink);font:15px system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+#app{max-width:1100px;margin:0 auto;padding:10px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:10px}
+@media (max-width:760px) and (orientation:portrait){#app{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:2px solid var(--edge);border-radius:14px;padding:10px}
+#head{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+#head h1{margin:0;font:700 20px Georgia,serif}#head small{color:var(--dim)}
+.btn{min-width:48px;height:48px;border-radius:10px;border:2px solid var(--edge);background:#2c2022;color:var(--ink);font:700 16px system-ui;padding:0 14px;touch-action:manipulation;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.on{border-color:var(--ember);background:#4a2a1c}.btn:disabled{opacity:.35}.btn.go{background:#b4501c;border-color:#e07a3a}
+.tabs{display:flex;gap:8px;margin-bottom:10px}.tabs .btn{flex:1}
+.pts{font:700 18px system-ui;margin:0 0 8px}.pts b{color:var(--ember);font-size:26px}
+.row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #3a2a24}
+.row canvas{width:44px;height:44px;flex:none}.row .nm{flex:1}.row .nm b{display:block}.row .nm small{color:var(--dim)}
+.val{font:700 22px system-ui;min-width:48px;text-align:center}
+.sp{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.card{border:2px solid var(--edge);border-radius:12px;padding:8px;background:#1a1214;display:flex;gap:10px}
+.card canvas{width:72px;height:72px;flex:none}.card .in{flex:1;min-width:0}.card b{display:block}.card small{display:block;color:var(--dim);line-height:1.35}
+.card .ctl{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.card .btn{height:44px;min-width:44px;font-size:14px}
+.card.eq{border-color:var(--ember)}
+h2{margin:0 0 8px;font:700 13px system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.pv{line-height:1.6}.pv b{color:var(--ink)}.pv .rs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}.pv .r{display:flex;align-items:center;gap:4px;font-weight:700}.pv canvas{width:28px;height:28px}
+.dm{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #3a2a24;padding:3px 0}
+#note{color:var(--ember);font-size:13px;min-height:18px}
+</style></head><body><div id="app">
+<div id="head" class="panel"><div><h1 id="who"></h1><small id="sub"></small></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="color:var(--dim);font-size:13px">Poziom (test):</span><button class="btn" id="lvm" aria-label="Niższy poziom">−</button><b id="lv" style="min-width:32px;text-align:center;font-size:20px"></b><button class="btn" id="lvp" aria-label="Wyższy poziom">+</button>
+<a class="btn" href="kreator.html">Kreator</a><a class="btn go" id="tofight" href="walka.html">Do walki</a></div>
+<div id="note" style="width:100%"></div></div>
+<div class="panel"><div class="tabs"><button class="btn on" id="tab-stats">Cechy</button><button class="btn" id="tab-spells">Czary</button></div><div id="main"></div></div>
+<div class="panel pv" id="prev"></div></div>
+<script type="module">
+import {CLASSES,ELEMENTS,DEV_SPELLS,findSpellDef,ORIGINS,TRAITS,MAX_SPELL_LEVEL,spellUpgradeCost} from '../src/game/classdata.js';
+import * as P from '../src/game/progression.js';
+import {saveCharacter,loadCharacter} from '../src/game/save.js';
+import {damageRange,spellData,elementOfSpell,implemented} from '../src/game/spells.js';
+import {drawSpellIcon} from '../src/art/spellicons.js';
+const $=id=>document.getElementById(id),Q=new URLSearchParams(location.search),ALL=Q.get('spells')==='all';
+const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:'#e8e8e8'};
+let saved=loadCharacter(),fresh=false;
+let ch=saved||P.newCharacter({classId:Q.get('class')||'zalobnik',name:'Tester'});if(!saved)fresh=true;
+if(ALL)for(const s of DEV_SPELLS)ch=P.learnSpell(ch,s.id);
+let tab='stats';
+const chip=(el,size=44)=>{const c=document.createElement('canvas');c.width=c.height=size*2;drawSpellIcon(c.getContext('2d'),{id:'none',element:el},size,size,size*2-4);return c};
+const persist=()=>{const ok=saveCharacter(ch);$('note').textContent=ok?(fresh?'Brak zapisanej postaci: tryb testowy. Zmiany zapisują się od razu.':'Zapisano.'):'Nie udało się zapisać (przeglądarka blokuje pamięć).'};
+const set=(n)=>{ch=n;persist();render()};
+const eqDmg=()=>{const u=P.unitFromCharacter(ch,{},{allowDev:ALL});return u.spells.map(k=>({k,def:findSpellDef(ch.classId,k.id),sd:spellData(u,k.id),u})).filter(x=>x.sd.data.dmg)};
+function statsView(){
+  const a=ch.alloc,left=P.pointsLeft(ch.level,a),d=P.deriveStats(ch),bonus={vitality:0,earth:d.earth-a.earth,fire:d.fire-a.fire,water:d.water-a.water,air:d.air-a.air};
+  const box=document.createElement('div');box.innerHTML=`<p class="pts">Punkty cech: <b id="left">${left}</b></p>`;
+  for(const st of P.STATS){const el=st==='vitality'?'neutral':st,row=document.createElement('div');row.className='row';row.dataset.stat=st;row.append(chip(el));
+    const nm=document.createElement('div');nm.className='nm';const val=a[st]+(st==='vitality'?0:bonus[st]);
+    nm.innerHTML=`<b style="color:${st==='vitality'?'#ff9a9a':COL[st]}">${P.STAT_NAMES[st]}</b><small>${st==='vitality'?'+1 życia za punkt':'+1% obrażeń żywiołu za punkt'}${bonus[st]?` (${bonus[st]>0?'+':''}${bonus[st]} z cech i przeszłości)`:''}<br>następny punkt kosztuje ${P.stepCost(a[st])}</small>`;row.append(nm);
+    const m=document.createElement('button'),v=document.createElement('span'),p=document.createElement('button');m.className=p.className='btn';m.textContent='−';p.textContent='+';m.id='m-'+st;p.id='p-'+st;m.setAttribute('aria-label','Mniej '+P.STAT_NAMES[st]);p.setAttribute('aria-label','Więcej '+P.STAT_NAMES[st]);
+    v.className='val';v.id='v-'+st;v.textContent=val;m.disabled=a[st]<=0;p.disabled=!P.canRaise(ch.level,a,st);
+    m.onclick=()=>set({...ch,alloc:P.lower(a,st)});p.onclick=()=>set({...ch,alloc:P.raise(ch.level,a,st)});row.append(m,v,p);box.append(row)}
+  return box}
+function spellsView(){
+  const box=document.createElement('div');box.innerHTML=`<p class="pts">Punkty czarów: <b id="sleft">${P.spellPointsLeft(ch)}</b></p>`;const g=document.createElement('div');g.className='sp';
+  const ids=Object.keys(ch.spellLevels);
+  for(const id of ids){const def=findSpellDef(ch.classId,id),lvl=ch.spellLevels[id],u=P.unitFromCharacter(ch,{},{allowDev:true}),eq=ch.equipped.includes(id),el=ELEMENTS[def.element],data=def.levels[lvl-1];
+    const c=document.createElement('div');c.className='card'+(eq?' eq':'');c.dataset.spell=id;const cv=document.createElement('canvas');cv.width=cv.height=144;drawSpellIcon(cv.getContext('2d'),{...def,pa:data.pa},72,72,136);c.append(cv);
+    const dmg=data.dmg||data.trap?.dmg||data.glyph?.dmg;let dtxt='';if(data.dmg){const fake={...u,spells:[{id,level:lvl}]},[lo,hi]=damageRange(fake,data,def.element);dtxt=`obrażenia ${lo}-${hi}`}
+    const in_=document.createElement('div');in_.className='in';in_.innerHTML=`<b style="color:${COL[def.element]}">${def.name}${def.dev?' (test)':''}</b><small>${el.name} · poziom <span class="lv">${lvl}</span>/${MAX_SPELL_LEVEL} · ${data.pa} PA · zasięg ${data.min}-${data.max}${dtxt?'<br>'+dtxt:''}${data.push?` · odpycha o ${data.push}`:''}${implemented(data)?'':'<br><i style="color:#e0a070">jeszcze nie działa w walce</i>'}${lvl<MAX_SPELL_LEVEL?`<br>ulepszenie: ${spellUpgradeCost(lvl)} pkt`:'<br>maksymalny poziom'}</small>`;
+    const ctl=document.createElement('div');ctl.className='ctl';const m=document.createElement('button'),p=document.createElement('button'),e=document.createElement('button');m.className=p.className=e.className='btn';m.textContent='−';p.textContent='+';m.id='sm-'+id;p.id='sp-'+id;e.id='eq-'+id;e.textContent=eq?'W pasku':'Poza paskiem';if(eq)e.classList.add('on');
+    m.disabled=lvl<=1;p.disabled=lvl>=MAX_SPELL_LEVEL||P.spellPointsLeft(ch)<spellUpgradeCost(lvl);m.onclick=()=>set(P.downgradeSpell(ch,id));p.onclick=()=>set(P.upgradeSpell(ch,id));e.onclick=()=>set(P.toggleEquipped(ch,id));
+    ctl.append(m,p,e);in_.append(ctl);c.append(in_);g.append(c)}
+  box.append(g);return box}
+function previewView(){
+  const d=P.deriveStats(ch),box=$('prev'),o=ORIGINS.find(x=>x.id===ch.origin);
+  box.innerHTML=`<h2>Podgląd w walce</h2><div>Życie <b id="php">${d.hp}</b> · Inicjatywa <b>${d.initiative}</b> · PA <b>${d.pa}</b> · PM <b>${d.pm}</b></div><div class="rs"></div><h2>Obrażenia (przed odpornością wroga)</h2><div id="dms"></div><small style="color:var(--dim)">Przeszłość: ${o.name}. Cechy: ${ch.traits.map(t=>TRAITS.find(x=>x.id===t).name).join(', ')||'brak'}.</small>`;
+  for(const e of ['earth','fire','water','air']){const r=document.createElement('span');r.className='r';r.append(chip(e,28));const s=document.createElement('span');s.textContent=(d.resist[e]>0?'+':'')+d.resist[e]+'%';r.append(s);box.querySelector('.rs').append(r)}
+  for(const x of eqDmg()){const [lo,hi]=damageRange(x.u,x.sd.data,x.def.element),r=document.createElement('div');r.className='dm';r.dataset.spell=x.k.id;r.innerHTML=`<span style="color:${COL[x.def.element]}">${x.def.name} (poz. ${x.k.level})</span><b>${lo}-${hi}</b>`;$('dms').append(r)}
+}
+function render(){
+  const cls=CLASSES[ch.classId];$('who').textContent=ch.name;$('sub').textContent=`${cls.name} · poziom ${ch.level}`;$('lv').textContent=ch.level;
+  $('lvm').disabled=ch.level<=1;$('lvp').disabled=ch.level>=P.MAX_LEVEL;$('tab-stats').classList.toggle('on',tab==='stats');$('tab-spells').classList.toggle('on',tab==='spells');
+  const m=$('main');m.innerHTML='';m.append(tab==='stats'?statsView():spellsView());previewView()}
+$('lvm').onclick=()=>set(P.setLevel(ch,ch.level-1));$('lvp').onclick=()=>set(P.setLevel(ch,ch.level+1));
+$('tab-stats').onclick=()=>{tab='stats';render()};$('tab-spells').onclick=()=>{tab='spells';render()};
+$('tofight').href='walka.html'+(ALL?'?spells=all':'');
+render();$('note').textContent=fresh?'Brak zapisanej postaci: tryb testowy. Utwórz bohatera w kreatorze.':'';
+window.__postac={get ch(){return ch}};
+</script></body></html>

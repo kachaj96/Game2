@@ -42,6 +42,8 @@ import {heroSpec,CLASS_IDS,CLASS_LOOKS,SKIN_TONES,HAIR_COLORS,HAIR_STYLES,HAIR_N
 import {drawCharacter,DIRS} from '../src/art/characters.js';
 import {CLASSES,ORIGINS,TRAITS,MAX_TRAITS,startStats} from '../src/game/classdata.js';
 import {glow} from '../src/art/mood.js';
+import {newCharacter} from '../src/game/progression.js';
+import {saveCharacter} from '../src/game/save.js';
 const $=id=>document.getElementById(id),el=(t,a={},k=[])=>{const e=document.createElement(t);Object.assign(e,a);k.forEach(c=>e.append(c));return e};
 const ORDER=['SE','SW','NW','NE'];
 const st={classId:'grabarz',female:false,face:1,hairStyle:'short',hair:HAIR_COLORS[2],skin:SKIN_TONES[1],colors:[...CLASS_LOOKS.grabarz.colors],slot:0,name:randomName(1),origin:0,traits:[],dir:0,walk:false,nameSeed:1,heroSeed:1};
@@ -73,7 +75,7 @@ function build(){
   const s=startStats(st.classId,ORIGINS[st.origin].id,st.traits),c=CLASSES[st.classId];
   o.append(el('h2',{textContent:'Podsumowanie'}));
   const sm=el('div',{id:'sum'});sm.innerHTML=`<b>${st.name||'Bezimienny'}</b>, ${c.name}<br>Życie <b>${s.hp}</b> · PA <b>${s.pa}</b> · PM <b>${s.pm}</b> · Inicjatywa <b>${s.initiative}</b><br>Moc: Ziemia ${s.earth} · Ogień ${s.fire} · Woda ${s.water} · Powietrze ${s.air} · Odporność ${s.resist.earth}%${s.spellPoints?` · Punkty czaru ${s.spellPoints}`:''}<br>Czary: ${c.spells.map(x=>x.name).join(', ')}`;o.append(sm);
-  const go=el('button',{className:'btn go',textContent:'Zejdź do areny',id:'go'});go.style.marginTop='12px';go.onclick=()=>{window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};$('msg').textContent='';sm.innerHTML+='<br><b style="color:var(--ember)">Bohater zapisany.</b>';console.log(JSON.stringify(window.__hero))};o.append(go);
+  const go=el('button',{className:'btn go',textContent:'Zejdź do areny',id:'go'});go.style.marginTop='12px';go.onclick=()=>{window.__hero={name:st.name||'Bezimienny',classId:st.classId,look:spec(),origin:ORIGINS[st.origin].id,traits:[...st.traits],stats:s};const look={female:st.female,skin:st.skin,hair:st.hair,hairStyle:st.hairStyle,face:st.face,colors:[...st.colors]},ch=newCharacter({name:st.name||'Bezimienny',classId:st.classId,origin:ORIGINS[st.origin].id,traits:st.traits,look}),ok=saveCharacter(ch);window.__saved=ok;$('msg').textContent='';sm.innerHTML+=ok?'<br><b style="color:var(--ember)">Bohater zapisany.</b> <a href="postac.html" style="color:#ffb070">Karta postaci</a> · <a href="walka.html" style="color:#ffb070">Do walki</a>':'<br><b style="color:#e08a6a">Nie udało się zapisać postaci (przeglądarka blokuje pamięć).</b>';console.log(JSON.stringify(window.__hero))};o.append(go);
   o.scrollTop=keep;
 }
 function render(){build();$('nm').value=st.name}
