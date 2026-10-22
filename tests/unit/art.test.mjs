@@ -4,7 +4,10 @@ import { rng } from '../../src/art/rng.js';
 import { genBuilding, drawBuilding, KINDS } from '../../src/art/buildings.js';
 import { genCharacter, drawCharacter, ROLES, DIRS } from '../../src/art/characters.js';
 import { genKopacz, drawKopacz, KOPACZE } from '../../src/art/creatures.js';
-import { drawPlate, drawLock } from '../../src/art/ui.js';
+import { drawPlate, drawLock, drawOrb } from '../../src/art/ui.js';
+import { drawFlagstones } from '../../src/art/gridview.js';
+import { IsoGrid } from '../../src/grid.js';
+import { bloodSplat, bones, crack } from '../../src/art/props.js';
 import * as N from '../../src/art/nature.js';
 import { PROPS } from '../../src/art/props.js';
 import { applyMood, glow, MOODS } from '../../src/art/mood.js';
@@ -103,4 +106,15 @@ test('oprawa interfejsu: ramki i kłódka rysują się bez błędów, rodzaje r�
   assert.equal(new Set(['panel', 'btn', 'on'].map(rec)).size, 3);
   for (const kind of ['panel', 'btn', 'on']) { const g = mockCtx(); drawPlate(g, 48, kind); assert.ok(g.__state.calls > 20); clean(g, kind); }
   const g = mockCtx(); drawLock(g, 20, 20, 24); clean(g, 'kłódka');
+});
+
+test('kule zasobów, kamienne płyty i ślady na ziemi rysują się bez błędów', () => {
+  for (const kind of ['hp', 'pa', 'pm']) for (const f of [0, 0.3, 1, 5, -1]) { const g = mockCtx(); drawOrb(g, 80, f, kind, '12'); assert.ok(g.__state.calls > 10); clean(g, `kula ${kind} ${f}`); }
+  const g = mockCtx(); drawFlagstones(g, new IsoGrid(7, 7, { x: 270, y: 84 }), 3); assert.ok(g.__state.calls > 200); clean(g, 'płyty');
+  for (const fn of [bloodSplat, bones, crack]) for (let s = 1; s <= 12; s++) { const g2 = mockCtx(); fn(g2, 50, 50, 1, s); assert.ok(g2.__state.calls > 4); clean(g2, fn.name); }
+});
+
+test('płyty podłogi są zróżnicowane: dwa kafle z różnych miejsc nie wyglądają tak samo', () => {
+  const rec = (x, y) => { const out = []; const g = new Proxy({}, { get: (t, p) => (p in t ? t[p] : p === 'createLinearGradient' || p === 'createRadialGradient' ? () => ({ addColorStop() {} }) : (...a) => { out.push(`${String(p)}:${a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',')}`); }), set: (t, p, v) => { out.push(`${String(p)}=${v}`); t[p] = v; return true; } }); drawFlagstones(g, { cols: 1, rows: 1, corners: () => [[0, 0], [36, 18], [0, 36], [-36, 18]] , ox: x, oy: y }, x * 10 + y); return out.join('|'); };
+  assert.notEqual(rec(1, 1), rec(2, 5));
 });

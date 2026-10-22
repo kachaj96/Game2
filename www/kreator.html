@@ -68,7 +68,7 @@ const spec=(over={})=>heroSpec(st.classId,{...st,seed:st.heroSeed,...over});
 const dirOpt=()=>DIRS[ORDER[st.dir]];
 
 function thumb(cv,sp,K0=2.9){const K=K0*cv.width/58;const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.fillStyle='#1a1516';g.fillRect(0,0,cv.width,cv.height);
-  drawCharacter(g,cv.width/2,cv.height*0.52+35*sp.sc*K,{...sp,sc:sp.sc*K,hat:null},{...DIRS.SE})}
+  drawCharacter(g,cv.width/2,cv.height*0.52+40*sp.sc*K,{...sp,sc:sp.sc*K,hat:null},{...DIRS.SE})}
 // medalion klasy: popiersie na tle w kolorze klasy; zablokowany slot to kłódka
 function medal(cv,slot){const g=cv.getContext('2d'),W=cv.width;g.clearRect(0,0,W,W);
   const gr=g.createRadialGradient(W/2,W*.4,4,W/2,W/2,W*.7);

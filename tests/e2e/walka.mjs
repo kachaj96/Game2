@@ -40,6 +40,8 @@ await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka-start.png') })
 await page.click('#end'); await page.waitForFunction(() => window.__game.phase === 'fight');
 // 0c. kolejność tur: portrety w kolejności inicjatywy, pierwszy to ten, kto gra teraz
 { const ord = await page.$$eval('#turns .chip', (e) => e.map((x) => ({ id: x.id, cur: x.classList.contains('cur'), team: x.classList.contains('ally') ? 'a' : 'f' }))); assert.deepEqual(ord.map((x) => x.id), ['turn-h', 'turn-e1', 'turn-e2']); assert.deepEqual(ord.map((x) => x.cur), [true, false, false]); assert.deepEqual(ord.map((x) => x.team), ['a', 'f', 'f']); }
+// 0d. kule zasobów jak w Diablo: życie, PA, PM zgodne ze stanem gry
+assert.deepEqual(await page.$$eval('#orbs canvas', (e) => e.map((c) => [c.id, +c.dataset.v, +c.dataset.max])), [['orb-hp', 38, 38], ['orb-pa', 6, 6], ['orb-pm', 3, 3]]);
 // 1. pierwsze dotknięcie tylko pokazuje podgląd: stan gry się nie zmienia
 await tapCell(3, 5);
 let pv = await page.evaluate(() => window.__game.preview);
@@ -51,6 +53,7 @@ await page.screenshot({ path: path.join(ROOT, 'docs/podglad/walka.png') });
 await tapCell(3, 5);
 await page.waitForFunction(() => !window.__game.busy);
 s = await st(); assert.deepEqual([unit(s, 'h').x, unit(s, 'h').y, unit(s, 'h').pm], [3, 5, 1], 'ruch wykonany, 2 PM zużyte');
+assert.equal(await page.locator('#orb-pm').getAttribute('data-v'), '1', 'kula PM pokazuje zużycie');
 
 // 3. kafel poza zasięgiem i ściana nie dają podglądu
 await tapCell(6, 6);

@@ -39,3 +39,27 @@ export function installFrames(doc = document, S = 48) {
   const root = doc.documentElement.style;
   for (const kind of Object.keys(KINDS)) { const c = doc.createElement('canvas'); c.width = c.height = S; drawPlate(c.getContext('2d'), S, kind); root.setProperty(`--f-${kind}`, `url(${c.toDataURL()})`); }
 }
+
+// Kula zasobu jak w Diablo: ciecz do poziomu frac (0..1), połysk, żelazny pierścień i liczba w środku.
+export const ORBS = { hp: ['#d83a30', '#4a0808'], pa: ['#5a86d0', '#10203e'], pm: ['#7aa642', '#1c2c0e'] };
+export function drawOrb(g, S, frac, kind = 'hp', text = '') {
+  const [hi, lo] = ORBS[kind] || ORBS.hp, c = S / 2, r = S / 2 - S * 0.07, f = Math.max(0, Math.min(1, frac));
+  g.clearRect(0, 0, S, S);
+  g.save(); g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.clip();
+  g.fillStyle = '#120a0a'; g.fillRect(0, 0, S, S);
+  const top = c + r - 2 * r * f;
+  if (f > 0) {
+    const gr = g.createLinearGradient(0, top, 0, c + r); gr.addColorStop(0, hi); gr.addColorStop(1, lo);
+    g.fillStyle = gr; g.beginPath(); g.moveTo(0, S);
+    for (let x = 0; x <= S; x += 2) g.lineTo(x, top + Math.sin(x / S * 6.5) * S * 0.018 * (f < 1 ? 1 : 0));
+    g.lineTo(S, S); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0, top, S, Math.max(1, S * 0.02));
+  }
+  const gl = g.createRadialGradient(c - r * 0.4, c - r * 0.5, 1, c - r * 0.4, c - r * 0.5, r * 0.8); gl.addColorStop(0, 'rgba(255,255,255,.32)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gl; g.fillRect(0, 0, S, S);
+  g.restore();
+  g.lineWidth = S * 0.075; g.strokeStyle = '#4a4244'; g.beginPath(); g.arc(c, c, r + S * 0.02, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = S * 0.02; g.strokeStyle = '#0b0909'; g.beginPath(); g.arc(c, c, r + S * 0.06, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = S * 0.015; g.strokeStyle = THEME.brass; g.beginPath(); g.arc(c, c, r - S * 0.01, 0, Math.PI * 2); g.stroke();
+  if (text) { g.font = `700 ${Math.round(S * 0.3)}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = S * 0.06; g.strokeStyle = '#000'; g.strokeText(text, c, c); g.fillStyle = '#f4ead4'; g.fillText(text, c, c); }
+}

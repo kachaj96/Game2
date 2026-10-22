@@ -37,7 +37,7 @@ export const SPELL_SYMBOLS = Object.keys(SYMBOLS);
 // state: { selected, disabled, cooldown (liczba), soon (czar jeszcze nie działa), noPa (za mało PA) }
 export function drawSpellIcon(g, spell, x, y, size = 64, state = {}) {
   const k = kit(g), { poly, circ, lg } = k, el = ELEMENTS[spell.element] || ELEMENTS.neutral, s = size / 64;
-  g.save(); g.translate(x, y); g.scale(s, s);
+  g.save(); if ('filter' in g) g.filter = 'saturate(.68) brightness(.9) contrast(1.08)'; g.translate(x, y); g.scale(s, s);
   if (state.selected) { const gr = g.createRadialGradient(0, 0, 18, 0, 0, 46); gr.addColorStop(0, 'rgba(255,224,102,.65)'); gr.addColorStop(1, 'rgba(255,224,102,0)'); g.fillStyle = gr; g.fillRect(-46, -46, 92, 92); }
   const pts = FRAMES[el.shape]();
   poly(pts, lg(0, -28, 0, 28, shade(el.color, 0.16), shade(el.color, -0.2)), 3.2);

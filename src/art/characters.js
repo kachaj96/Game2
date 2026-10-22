@@ -57,7 +57,7 @@ const lockPath = (g, hr, hy, sd) => { g.beginPath(); g.moveTo(sd * (hr + 0.4), h
 
 // kształty głowy: szerokość, szerokość żuchwy, wysokość (podbródek) i szerokość podbródka
 // głowa nieco mniejsza i oczy drobniejsze: mniej kreskówkowo, bardziej surowo
-const HEAD = 0.92;
+const HEAD = 0.84, EXT = 5; // EXT: o tyle dłuższe nogi (górna część ciała wyżej), żeby postać nie była chibi
 export const FACE_SHAPES = { round: { fw: 1, jw: 0.95, ch: 1, cw: 0.22 }, square: { fw: 1.03, jw: 1.02, ch: 1.02, cw: 0.62 }, heart: { fw: 1.03, jw: 0.72, ch: 1.1, cw: 0.12 }, long: { fw: 0.92, jw: 0.86, ch: 1.2, cw: 0.3 }, wide: { fw: 1.1, jw: 1.05, ch: 0.92, cw: 0.5 } };
 export const EYE_TYPES = { round: { rx: 1.5, ry: 1.9, gap: 3 }, narrow: { rx: 1.9, ry: 1.2, gap: 3.2 }, wide: { rx: 1.8, ry: 2.2, gap: 3.4 }, sleepy: { rx: 1.5, ry: 1.7, gap: 2.8, lid: true } };
 export const NOSES = ['dot', 'long', 'wide', 'hook'], MOUTHS = ['smile', 'flat', 'smirk', 'open', 'full'];
@@ -98,18 +98,21 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   const dressy = O_.kind === 'dress' || O_.kind === 'robe';
   const drawLeg = (cx, L) => {
     const fx = cx + L.dx, fy = L.dy - L.lift;
-    poly([[cx - 2.8, -13 + HL], [cx + 2.8, -13 + HL], [fx + 2.8, fy - 4], [fx - 2.8, fy - 4]], O_.pants, 1.5);
+    poly([[cx - 2.8, -13 + HL - EXT], [cx + 2.8, -13 + HL - EXT], [fx + 2.8, fy - 4], [fx - 2.8, fy - 4]], O_.pants, 1.5);
     poly([[fx - 3, fy - 5], [fx + 3, fy - 5], [fx + 3.6 + (back ? 0 : 1.8), fy], [fx - 3.4, fy]], O_.boots, 1.6);
   };
+  g.save(); g.translate(0, -EXT);
   // tył: peleryna za ciałem (widok z przodu)
-  if (sp.cloak && !back) poly([[-shw - 1.5, -27 + bob], [shw + 1.5, -27 + bob], [hw + 5, -4], [-hw - 5, -4]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, -0.16)), 1.8);
+  if (sp.cloak && !back) poly([[-shw - 1.5, -27 + bob], [shw + 1.5, -27 + bob], [hw + 5, -4 + EXT], [-hw - 5, -4 + EXT]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, -0.16)), 1.8);
   if (sp.pack === 'quiver' && !back) { poly([[shw - 2, -22 + bob], [shw + 4, -26 + bob], [shw + 7, -34 + bob], [shw + 1, -30 + bob]], '#7a4a26', 1.5); for (let i = 0; i < 3; i++) ln([[shw + 3 + i, -31 + bob - i], [shw + 5 + i, -37 + bob - i]], 1.2, '#e8e0c8'); }
   if (!back && !(sp.hat && sp.hat.kind === 'hood') && (sp.hairStyle === 'long' || sp.hairStyle === 'braids')) {
     const hr0 = 8.6 * HEAD * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy0 = -35 - (sp.headS - 1) * 8; g.save(); g.translate(0, bob); drapePath(g, hr0, hy0);
     g.fillStyle = lg(0, hy0 - hr0, 0, hy0 + hr0, shade(sp.hair, 0.1), shade(sp.hair, -0.12)); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke(); g.restore();
   }
+  g.save(); g.translate(0, EXT);
   if (!dressy) { drawLeg(-3, L1); drawLeg(3, L2); }
   else { drawLeg(-2.6, L1); drawLeg(2.6, L2); }
+  g.restore();
   g.save(); g.translate(0, bob);
   if (mvs === 'sneak') { g.translate(1.5, -13); g.rotate(0.1); g.translate(0, 13); }
   if (mvs === 'heavy' && walking) g.translate(Math.sin(th) * 0.8, 0);
@@ -117,14 +120,14 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   const tor = TOR;
   const torFill = lg(-hw, 0, hw, 0, bDark, bLite);
   if (O_.kind === 'dress') {
-    poly([[-hw, -14], [hw, -14], [hw + 4.5, -4], [-hw - 4.5, -4]], lg(-hw, 0, hw, 0, bDark, bLite), 1.8);
+    poly([[-hw, -14], [hw, -14], [hw + 4.5, -4 + EXT], [-hw - 4.5, -4 + EXT]], lg(-hw, 0, hw, 0, bDark, bLite), 1.8);
     for (let i = -1; i <= 1; i++) ln([[i * 4, -13], [i * 6.5, -5]], 0.9, 'rgba(0,0,0,.18)');
-    ln([[-hw - 4.2, -5.2], [hw + 4.2, -5.2]], 2.2, O_.hem);
+    ln([[-hw - 4.2, -5.2 + EXT], [hw + 4.2, -5.2 + EXT]], 2.2, O_.hem);
     poly(TOR, torFill, 1.8);
   } else if (O_.kind === 'robe') {
-    poly([[-hw - 0.6, -14], [hw + 0.6, -14], [hw + 6, -2], [-hw - 6, -2]], lg(-hw, 0, hw, 0, bDark, bLite), 1.8);
+    poly([[-hw - 0.6, -14], [hw + 0.6, -14], [hw + 6, -2 + EXT], [-hw - 6, -2 + EXT]], lg(-hw, 0, hw, 0, bDark, bLite), 1.8);
     poly(TOR, torFill, 1.8);
-    ln([[-hw - 5.4, -3.6], [hw + 5.4, -3.6]], 2.4, O_.trim);
+    ln([[-hw - 5.4, -3.6 + EXT], [hw + 5.4, -3.6 + EXT]], 2.4, O_.trim);
     if (!back) ln([[0, -26], [0, -3]], 1.2, 'rgba(0,0,0,.22)');
   } else {
     if (fm && O_.kind === 'tunic') poly([[-hipX, -13], [hipX, -13], [hipX + 3.4, -6.5], [-hipX - 3.4, -6.5]], lg(-hw, 0, hw, 0, bDark, bLite), 1.6);
@@ -146,7 +149,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   if (back && sp.pack === 'quiver') { poly([[-shw - 1, -14], [shw + 2, -29], [shw + 5, -26], [-shw + 2, -11]], '#7a4a26', 1.6); for (let i = 0; i < 3; i++) ln([[shw + 2 + i, -29 + i], [shw + 4 + i, -35 + i]], 1.2, '#e8e0c8'); }
   if (sp.pack === 'pack' && !back) { ln([[-shw + 1.5, -26], [-hw + 1, -14]], 1.6, '#6a3f1c'); ln([[shw - 1.5, -26], [hw - 1, -14]], 1.6, '#6a3f1c'); }
   // peleryna z tyłu
-  if (sp.cloak && back) { poly([[-shw - 1.5, -27], [shw + 1.5, -27], [hw + 5, -4], [-hw - 5, -4]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, 0.04)), 1.8); for (const i of [-1, 0, 1]) ln([[i * 4, -25], [i * 6.5, -5]], 0.9, 'rgba(0,0,0,.2)'); }
+  if (sp.cloak && back) { poly([[-shw - 1.5, -27], [shw + 1.5, -27], [hw + 5, -4 + EXT], [-hw - 5, -4 + EXT]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, 0.04)), 1.8); for (const i of [-1, 0, 1]) ln([[i * 4, -25], [i * 6.5, -5]], 0.9, 'rgba(0,0,0,.2)'); }
   // --- ręce ---
   const armSw = walking ? Math.sin(th) : 0;
   const sleeve = O_.kind === 'armor' ? O_.metal : base, glove = O_.kind === 'armor' ? shade(O_.metal, -0.15) : sp.skin;
@@ -256,6 +259,6 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   // szalik
   if (sp.scarf) { poly([[-6.4, hy + hr - 1.6], [6.4, hy + hr - 1.6], [6, hy + hr + 4], [-6, hy + hr + 4]], sp.scarf, 1.6); if (!back) poly([[1, hy + hr + 3], [5, hy + hr + 3.4], [5.6, hy + hr + 13], [1.8, hy + hr + 12]], shade(sp.scarf, -0.08), 1.5); }
   if (sp.cloak && !back) poly([[-shw - 1.2, -27], [-3, -26.6], [-shw + 2.5, -20], [-shw - 1.8, -19]], shade(sp.cloak, 0.04), 1.4);
-  g.restore(); g.restore();
+  g.restore(); g.restore(); g.restore();
 }
 export const DIRS = { SE: { view: 'front', mirror: false }, SW: { view: 'front', mirror: true }, NE: { view: 'back', mirror: false }, NW: { view: 'back', mirror: true } };
