@@ -83,8 +83,6 @@ import {DUNGEONS,dungeonLevel,levelAdvice} from '../src/game/dungeons.js';
 import {composeEncounter,spawnEncounter,enemyCap} from '../src/game/encounter.js';
 import {referenceHero} from '../src/game/reference.js';
 import {loadSettings} from '../src/game/settings.js';
-import {loadAssets as v3Assets} from '../mapy/src/scena.js';
-import {shadowCanvas,sunkCanvas,pixelsOf} from '../mapy/src/osadzenie.js';
 import {makeArena,ARENA} from '../src/game/arena.js';
 import {loadCharacter,saveCharacter} from '../src/game/save.js';
 import {addXp,chamberReward,newRun,loadRun,saveRun,clearRun,roomSeed,levelFromXp} from '../src/game/run.js';
@@ -95,22 +93,7 @@ const Q=new URLSearchParams(location.search),DG=DUNGEONS[Q.get('dungeon')]||null
 // zapisana postać z kreatora i karty postaci (pomijana, gdy podano ?hero=)
 let SAVED=Q.get('hero')?null:loadCharacter();if(SAVED&&ALL)for(const sp of DEV_SPELLS)SAVED=toggleEquipped(learnSpell(SAVED,sp.id),sp.id);
 const HERO=SAVED?SAVED.classId:(Q.get('hero')||'zalobnik');
-const V3=Q.get('v3')==='1';   // test: arena na mapie v3 (podłoże i przeszkody z obrazów, siatka izometrii 30 stopni), logika walki bez zmian
-const COLS=DG?ARENA.cols:7,ROWS=DG?ARENA.rows:7,WORLD=V3?{w:768,h:512}:{w:(COLS+ROWS)*36+40,h:(COLS+ROWS)*18+116},
-  grid=V3?new IsoGrid(COLS,ROWS,{x:(768-(COLS+ROWS)*36)/2+ROWS*36,y:(512-(COLS+ROWS)*21)/2},{th:42}):new IsoGrid(COLS,ROWS,{x:ROWS*36+20,y:84});
-let V3LIB=null,V3A=null,V3GP=null,bakedV3=null,bakedSig='',V3SUNK=new Map();
-if(V3){V3LIB=await (await fetch('../mapy/gra/biblioteka.json')).json();V3A=await v3Assets(V3LIB,p=>'../mapy/gra/'+p);V3GP=pixelsOf(V3A.grounds.podloze_droga_01)}
-// przeszkody areny muszą być niskie i mieścić się w kaflu (walka wymaga czytelności), więc drzewo jest zmniejszone, a lamp nie używamy
-const V3K=['skrzynia','skrzynia','studnia','dab','skrzynia'],V3S={dab:.34,studnia:.78,skrzynia:1,lampa:.6},v3Kind=(x,y)=>V3K[(x*7+y*3+x*y)%V3K.length],V3IMG={};
-function v3Img(n){if(!V3IMG[n]){const s=V3LIB.sprites[n],k=V3S[n]||1,w=Math.max(1,Math.round(s.w*k)),h=Math.max(1,Math.round(s.h*k)),c=document.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.imageSmoothingQuality='high';cx.drawImage(V3A.IMG[n],0,0,w,h);V3IMG[n]={c,w,h,base:s.base}}return V3IMG[n]}
-function v3Pos(x,y){const n=v3Kind(x,y),s=v3Img(n),c=s.base==='center'?grid.center(x,y):grid.toScreen(x+1,y+1);return {n,s,x:c[0],y:c[1],gx:Math.round(2*c[0]-s.w/2),gy:Math.round(2*c[1]-s.h)}}
-// podłoże areny z wypalonymi cieniami, zaczernieniem pod podstawami i trawą nachodzącą na przeszkody (jak w mapach v3)
-function bakeV3(){const c=document.createElement('canvas');c.width=1536;c.height=1024;const b=c.getContext('2d');b.drawImage(V3A.grounds.podloze_droga_01,0,0);V3SUNK=new Map();const sh=new Map();
-  for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),P=v3Pos(x,y),cs=grid.corners(x,y),mid=[(cs[0][0]+cs[2][0])/2,(cs[0][1]+cs[2][1])/2];
-   b.save();b.filter='blur(8px)';b.fillStyle='rgba(8,10,4,.45)';b.beginPath();cs.forEach((q,i)=>{const px=mid[0]+(q[0]-mid[0])*1.25,py=mid[1]+(q[1]-mid[1])*1.25;i?b.lineTo(px*2,py*2):b.moveTo(px*2,py*2)});b.closePath();b.fill();b.restore();
-   if(!sh.has(P.n))sh.set(P.n,shadowCanvas(P.s.c,P.s.base,1.2,.5));const sc=sh.get(P.n);b.drawImage(sc,P.gx-sc.ox,P.gy);
-   V3SUNK.set(kk,sunkCanvas(P.s.c,P.s.base,V3GP.d,P.gx,P.gy,{band:P.s.base==='center'?10:8,strength:.85}))}
-  bakedV3=c;bakedSig=[...state.blocked].join(',')}
+const COLS=DG?ARENA.cols:7,ROWS=DG?ARENA.rows:7,WORLD={w:(COLS+ROWS)*36+40,h:(COLS+ROWS)*18+116},grid=new IsoGrid(COLS,ROWS,{x:ROWS*36+20,y:84});
 let view={s:1,ox:0,oy:0};
 const guard=(id,x,y,seed,arch='straznik')=>spawn(arch,id,x,y,{role:'warrior',seed});
 const hero=(x,y)=>SAVED?unitFromCharacter(SAVED,{seed:3,x,y,initiative:99,name:SAVED.name},{allowDev:ALL}):({id:'h',team:'gracz',name:'Ty',classId:HERO,seed:3,x,y,initiative:99,...(ALL?{spells:[...CLASSES[HERO].spells,...DEV_SPELLS].map(s=>({id:s.id,level:1}))}:{})});
@@ -146,10 +129,7 @@ const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:
 const bg=document.createElement('canvas');
 // przeszkody areny z gotowych obrazów (gdy się wczytają; inaczej generatory)
 let moodLayer=null;
-function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');
-  if(V3){moodLayer=document.createElement('canvas');moodLayer.width=cv.width;moodLayer.height=cv.height;const m=moodLayer.getContext('2d');m.fillStyle='#fff';m.fillRect(0,0,cv.width,cv.height);
-    if(bakedV3){b.imageSmoothingQuality='high';b.drawImage(bakedV3,view.ox,view.oy,WORLD.w*view.s,WORLD.h*view.s)}b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawGridLines(b,grid,'rgba(255,255,255,.22)');b.setTransform(1,0,0,1,0,0);return}
-  moodLayer=makeMoodLayer(document,cv.width,cv.height,mood);
+function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');moodLayer=makeMoodLayer(document,cv.width,cv.height,mood);
   {N.ground(b,bg.width,bg.height,7,{biome:TH.biome});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400*TH.tufts),null,{biome:TH.biome});}
   b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
   // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
@@ -315,7 +295,6 @@ function frame(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(anim){anim.t+=dt*(anim.kind==='move'?5:1);if(anim.kind==='move'?anim.t>=anim.cells.length-1:anim.t>=anim.dur){anim=null;afterAnim()}}
   floats=floats.filter(f=>(f.t+=dt)<1.1);for(const [k,v] of shake)if(v+dt>.35)shake.delete(k);else shake.set(k,v+dt);
-  if(V3&&[...state.blocked].join(',')!==bakedSig){bakeV3();renderBg()}
   g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);g.drawImage(bg,0,0);
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
   const show=phase==='fight'&&TURN_TIME>0&&mineNow();
@@ -336,21 +315,17 @@ function frame(now){
     if(preview.kind==='cast'){drawCellOutline(g,grid,preview.x,preview.y,'#ffffff',3.4);const c=grid.center(preview.x,preview.y);overlay.push(()=>label(c,`${preview.lo}-${preview.hi}${preview.known?'':'?'}`,'#ffd0a0'))}}
   const items=[];
   for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y);const t=(x*7+y*3)%3;
-    if(V3){const P=v3Pos(x,y),s=P.s;items.push({d:x+y+.5,f:()=>{g.drawImage(s.c,P.x-s.w/4,P.y-s.h/2,s.w/2,s.h/2);const su=V3SUNK.get(kk);if(su)g.drawImage(su,P.x-s.w/4,P.y-s.h/2,s.w/2,s.h/2)}});continue}
     items.push({d:x+y+.5,f:()=>t===0?N.rock(g,c[0],c[1]+10,x*9+y,{sc:.9}):t===1?N.stump(g,c[0],c[1]+8,x+y*5):N.deadTree(g,c[0],c[1]+10,x*3+y,{sc:.8})})}
   for(const cl of state.clouds){const c=grid.center(cl.x,cl.y);items.push({d:cl.x+cl.y+.9,f:()=>ashCloud(g,c[0],c[1]+6,1.1,cl.x*7+cl.y)})}
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
-  for(const u of state.units){if(u.hp<=0)continue;const v=visual(u);
-    if(V3){g.save();g.fillStyle='rgba(0,0,0,.36)';g.beginPath();g.ellipse(v.x-4,v.y+1,19,6.5,0,0,7);g.fill();g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(v.x-16,v.y+5,17,4.5,-.1,0,7);g.fill();g.restore()}
-    const sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
+  for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
     const ring=u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)',csp={...look.get(u.id),sc:look.get(u.id).sc*(u.boss?0.95:1.15)};
     items.push({d:v.gx+v.gy+.5,f:()=>u.kind?drawKopacz(g,v.x+sh,v.y+FEET,csp,{...DIRS[facing.get(u.id)],t:v.walk,ring}):drawCharacter(g,v.x+sh,v.y+FEET,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring})});
     overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80+FEET-8;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#7ab048':'#b02424';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
       if(u.id===cur.id&&!busy&&!state.result){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
       if(u.team==='gracz')glow(g,v.x+8,v.y-50+FEET-8,34,'255,150,70',.55)})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());
-  g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='multiply';
-  if(V3){const x0=view.ox,y0=view.oy,w=WORLD.w*view.s,h=WORLD.h*view.s,gr=g.createLinearGradient(x0+w,y0,x0,y0+h);gr.addColorStop(0,'rgb(255,250,238)');gr.addColorStop(1,'rgb(205,210,222)');g.globalAlpha=.55;g.fillStyle=gr;g.fillRect(x0,y0,w,h);g.globalAlpha=1}else g.drawImage(moodLayer,0,0);g.globalCompositeOperation='source-over';
+  g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='multiply';g.drawImage(moodLayer,0,0);g.globalCompositeOperation='source-over';
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);overlay.forEach(f=>f());
   for(const f of floats){g.globalAlpha=Math.max(0,1-f.t/1.1);g.font='bold 24px system-ui';g.textAlign='center';g.lineWidth=5;g.strokeStyle='#000';g.strokeText(f.text,f.x,f.y-f.t*34);g.fillStyle=f.color;g.fillText(f.text,f.x,f.y-f.t*34);g.globalAlpha=1}
   requestAnimationFrame(frame);
@@ -358,6 +333,6 @@ function frame(now){
 function crossCell(x,y,col){const [t,r,b,l]=grid.corners(x,y),k=0.34,m=(a,b2)=>[a[0]+(b2[0]-a[0])*k,a[1]+(b2[1]-a[1])*k],n=(a,b2)=>[a[0]+(b2[0]-a[0])*(1-k),a[1]+(b2[1]-a[1])*(1-k)];g.strokeStyle=col;g.lineWidth=2;g.lineCap='round';g.beginPath();g.moveTo(...m(t,b));g.lineTo(...n(t,b));g.moveTo(...m(l,r));g.lineTo(...n(l,r));g.stroke()}
 function label(c,text,col){g.font='bold 15px system-ui';g.textAlign='center';const w=g.measureText(text).width+14;g.fillStyle='rgba(20,20,10,.88)';g.beginPath();g.roundRect(c[0]-w/2,c[1]-52,w,22,8);g.fill();g.fillStyle=col;g.fillText(text,c[0],c[1]-36)}
 newGame();resize();requestAnimationFrame(frame);
-window.__game={v3:V3,dungeon:DINFO,get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,get phase(){return phase},get timeLeft(){return turnLeft},ringCenter:(id)=>{const u=unitById(state,id),v=visual(u);return[v.x,v.y+FEET+2]},
+window.__game={dungeon:DINFO,get state(){return state},get preview(){return preview},get busy(){return busy},get selSpell(){return selSpell},get page(){return page},grid,get phase(){return phase},get timeLeft(){return turnLeft},ringCenter:(id)=>{const u=unitById(state,id),v=visual(u);return[v.x,v.y+FEET+2]},
   targets:(id)=>validTargets(state,'h',id),range:(id)=>rangeCells(me(),id),cssCenter:(x,y)=>{const c=grid.center(x,y);return toCss(c[0],c[1])}};
 </script></body></html>
