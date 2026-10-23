@@ -4,15 +4,16 @@
 import { IsoGrid } from '../grid.js';
 import { N, HZ } from '../world/kraina.js';
 import { heightAt, tileZ } from '../world/nav.js';
-import { groundColor, hslRgb, rgbStr } from './groundcolor.js';
+import { groundRGB, hslRgb, rgbStr } from './groundcolor.js';
 import { hash2 } from '../world/noise.js';
+import { buildOccluders, sunShadow, canopyShade } from '../world/shadowmap.js';
 import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
 
-export const MAXZ = 8, CS = 6, SUB = 8;
+export const MAXZ = 8, CS = 6, SUB = 8, SHS = 6;
 
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
@@ -25,7 +26,7 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 export class WorldView {
   constructor(world, deps = {}) {
     this.w = world; this.grid = makeGrid(); this.sprites = new Map(); this.sprScale = 0; this.chunks = new Map(); this.chunkScale = 0; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.shadows = new Map(); this.shScale = 0;
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world);
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -49,64 +50,38 @@ export class WorldView {
     if (!g && this.doc) { canvas = this.doc.createElement('canvas'); canvas.width = Math.ceil((X1 - X0) * scale); canvas.height = Math.ceil((Y1 - Y0) * scale); g = canvas.getContext('2d'); }
     if (!g) return null;
     g.save(); g.scale(scale, scale); g.translate(-X0, -Y0);
+    this.sg = this.shadeGrid(x0, y0);
     const tiles = []; for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) tiles.push([tx, ty]); tiles.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
     for (const [tx, ty] of tiles) this.drawTile(g, tx, ty);
-    this.castShadows(g, x0, y0, x1, y1, scale, X0, Y0, X1, Y1);
     g.restore(); this.baked++;
     return { canvas, X0, Y0, w: X1 - X0, h: Y1 - Y0 };
   }
-  // obrazek obiektu do rysowania: [klucz, wymiary, funkcja rysująca, x, y na ekranie świata]
-  spriteOf(it) {
-    const w = this.w;
-    if (it.o) { const o = it.o, dr = this.objectDrawer(o); if (!dr) return null; const [sx, sy] = this.pos(o.x, o.y); return [dr[0], dr[1], dr[2], sx, sy]; }
-    if (it.b) { const b = it.b, [sx, sy] = this.proj(b.sx, b.sy, heightAt(w, b.sx - 0.5, b.sy - 0.5)); return [`b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy]; }
-    const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy];
-  }
-  // sylwetka obrazka w kolorze cienia (liczona raz)
-  shadowSprite(key, dim, draw, scale) {
-    const c = this.sprite(key, dim, draw, scale); if (!c) return null;
-    if (this.shScale !== this.sprScale) { this.shadows = new Map(); this.shScale = this.sprScale; }
-    let sh = this.shadows.get(key);
-    if (!sh) { sh = this.doc.createElement('canvas'); sh.width = c.width; sh.height = c.height; const q = sh.getContext('2d'); q.drawImage(c, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = '#140c28'; q.fillRect(0, 0, sh.width, sh.height); q.globalCompositeOperation = 'source-over'; for (let i = 0; i < 3; i++) q.drawImage(sh, 0, 0); this.shadows.set(key, sh); }
-    return sh;
-  }
-  // cienie rzucane na grunt w stronę prawo-dół (światło z lewej góry): sylwetka obiektu ściśnięta i pochylona. Pieczone w blok razem z terenem,
-  // więc uwzględniamy obiekty z kafli leżących w stronę światła
-  castShadows(g, x0, y0, x1, y1, scale, X0, Y0, X1, Y1) {
-    if (!this.doc) return; const w = this.w;
-    g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip(); g.globalCompositeOperation = 'source-atop';   // tylko na już narysowany teren tego bloku
-    const list = [];
-    for (let ty = Math.max(0, y0 - 8); ty < Math.min(N, y1 + 4); ty++) for (let tx = Math.max(0, x0 - 14); tx < Math.min(N, x1 + 1); tx++) {
-      const k = ty * N + tx, objs = w.byTile.get(k); if (objs) for (const o of objs) if (TREE[o.k] || o.k === 'rock' || PROP[o.k]) list.push({ o });
-      const bl = this.bld.get(k); if (bl) for (const b of bl) list.push({ b });
-      const en = this.ent.get(k); if (en) for (const i of en) list.push({ en: i });
+  // mapa cieni bloku: próbki 4 x 4 na kafel (z ramką 1), liczone raz przy pieczeniu; cień rzucają teren, drzewa, budynki, a pod koronami jest półcień
+  shadeGrid(x0, y0) {
+    const S = SHS, n = CS * S + 2, arr = new Float32Array(n * n), w = this.w;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const px = x0 + (i - 1 + 0.5) / S, py = y0 + (j - 1 + 0.5) / S; if (px < 0 || py < 0 || px >= N || py >= N) continue;
+      const kind = w.cellKind[Math.floor(py) * N + Math.floor(px)]; if (kind === w.KIND.water || kind === w.KIND.chasm) continue;
+      const z = heightAt(w, px, py), sun = sunShadow(w, this.occ, px, py, z), can = canopyShade(w, this.occ, px, py, 5);
+      arr[j * n + i] = Math.min(0.58, 0.44 * sun + 0.4 * can);
     }
-    for (const it of list) {
-      const sp = this.spriteOf(it); if (!sp) continue; const [key, dim, draw, sx, sy] = sp, sh = this.shadowSprite(key, dim, draw, scale); if (!sh) continue;
-      const big = it.b || it.en !== undefined, k1 = big ? 0.5 : 0.7, k2 = big ? 0.2 : 0.3;
-      g.save(); g.transform(1, 0, -k1, -k2, sx, sy); g.globalAlpha = big ? 0.34 : 0.3; g.drawImage(sh, -dim[2], -dim[3], dim[0], dim[1]); g.restore();
-    }
-    g.restore();
+    const bl = new Float32Array(n * n); for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) { let v = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) v += arr[(j + dj) * n + i + di] * (di || dj ? 1 : 2); bl[j * n + i] = v / 10; }
+    return { x0, y0, n, arr, bl };
   }
   drawTile(g, tx, ty) {
     const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
     if (w.ramp[k]) return this.drawRamp(g, tx, ty, z);
-    const e = 0.7, SUBN = kind === K.road || kind === K.plaza ? SUB : SUB - 2;
+    const e = 0.7, SUBN = SHS, sg = this.sg, sn = sg.n, six = (tx - sg.x0) * SHS + 1, siy = (ty - sg.y0) * SHS + 1, TINT = [22, 12, 52]; let tileShade = 0;
     for (let j = 0; j < SUBN; j++) for (let i = 0; i < SUBN; i++) {
       const u0 = i / SUBN, u1 = (i + 1) / SUBN, v0 = j / SUBN, v1 = (j + 1) / SUBN, zz = z[0];
       const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz);
-      g.fillStyle = groundColor(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2);
+      const col = groundRGB(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2), sh = sg.bl[(siy + j) * sn + six + i]; tileShade += sh;
+      g.fillStyle = sh > 0.01 ? rgbStr([col[0] + (TINT[0] - col[0]) * sh, col[1] + (TINT[1] - col[1]) * sh, col[2] + (TINT[2] - col[2]) * sh]) : rgbStr(col);
       g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill();
     }
-    // cień przylegający do podstawy ściany skalnej (sąsiad od strony -x lub -y leży wyżej)
-    for (const [dx, dy] of [[-1, 0], [0, -1]]) {
-      const nx = tx + dx, ny = ty + dy; if (nx < 0 || ny < 0 || w.lvl[ny * N + nx] <= w.lvl[k] || w.ramp[ny * N + nx] || w.cellKind[ny * N + nx] === K.water) continue;
-      const wd = 0.5, e0 = dx ? [P(0, 0, z[0]), P(0, 1, z[0]), P(wd, 1, z[0]), P(wd, 0, z[0])] : [P(0, 0, z[0]), P(1, 0, z[0]), P(1, wd, z[0]), P(0, wd, z[0])];
-      const gr = g.createLinearGradient(e0[0][0], e0[0][1], e0[2][0], e0[2][1]); gr.addColorStop(0, 'rgba(18,10,30,.42)'); gr.addColorStop(1, 'rgba(18,10,30,0)');
-      g.fillStyle = gr; g.beginPath(); g.moveTo(e0[0][0], e0[0][1]); for (let i = 1; i < 4; i++) g.lineTo(e0[i][0], e0[i][1]); g.closePath(); g.fill();
-    }
+    tileShade /= SUBN * SUBN;
     // trawiaste kępki malarsko pokrywają równe powierzchnie
-    if (kind <= K.moss || kind === K.dry) { const gc = kind === K.moss ? ['#2a4a2a', '#4a7a3a'] : ['#3a7a2a', '#8ab84a']; g.lineWidth = 1.4; g.lineCap = 'round';
+    if (kind <= K.moss || kind === K.dry) { let gc = kind === K.moss ? ['#2a4a2a', '#4a7a3a'] : ['#3a7a2a', '#8ab84a']; if (tileShade > 0.02) gc = gc.map((hx) => { const r = parseInt(hx.slice(1, 3), 16), gg2 = parseInt(hx.slice(3, 5), 16), bb = parseInt(hx.slice(5, 7), 16); return rgbStr([r + (TINT[0] - r) * tileShade, gg2 + (TINT[1] - gg2) * tileShade, bb + (TINT[2] - bb) * tileShade]); }); g.lineWidth = 1.4; g.lineCap = 'round';
       for (let t = 0; t < 5; t++) { const fx = 0.12 + 0.76 * hash2(21 + t, tx, ty), fy = 0.12 + 0.76 * hash2(31 + t, tx, ty), p = P(fx, fy, z[0]), h = 5 + 4 * hash2(41 + t, tx, ty); g.strokeStyle = t % 2 ? gc[0] : gc[1]; g.beginPath(); g.moveTo(p[0] - 2, p[1]); g.lineTo(p[0] - 3.5, p[1] - h); g.moveTo(p[0], p[1]); g.lineTo(p[0], p[1] - h - 2); g.moveTo(p[0] + 2, p[1]); g.lineTo(p[0] + 3.5, p[1] - h); g.stroke(); } }
     // ściany skalne po stronie widocznej (+x i +y), tam gdzie sąsiad jest niżej
     for (const [dx, dy, side] of [[1, 0, 'R'], [0, 1, 'L']]) {
@@ -183,7 +158,7 @@ export class WorldView {
     // pęknięcia i mech
     g.strokeStyle = 'rgba(25,14,6,.4)'; g.lineWidth = 1;
     for (let c = 0; c < 3; c++) { const t = 0.1 + 0.8 * hash2(seed + 11, c, 3), p = at(t), len = 8 + 14 * hash2(seed + 12, c, 4); g.beginPath(); g.moveTo(p[0], p[1] + 6); g.lineTo(p[0] + (hash2(seed + 13, c, 5) - 0.5) * 8, p[1] + 6 + len * 0.5); g.lineTo(p[0] + (hash2(seed + 14, c, 6) - 0.5) * 10, p[1] + 6 + len); g.stroke(); }
-    for (let m = 0; m < 3; m++) if (hash2(seed + 15, m, 8) < 0.55) { const t = hash2(seed + 16, m, 9), p = at(t); g.fillStyle = 'rgba(70,110,40,.45)'; g.beginPath(); g.ellipse(p[0], p[1] + p[2] * (0.25 + 0.4 * hash2(seed + 17, m, 1)), 6 + 8 * hash2(seed + 18, m, 2), 3 + 3 * hash2(seed + 19, m, 3), 0, 0, 7); g.fill(); }
+    for (let m = 0; m < 3; m++) if (hash2(seed + 15, m, 8) < 0.55) { const t = hash2(seed + 16, m, 9), p = at(t); g.fillStyle = 'rgba(120,158,64,.38)'; g.beginPath(); g.ellipse(p[0], p[1] + p[2] * (0.25 + 0.4 * hash2(seed + 17, m, 1)), 6 + 8 * hash2(seed + 18, m, 2), 3 + 3 * hash2(seed + 19, m, 3), 0, 0, 7); g.fill(); }
     // trawiasta krawędź zwisająca nad ścianą i kępki na górze
     const gcol = topKind === w.KIND.moss ? '#2f5a2c' : '#4a8a30';
     g.fillStyle = gcol; g.beginPath(); g.moveTo(A[0], A[1] - 1); for (let i = 0; i <= 12; i++) { const p = at(i / 12); g.lineTo(p[0], p[1] + 3 + 4 * hash2(seed + 21, i, 4)); } for (let i = 12; i >= 0; i--) { const p = at(i / 12); g.lineTo(p[0], p[1] - 2); } g.closePath(); g.fill();

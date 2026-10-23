@@ -57,6 +57,20 @@ const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,st
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
+// malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
+function drawLight(tt,s){
+  const w=cv.width,h=cv.height,forest=world.cellRegion[Math.floor(hero.y)*N+Math.floor(hero.x)]===3,I=forest?1:0.45;
+  g.save();g.globalCompositeOperation='lighter';
+  const gl=g.createRadialGradient(w*0.12,-h*0.1,0,w*0.12,-h*0.1,Math.max(w,h)*0.95);gl.addColorStop(0,`rgba(255,226,150,${0.17*I+0.05})`);gl.addColorStop(1,'rgba(255,226,150,0)');g.fillStyle=gl;g.fillRect(0,0,w,h);
+  const sp=300,x0=Math.floor((cam.x-w/2/s)/sp)-2,x1=Math.floor((cam.x+w/2/s)/sp)+3,y0=Math.floor((cam.y-h/2/s)/sp)-2,y1=Math.floor((cam.y+h/2/s)/sp)+2;
+  for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++){
+    const r=Math.abs(Math.sin(i*127.1+j*311.7)*43758.5453)%1;if(r<(forest?0.35:0.8))continue;
+    const bx=(i+r)*sp,by=(j+((r*7)%1))*sp,bw=(34+r*70),len=520,sway=0.75+0.25*Math.sin(tt*0.5+r*20),a=(0.11+0.1*((r*13)%1))*I*sway;
+    const X=cv.width/2+(bx-cam.x)*s,Y=cv.height/2+(by-cam.y)*s,k=s,dxs=0.62*len*k,dys=0.34*len*k;
+    const gr=g.createLinearGradient(X-bw*k,Y,X+bw*k,Y);gr.addColorStop(0,'rgba(255,236,170,0)');gr.addColorStop(0.5,`rgba(255,236,170,${a})`);gr.addColorStop(1,'rgba(255,236,170,0)');
+    g.fillStyle=gr;g.beginPath();g.moveTo(X-bw*k,Y);g.lineTo(X+bw*k,Y);g.lineTo(X+bw*k+dxs,Y+dys);g.lineTo(X-bw*k+dxs,Y+dys);g.closePath();g.fill();
+  }
+  g.restore()}
 let vig=null;function drawVig(){if(!vig||vig.width!==cv.width||vig.height!==cv.height){vig=document.createElement('canvas');vig.width=cv.width;vig.height=cv.height;applyMood(vig.getContext('2d'),vig.width,vig.height,'dzien')}g.drawImage(vig,0,0)}
 function resize(){dpr=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr)}
 addEventListener('resize',resize);resize();
@@ -136,7 +150,7 @@ function frame(now){
   if(marker){marker.t+=dt;if(marker.t>0.7)marker=null;else{const p=wv.pos(marker.x,marker.y),f=marker.t/0.7;g.strokeStyle=`rgba(255,224,102,${1-f})`;g.lineWidth=3/zoom;g.beginPath();g.ellipse(p[0],p[1],10+26*f,5+13*f,0,0,7);g.stroke()}}
   // sylwetka bohatera przez przeszkody
   g.globalAlpha=.3;heroDraw(g,...wv.pos(hero.x,hero.y));g.globalAlpha=1;
-  g.setTransform(1,0,0,1,0,0);if(!Q.get('nomood'))drawVig();
+  g.setTransform(1,0,0,1,0,0);if(!Q.get('nomood')){drawLight(tt,s);drawVig()}
   mini();requestAnimationFrame(frame)
 }
 say('Dotknij ziemi, by tam pójść. Przytrzymaj palec, by iść za nim. Wejścia do lochów szukaj na wzgórzu i w lesie.');setTimeout(()=>{if($('hint').textContent.startsWith('Dotknij ziemi'))say('')},9000);

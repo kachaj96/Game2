@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { noise2, fbm } from '../../src/world/noise.js';
 import { generateWorld, N, ENTRANCES } from '../../src/world/kraina.js';
+import { buildOccluders, sunShadow, canopyShade } from '../../src/world/shadowmap.js';
 import { heightAt, canStep, tileBlocked, freeAt, moveWithCollision, findPath, pathLength, newWalker, setPath, stepWalker, lineFree } from '../../src/world/nav.js';
 import { WorldView } from '../../src/art/worldview.js';
 import { genTree, drawTree, SPECIES } from '../../src/art/trees.js';
@@ -109,4 +110,17 @@ test('kolor gruntu: ciągły, mech w lesie ciemniejszy od łąki, woda niebieska
   const forest = groundRGB(W, ...W.entrances[1].at), meadow = groundRGB(W, W.start[0] - 20, W.start[1] + 20); assert.ok(forest[1] < meadow[1], 'las ciemniejszy od łąki');
   let wet = null; for (let y = 0; y < N && !wet; y += 2) for (let x = 0; x < N; x += 2) if (W.cellKind[y * N + x] === W.KIND.water) { wet = [x + 0.5, y + 0.5]; break; }
   const wc = groundRGB(W, ...wet); assert.ok(wc[2] > wc[0], 'woda niebieska');
+});
+
+test('mapa cieni: wysoka ściana rzuca cień na niższy taras, drzewo na swoją platformę, a w pełnym słońcu jest jasno', () => {
+  const occ = buildOccluders(W);
+  // znajdź krawędź tarasu: kafel niższy tuż za (w stronę +x) kafelkiem wyższym o jeden poziom
+  let found = 0, lit = 0;
+  for (let y = 5; y < N - 5 && found < 20; y++) for (let x = 5; x < N - 12; x++) { const a = W.lvl[y * N + x], b = W.lvl[y * N + x + 1]; if (a === 1 && b === 0 && !W.ramp[y * N + x] && !W.ramp[y * N + x + 1] && W.lvl[y * N + x - 1] === 1) { if (sunShadow(W, occ, x + 1.2, y + 0.5, 0) > 0) found++; } }
+  assert.ok(found >= 3, `cień ściany na niższym poziomie (${found})`);
+  let tot = 0; for (let i = 0; i < 400; i++) { const x = 8 + (i * 37) % 176, y = 8 + (i * 53) % 176; if (W.cellKind[y * N + x] !== W.KIND.grass) continue; tot++; if (sunShadow(W, occ, x + 0.5, y + 0.5, heightAt(W, x + 0.5, y + 0.5)) === 0) lit++; }
+  assert.ok(tot > 30 && lit / tot > 0.4 && lit < tot, `większość łąk jest oświetlona, ale nie wszystkie (${lit}/${tot})`);
+  const tree = W.objects.find((o) => o.k === 'oak'), z = heightAt(W, tree.x, tree.y);
+  assert.ok(sunShadow(W, occ, tree.x + 1.2, tree.y - 0.3, z) > 0 || sunShadow(W, occ, tree.x + 2.0, tree.y - 0.5, z) > 0, 'drzewo rzuca cień w prawo');
+  assert.ok(canopyShade(W, occ, tree.x, tree.y, 1) > 0, 'pod koroną jest półcień');
 });
