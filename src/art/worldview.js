@@ -11,7 +11,7 @@ import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
-import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
+import { lampPost, bench, barrel, crate, cart, sack, logs, well, fence } from './props.js';
 
 export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2;
 
@@ -19,9 +19,9 @@ export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 }
 
 const TREE = { oak: 1, pine: 1, birch: 1, dead: 1, swamp: 1 };
 const SMALL = { bush: (g, x, y, sc, s, o) => NA.bush(g, x, y, s, { biome: o.biome, sc: sc * 0.62 }), rock: (g, x, y, sc, s) => NA.rock(g, x, y, s, { sc: sc * 1.15 }), flowers: (g, x, y, sc, s) => NA.flowers(g, x, y, s, { sc: 0.8 }), mushrooms: (g, x, y, sc, s) => NA.mushrooms(g, x, y, s, { sc: 1.1 }), stump: (g, x, y, sc, s) => NA.stump(g, x, y, s, { sc: 1.1 }) };
-const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1.35), bench: (g, x, y) => bench(g, x, y, 1.25), barrel: (g, x, y, s) => barrel(g, x, y, 1.1, s), crate: (g, x, y, s) => crate(g, x, y, 1.1, s), cart: (g, x, y, s) => cart(g, x, y, 1.2, s), sack: (g, x, y) => sack(g, x, y, 1.1), logs: (g, x, y) => logs(g, x, y, 1.2) };
+const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1.35), bench: (g, x, y) => bench(g, x, y, 1.25), barrel: (g, x, y, s) => barrel(g, x, y, 1.1, s), crate: (g, x, y, s) => crate(g, x, y, 1.1, s), cart: (g, x, y, s) => cart(g, x, y, 1.2, s), sack: (g, x, y) => sack(g, x, y, 1.1), logs: (g, x, y) => logs(g, x, y, 1.2), well: (g, x, y, s) => well(g, x, y, 1.2, s), fence: (g, x, y, s, o) => fence(g, x, y, 1.2, s, o && o.dir) };
 // rozmiar obrazka i punkt zaczepienia (podstawa obiektu) w jednostkach świata
-const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210, 310, 105, 282], birch: [220, 300, 110, 272], dead: [220, 240, 110, 214], bush: [110, 80, 55, 62], rock: [170, 120, 85, 96], flowers: [80, 60, 40, 46], mushrooms: [80, 60, 40, 46], stump: [80, 70, 40, 56], lamp: [90, 190, 45, 176], bench: [130, 90, 65, 70], barrel: [90, 90, 45, 74], crate: [90, 90, 45, 74], cart: [190, 140, 95, 108], sack: [80, 70, 40, 54], logs: [140, 90, 70, 70], krypta: [800, 600, 400, 440], jama: [420, 470, 210, 380], budynek: [700, 700, 350, 560] };
+const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210, 310, 105, 282], birch: [220, 300, 110, 272], dead: [220, 240, 110, 214], bush: [110, 80, 55, 62], rock: [170, 120, 85, 96], flowers: [80, 60, 40, 46], mushrooms: [80, 60, 40, 46], stump: [80, 70, 40, 56], lamp: [90, 190, 45, 176], bench: [130, 90, 65, 70], barrel: [90, 90, 45, 74], crate: [90, 90, 45, 74], cart: [190, 140, 95, 108], sack: [80, 70, 40, 54], logs: [140, 90, 70, 70], well: [150, 170, 75, 136], fence: [100, 70, 50, 56], krypta: [800, 600, 400, 440], jama: [420, 470, 210, 380], budynek: [700, 700, 350, 560] };
 
 export class WorldView {
   constructor(world, deps = {}) {
@@ -238,7 +238,7 @@ export class WorldView {
     const sd = o.seed % 7 + 1;
     if (TREE[o.k]) { const spec = genTree(sd, o.k, o.biome || 'summer'); return [`${o.k}:${sd}:${o.biome || ''}`, SPR[o.k], (gg, ax, ay) => drawTree(gg, ax, ay, spec)]; }
     if (SMALL[o.k]) { const sc = o.sc || 1; return [`${o.k}:${sd}:${o.biome || ''}:${Math.round(sc * 4)}`, SPR[o.k], (gg, ax, ay) => SMALL[o.k](gg, ax, ay, sc, sd, o)]; }
-    if (PROP[o.k]) return [`${o.k}:${sd}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd)];
+    if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
     return null;
   }
   // kafle wyższe od gruntu przedmiotu i leżące przed nim (większa głębokość) w zasięgu jego obrazu: tylko one mogą go naprawdę zasłonić

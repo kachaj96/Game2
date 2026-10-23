@@ -53,7 +53,7 @@ const world=generateWorld(Number(Q.get('seed'))||1),wv=new WorldView(world),cv=$
 const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;$('lvl').textContent='poziom '+LEVEL;
 const hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
 const hero=newWalker(...world.start);let face='SE';
-const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9]};
+const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9],studnia:(()=>{const o=world.objects.find(q=>q.k==='well');return o?[o.x-1.5,o.y+2.5]:world.start})(),plot:(()=>{const o=world.objects.find(q=>q.k==='fence');return o?[o.x-2,o.y+2]:world.start})()};
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();

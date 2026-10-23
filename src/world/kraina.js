@@ -158,6 +158,9 @@ export function generateWorld(seed = 1) {
   { const [ex, ey] = ROAD_W[3]; for (const [dx, dy, kk] of [[3.2, -1.6, 'logs'], [2.2, 1.9, 'logs'], [4.2, 0.4, 'crate'], [1.6, -2.8, 'barrel']]) put(kk, ex + dx, ey + dy, { prop: true }); }
   const vprops = [['lamp', -4, -4.4], ['lamp', 4.4, -4], ['lamp', -4.4, 4.6], ['lamp', 4.8, 4.4], ['bench', -5.8, 1.6], ['bench', 6.2, 1.8], ['barrel', -7.4, -6.6], ['crate', -8.6, -7], ['barrel', 7.4, -6.6], ['cart', 2.8, 9.2], ['sack', -2, 9]];
   for (const [kk, dx, dy] of vprops) put(kk, vx + dx, vy + dy, { prop: true });
+  // studnia przy placu i kawałek płotu przy wozie (zajmują kafle, więc ścieżki je omijają)
+  { const solid = (kk, dx, dy, extra = {}) => { put(kk, vx + dx, vy + dy, { prop: true, ...extra }); blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))] = Math.max(blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))], 2); };
+    solid('well', 0.4, -7.6); for (let i = 0; i < 4; i++) solid('fence', 6.2 + i * 0.95, 7.6, { dir: 'x' }); for (let i = 1; i < 3; i++) solid('fence', 10.0, 7.6 + i * 0.95, { dir: 'y' }); }
   objects.sort((a, b) => (a.x + a.y) - (b.x + b.y));
   const byTile = new Map();
   for (const o of objects) { const key = Math.floor(o.y) * N + Math.floor(o.x); (byTile.get(key) || byTile.set(key, []).get(key)).push(o); }

@@ -1,0 +1,16 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Obiekty</title>
+<style>body{margin:0;background:#6a8a3a;color:#fff;font:14px system-ui}canvas{display:block}</style></head><body><canvas id="c"></canvas>
+<script type="module">
+import {barrel,crate,lampPost,bench,cart,sack,pot,haybale,logs} from '../src/art/props.js';
+import {genTree,drawTree} from '../src/art/trees.js';
+import * as NA from '../src/art/nature.js';
+const Q=new URLSearchParams(location.search),Z=Number(Q.get('zoom')||3),cv=document.getElementById('c'),dpr=2;
+cv.width=1720;cv.height=680;cv.style.width='860px';cv.style.height='340px';const g=cv.getContext('2d');
+g.fillStyle='#78a840';g.fillRect(0,0,cv.width,cv.height);g.scale(dpr,dpr);
+const row=(list,y,x0,step)=>list.forEach((f,i)=>{g.save();g.translate(x0+i*step,y);g.scale(Z,Z);f(g,0,0);g.restore()});
+const set=Q.get('set')||'props';
+if(set==='props')row([(g,x,y)=>barrel(g,x,y,1.3,1),(g,x,y)=>crate(g,x,y,1.3,2),(g,x,y)=>lampPost(g,x,y,1.4),(g,x,y)=>bench(g,x,y,1.2),(g,x,y)=>sack(g,x,y,1.3),(g,x,y)=>pot(g,x,y,1.3,3)],250,70,140);
+if(set==='trees'){row([(g,x,y)=>drawTree(g,x,y,genTree(3,'oak')),(g,x,y)=>drawTree(g,x,y,genTree(4,'pine')),(g,x,y)=>drawTree(g,x,y,genTree(5,'birch')),(g,x,y)=>drawTree(g,x,y,genTree(6,'dead'))],300,120,210)}
+if(set==='rocks')row([(g,x,y)=>NA.rock(g,x,y,3,{sc:1.4}),(g,x,y)=>NA.rock(g,x,y,5,{sc:1.2}),(g,x,y)=>NA.bush(g,x,y,2,{sc:1.4}),(g,x,y)=>cart(g,x,y,1.2,3),(g,x,y)=>haybale(g,x,y,1.4),(g,x,y)=>logs(g,x,y,1.3)],250,80,140);
+window.__ok=true;
+</script></body></html>

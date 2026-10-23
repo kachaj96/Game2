@@ -83,21 +83,35 @@ export function bush(g, x, y, seed, opt = {}) {
   blob(x + 4 * sc, y + 2, 18 * sc, 5 * sc, '#000', 0.2);
   const list = []; const n = r.int(3, 5); for (let i = 0; i < n; i++) list.push([x + (i - (n - 1) / 2) * 7 * sc + r.range(-2, 2), y - r.range(5, 10) * sc, r.range(7, 10) * sc]);
   lumps(g, list, pal, r, false);
+  // bryła krzewu: jasna czapa z lewej góry, cień po prawej i u dołu
+  { g.save(); g.beginPath(); for (const [lx, ly, lr] of list) { g.moveTo(lx + lr, ly); g.arc(lx, ly, lr, 0, Math.PI * 2); } g.clip(); const x0 = x - 30 * sc, x1 = x + 30 * sc, y0 = y - 22 * sc, y1 = y + 4;
+    const l1 = g.createLinearGradient(x0, y0, x1, y1); l1.addColorStop(0, 'rgba(255,255,190,.3)'); l1.addColorStop(0.5, 'rgba(255,255,190,0)'); l1.addColorStop(1, 'rgba(10,20,44,.38)'); g.fillStyle = l1; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    const l2 = g.createLinearGradient(0, y0, 0, y1); l2.addColorStop(0.65, 'rgba(0,0,0,0)'); l2.addColorStop(1, 'rgba(10,20,10,.3)'); g.fillStyle = l2; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.restore(); }
   const kind = opt.kind || r.pick(['plain', 'berry', 'flower', 'plain']);
   if (kind !== 'plain') for (let i = 0; i < 9; i++) { const [lx, ly, lr] = list[i % list.length]; const a = r() * 7, d = r() * lr * 0.8; circ(lx + Math.cos(a) * d, ly + Math.sin(a) * d - 1, 1.9, kind === 'berry' ? '#d8282a' : r.pick(['#fff', '#ffb8d8', '#ffe066']), 0.8); }
 }
+// Skała jako bryła: podstawa-wielokąt na gruncie, zwężona góra, ściany cieniowane płasko według kąta do światła (lewa góra), jasna powierzchnia wierzchu,
+// pęknięcia, mech na wierzchu i cień rzucony. Dwa, trzy głazy obok siebie mają różne proporcje.
 export function rock(g, x, y, seed, opt = {}) {
   const r = rng(seed * 31 + 2), { poly, blob, ln } = kit(g), sc = opt.sc || r.range(0.8, 1.4), n = r.int(1, 3);
   const tone = opt.tone || r.pick(['#a8a49c', '#9a9ea4', '#b0a898', '#8e9288']);
   for (let q = 0; q < n; q++) {
-    const ox = x + (q - (n - 1) / 2) * 18 * sc + r.range(-3, 3), oy = y + r.range(-2, 2), w = r.range(12, 19) * sc, hh = r.range(10, 17) * sc;
-    blob(ox + 3, oy + 1, w + 3, 4, '#000', 0.2);
-    const pts = []; const m = r.int(6, 8); for (let i = 0; i < m; i++) { const a = Math.PI + (i / (m - 1)) * Math.PI; pts.push([ox + Math.cos(a) * w, oy + Math.sin(a) * hh * 1.0 * (0.7 + r() * 0.5)]); }
-    poly([[ox - w, oy], ...pts.slice(1, -1), [ox + w, oy]], tone, 2);
-    poly([[ox - w * 0.9, oy - 1], pts[1], pts[2], [ox - w * 0.1, oy - hh * 0.2], [ox - w * 0.45, oy - 1]], shade(tone, 0.12), 0);
-    poly([[ox + w * 0.1, oy - hh * 0.3], pts[pts.length - 3] || pts[2], pts[pts.length - 2], [ox + w, oy - 1], [ox + w * 0.3, oy]], shade(tone, -0.12), 0);
-    ln([[ox - w * 0.3, oy - hh * 0.5], [ox + w * 0.1, oy - hh * 0.2]], 0.9, 'rgba(40,30,20,.5)');
-    if (opt.moss !== false && r() < 0.5) blob(ox - w * 0.3, oy - hh * 0.7, w * 0.5, 2.4, '#5aa03a', 0.8);
+    const ox = x + (q - (n - 1) / 2) * 20 * sc + r.range(-3, 3), oy = y + r.range(-2, 2), w = r.range(12, 18) * sc, hh = r.range(8, 13) * sc, m = r.int(7, 9);
+    blob(ox + w * 0.35, oy + 2, w * 1.35, w * 0.45, '#0a0614', 0.34);
+    const ring = (rad, hz, jit) => Array.from({ length: m }, (_, i) => { const a = (i / m) * Math.PI * 2 + r.range(-0.1, 0.1), rr = w * rad * r.range(1 - jit, 1 + jit); return [ox + Math.cos(a) * rr + hz * 0.08, oy + Math.sin(a) * rr * 0.5 - hz, a]; });
+    const base = ring(0.95, 0, 0.1), mid = ring(1.0, hh * 0.55, 0.12), top = ring(0.58, hh, 0.14);
+    const front = (a) => Math.sin(a) > -0.25;
+    const strip = (lo, hi) => { const faces = []; for (let i = 0; i < m; i++) { const j = (i + 1) % m, a1 = lo[i][2], a2 = lo[j][2] < a1 ? lo[j][2] + Math.PI * 2 : lo[j][2], am = (a1 + a2) / 2; if (!front(am)) continue; faces.push({ i, j, am, lit: Math.cos(am) * -0.8 + Math.sin(am) * -0.5 }); }
+      faces.sort((f1, f2) => Math.sin(f1.am) - Math.sin(f2.am));
+      for (const f of faces) { const A = lo[f.i], B = lo[f.j], C = hi[f.j], D = hi[f.i]; poly([[A[0], A[1]], [B[0], B[1]], [C[0], C[1]], [D[0], D[1]]], shade(tone, f.lit * 0.2 - 0.04 + (r() - 0.5) * 0.05), 1.5);
+        if (f.lit > 0.2) ln([[D[0], D[1]], [C[0], C[1]]], 1, 'rgba(255,255,235,.3)'); if (r() < 0.5) { const t = r.range(0.2, 0.7); ln([[A[0] + (D[0] - A[0]) * t, A[1] + (D[1] - A[1]) * t], [B[0] + (C[0] - B[0]) * (t + 0.2), B[1] + (C[1] - B[1]) * (t + 0.2)]], 0.8, 'rgba(30,24,20,.45)'); } } };
+    strip(base, mid); strip(mid, top);
+    poly(top.map((p) => [p[0], p[1]]), shade(tone, 0.2), 1.5);
+    const tcx = top.reduce((a, p) => a + p[0], 0) / m, tcy = top.reduce((a, p) => a + p[1], 0) / m;
+    blob(tcx - 2, tcy, w * 0.3, w * 0.12, 'rgba(255,255,230,1)', 0.22);
+    if (opt.moss !== false && r() < 0.65) { blob(tcx + 1, tcy + 1, w * 0.42, w * 0.17, '#5aa03a', 0.8); blob(tcx - w * 0.2, tcy + 3, w * 0.22, w * 0.1, '#86c24e', 0.75); }
+    // zacienienie u podstawy
+    g.save(); g.beginPath(); g.ellipse(ox, oy, w * 1.05, w * 0.55, 0, 0, Math.PI); g.clip(); const ao = g.createLinearGradient(0, oy - hh * 0.3, 0, oy + w * 0.5); ao.addColorStop(0, 'rgba(10,6,24,0)'); ao.addColorStop(1, 'rgba(10,6,24,.3)'); g.fillStyle = ao; g.fillRect(ox - w * 1.2, oy - hh * 0.3, w * 2.4, hh * 0.3 + w * 0.6); g.restore();
   }
 }
 export function flowers(g, x, y, seed, opt = {}) {

@@ -16,7 +16,7 @@ const TREES = {
   pine: { trunk: [0.2, 1.6], crown: [1.2, 8.2, 1.25, 0.08], ao: 1.2 },
   dead: { trunk: [0.24, 6.2], ao: 0.6 },
 };
-const SMALLS = { rock: [0.55, 1.1], bush: [0.5, 0.75], barrel: [0.35, 1.0], crate: [0.35, 1.0], lamp: [0.12, 3.4], cart: [0.8, 1.3], mushroom: [0.3, 0.6] };
+const SMALLS = { rock: [0.55, 1.1], bush: [0.5, 0.75], barrel: [0.35, 1.0], crate: [0.35, 1.0], lamp: [0.12, 3.4], cart: [0.8, 1.3], well: [0.8, 1.5], fence: [0.5, 0.55], mushroom: [0.3, 0.6] };
 
 export function buildOccluders(world) {
   const bins = new Map(), ao = new Map();
