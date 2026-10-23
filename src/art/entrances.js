@@ -9,7 +9,7 @@ import { genTree, drawTree } from './trees.js';
 export const ENTRANCE_KINDS = ['krypta', 'jama'];
 export function genEntrance(seed, kind) {
   const r = rng(seed * 6007 + 11); kind = kind || r.pick(ENTRANCE_KINDS);
-  const sp = { seed, kind, ruin: r.range(0.3, 1), glow: r.range(0.5, 1), scale: kind === 'krypta' ? r.range(0.92, 1.02) : r.range(1.0, 1.1) };
+  const sp = { seed, kind, ruin: r.range(0.3, 1), glow: r.range(0.5, 1), scale: kind === 'krypta' ? r.range(1.0, 1.1) : r.range(1.0, 1.1) };
   if (kind === 'krypta') Object.assign(sp, { stone: hsl(r.range(28, 46), r.range(0.06, 0.16), r.range(0.42, 0.52)), w: r.range(64, 78), h: r.range(46, 58), torches: r.int(0, 2), stairs: r.int(2, 4), slabs: r.int(2, 4), moss: r.chance(0.6), door: r.pick(['ajar', 'broken', 'sealed']) });
   else Object.assign(sp, { bark: hsl(r.range(22, 36), r.range(0.22, 0.34), r.range(0.2, 0.28)), trunkW: r.range(34, 44), height: r.range(120, 150), roots: r.int(5, 7), webs: r.int(2, 4), eggs: r.int(3, 6), shrooms: r.int(3, 6), eyes: r.chance(0.6), leaf: hsl(r.range(100, 140), r.range(0.28, 0.4), r.range(0.18, 0.26)) });
   return sp;
@@ -20,44 +20,40 @@ export function drawEntrance(g, x, y, sp) {
   const k = kit(g), { poly, ln, blob, ell, circ, lg } = k, r = rng(sp.seed * 31 + 3);
   g.save(); g.translate(x, y); g.scale(sp.scale, sp.scale);
   if (sp.kind === 'krypta') {
-    // brama w skalnej ścianie: urwisko z warstwami, ostrołukowe wrota w kamiennej ramie, pochodnie, schody i obozowisko
-    const Lw = 330, Hc = 250, ex = 0.894, ey = 0.447;
-    const L = (u, v) => [ex * u, ey * u - v], Rr = (u, v) => [ex * (Lw / 2) + ex * u, ey * (Lw / 2) - ey * u - v];
-    blob(10, 4, Lw * 0.55, 20, '#000', 0.34);
-    const cliff = shade(sp.stone, -0.06), jag = (n, a0, a1) => Array.from({ length: n }, (_, i) => a0 + (a1 - a0) * i / (n - 1) + (r() - 0.5) * 16);
-    // prawa ściana urwiska (w cieniu)
-    const rt = jag(6, 40, 150).map((h, i) => Rr(i * 36, Hc * 0.8 + h * 0.5 - 60));
-    poly([Rr(0, 0), ...rt, Rr(190, 0)], lg(0, -Hc, 0, 0, shade(cliff, -0.2), shade(cliff, -0.34)), 2);
-    for (let i = 1; i < 6; i++) ln([Rr(0, i * 38), Rr(190, i * 38 + (r() - 0.5) * 8)], 1.2, 'rgba(0,0,0,.28)');
-    // lewa ściana (w świetle) z nieregularną koroną
-    const top = jag(10, 190, 250).map((h, i) => L(-Lw / 2 + i * (Lw / 9), h));
-    poly([L(-Lw / 2, 0), ...top, L(Lw / 2, 0)], lg(-Lw / 2, -Hc, Lw / 2, 0, shade(cliff, 0.12), shade(cliff, -0.1)), 2.2);
-    for (let i = 1; i < 7; i++) { const v = i * 32; ln([L(-Lw / 2, v), L(-Lw / 4, v + (r() - 0.5) * 10), L(Lw / 4, v + (r() - 0.5) * 10), L(Lw / 2, v)], 1.3, 'rgba(0,0,0,.22)'); }
-    for (let i = 0; i < 9; i++) { const u = r.range(-Lw / 2, Lw / 2), v = r.range(10, 200); ln([L(u, v), L(u + r.range(-14, 14), v - r.range(16, 40))], 1, 'rgba(0,0,0,.3)'); }
-    if (sp.moss) for (let i = 0; i < 9; i++) { const p = L(r.range(-Lw / 2, Lw / 2), r.range(2, 150)); blob(p[0], p[1], r.range(8, 20), r.range(3, 7), '#4a6a30', 0.45); }
-    // wnęka z ostrołukowymi wrotami
-    const gu = -20, gw = 46, gh = 150, arch = [];
-    for (let i = 0; i <= 12; i++) { const t = i / 12; arch.push(L(gu + gw * (1 - 2 * t) * -1 - 0, gh * 0.55 + Math.pow(t < 0.5 ? t * 2 : (1 - t) * 2, 0.6) * gh * 0.45)); }
-    const frame = [L(gu - gw - 12, 0), L(gu - gw - 12, gh * 0.62), L(gu, gh + 22), L(gu + gw + 12, gh * 0.62), L(gu + gw + 12, 0)];
-    poly(frame, shade(sp.stone, 0.1), 2.4);
-    const door = [L(gu - gw, 0), L(gu - gw, gh * 0.6), L(gu, gh), L(gu + gw, gh * 0.6), L(gu + gw, 0)];
-    poly(door, '#07050a', 2); glowAt(g, L(gu, gh * 0.4)[0], L(gu, gh * 0.4)[1], 70, '230,130,50', 0.2 * sp.glow);
-    ln([L(gu - gw - 6, 0), L(gu - gw - 6, gh * 0.62), L(gu, gh + 12), L(gu + gw + 6, gh * 0.62), L(gu + gw + 6, 0)], 2, 'rgba(255,240,200,.22)');
-    // wrota: uchylone, wyłamane albo zapieczętowane, okute żelazem
-    if (sp.door === 'ajar') { poly([L(gu + 4, 0), L(gu + gw - 4, 0), L(gu + gw - 4, gh * 0.58), L(gu + 4, gh * 0.84)], '#4a3418', 1.8); for (let i = 1; i < 4; i++) ln([L(gu + 4, i * gh * 0.2), L(gu + gw - 4, i * gh * 0.17)], 2.4, '#1c1812'); }
-    else if (sp.door === 'sealed') { for (let i = 0; i < 5; i++) ln([L(gu - gw + 4, 12 + i * 26), L(gu + gw - 4, 4 + i * 26)], 5, '#4a3820'); }
-    else { ln([L(gu - gw + 8, 4), L(gu + 10, gh * 0.7)], 5, '#3a2814'); ln([L(gu + gw - 6, 6), L(gu - 12, gh * 0.5)], 4, '#4a3820'); }
-    // czaszka nad wejściem
-    const sk = L(gu, gh + 34); ell(sk[0], sk[1], 9, 8, '#d8cdb0', 1.6); ell(sk[0] - 3, sk[1], 2.2, 2.6, '#150c08', 0); ell(sk[0] + 3, sk[1], 2.2, 2.6, '#150c08', 0);
-    // schody i podest
-    for (let i = 0; i < sp.stairs; i++) { const w2 = gw * 2 + 40 + i * 18, v0 = -i * 5; poly([L(gu - w2 / 2, v0), L(gu + w2 / 2, v0), L(gu + w2 / 2, v0 - 5), L(gu - w2 / 2, v0 - 5)], shade(sp.stone, 0.06 - i * 0.04), 1.6); }
-    // pochodnie na żelaznych słupach
-    for (const sd of [-1, 1]) { const t = L(gu + sd * (gw + 38), 0), tt = [t[0], t[1] - 78]; ln([t, tt], 3.4, '#2a2018'); ell(tt[0], tt[1] - 2, 6, 3, '#3a3028', 1.4); glowAt(g, tt[0], tt[1] - 12, 50, '255,150,60', 0.55 * sp.glow); g.fillStyle = '#ffb848'; g.beginPath(); g.ellipse(tt[0], tt[1] - 10, 4, 9 + (r() - 0.5) * 3, 0, 0, 7); g.fill(); g.fillStyle = '#fff0b0'; g.beginPath(); g.ellipse(tt[0], tt[1] - 8, 1.8, 4.6, 0, 0, 7); g.fill(); }
-    // gruz, skrzynie i palisada obozowiska
-    for (let i = 0; i < 9; i++) { const p = L(gu + r.range(-150, 160), -r.range(6, 30)); ell(p[0], p[1], r.range(3, 8) * sp.ruin, r.range(2, 4), shade(sp.stone, r.range(-0.12, 0.06)), 1.2); }
-    for (let i = 0; i < 4; i++) { const p = L(gu + 120 + i * 14, -12 - (i % 2) * 8); isoBox(g, p[0], p[1], 22, 22, 22, { left: '#8a6a3a', right: '#6a4e2a', top: '#a88850' }); }
-    for (let i = 0; i < 4; i++) { const p = L(gu - 110 - i * 12, -16 + (i % 2) * 6); poly([[p[0] - 3, p[1]], [p[0], p[1] - 40 - i * 4], [p[0] + 3, p[1]]], '#5a4228', 1.4); }
-    for (let i = 0; i < sp.slabs; i++) grave(g, L(-Lw / 2 - 20 - i * 24, -10)[0], L(-Lw / 2 - 20 - i * 24, -10)[1], 0.9);
+    // stopniowana krypta z kamienia, pełna bryła: trzy piętra, brama z ostrołukiem na ścianie frontowej, rzeźbione czaszki, schody, pochodnie i obozowisko
+    const stone = sp.stone, cols = (k) => ({ left: shade(stone, 0.06 - k * 0.03), right: shade(stone, -0.14 - k * 0.03), top: shade(stone, 0.16 - k * 0.04) });
+    blob(10, 5, 150, 30, '#000', 0.34);
+    const tiers = [[210, 150, 70], [160, 112, 62], [108, 76, 54]]; let z = 0; const Ps = [];
+    tiers.forEach(([lx, ly, h], i) => { const P = isoBox(g, 0, -z, lx, ly, h, cols(i)); Ps.push(P); const a = lx / 2, b2 = ly / 2;
+      for (let q = 1; q < 3; q++) ln([P(-a, b2, h * q / 3), P(a, b2, h * q / 3)], 1, 'rgba(0,0,0,.25)');
+      for (let q = -2; q <= 2; q++) { ln([P(a, b2 - (q + 2) * ly / 5, 0), P(a, b2 - (q + 2) * ly / 5, h)], 0.9, 'rgba(0,0,0,.16)'); }
+      for (let q = -3; q <= 3; q++) ln([P(q * lx / 7, b2, 0), P(q * lx / 7 + (q % 2 ? 4 : -4), b2, h)], 0.8, 'rgba(0,0,0,.14)');
+      // gzyms na krawędzi piętra
+      poly([P(-a - 4, b2 + 4, h), P(a + 4, b2 + 4, h), P(a + 4, b2 + 4, h - 5), P(-a - 4, b2 + 4, h - 5)], shade(stone, 0.12), 1.4);
+      z += h; });
+    const P0 = Ps[0], a0 = 105, b0 = 75, dw = 30, dh = 52;
+    // brama w ścianie frontowej (lewej) pierwszego piętra
+    const arch = []; for (let i = 0; i <= 12; i++) { const t = Math.PI * i / 12; arch.push(P0(-Math.cos(t) * dw * (1 - 0.25 * Math.sin(t)), b0, dh * 0.7 + Math.sin(t) * dh * 0.45)); }
+    poly([P0(-dw - 7, b0, 0), P0(-dw - 7, b0, dh * 0.7), ...arch.map((_, i) => P0(-Math.cos(Math.PI * i / 12) * (dw + 7), b0, dh * 0.7 + Math.sin(Math.PI * i / 12) * (dh * 0.45 + 7))), P0(dw + 7, b0, dh * 0.7), P0(dw + 7, b0, 0)], shade(stone, 0.2), 2.2);
+    poly([P0(-dw, b0, 0), ...arch, P0(dw, b0, 0)], '#07050a', 2); glowAt(g, P0(0, b0, dh * 0.4)[0], P0(0, b0, dh * 0.4)[1], 46, '230,130,50', 0.24 * sp.glow);
+    if (sp.door === 'ajar') poly([P0(2, b0, 0), P0(dw - 3, b0, 0), P0(dw - 3, b0, dh * 0.62), P0(2, b0, dh * 0.78)], '#4a3418', 1.6);
+    else if (sp.door === 'sealed') for (let i = 0; i < 4; i++) ln([P0(-dw + 3, b0, 5 + i * 12), P0(dw - 3, b0, 2 + i * 12)], 3.4, '#4a3820');
+    else ln([P0(-dw + 4, b0, 3), P0(8, b0, dh * 0.7)], 3.4, '#3a2814');
+    // rzeźbiona czaszka nad bramą i na prawej ścianie
+    { const sk = P0(0, b0, dh + 12); ell(sk[0], sk[1], 9, 8, '#d8cdb0', 1.6); ell(sk[0] - 3, sk[1], 2.2, 2.6, '#150c08', 0); ell(sk[0] + 3, sk[1], 2.2, 2.6, '#150c08', 0); }
+    { const sk = P0(a0, 0, 36); ell(sk[0], sk[1], 11, 10, shade(stone, 0.18), 1.6); ell(sk[0] - 3.5, sk[1], 2.6, 3, '#150c08', 0); ell(sk[0] + 3.5, sk[1], 2.6, 3, '#150c08', 0); }
+    // schody przed bramą
+    for (let i = 0; i < sp.stairs; i++) isoBox(g, P0(0, b0 + 10 + i * 7, 0)[0] - 0, P0(0, b0 + 10 + i * 7, 0)[1], dw * 2 + 30 - i * 4, 9, 4 + (sp.stairs - i) * 0 + 0, cols(i + 1));
+    // pochodnie na żelaznych słupach przy bramie
+    for (const sd of [-1, 1]) { const t = P0(sd * (dw + 24), b0 + 8, 0), tt = [t[0], t[1] - 70]; ln([t, tt], 3.4, '#2a2018'); ell(tt[0], tt[1] - 2, 6, 3, '#3a3028', 1.4); glowAt(g, tt[0], tt[1] - 12, 50, '255,150,60', 0.55 * sp.glow); g.fillStyle = '#ffb848'; g.beginPath(); g.ellipse(tt[0], tt[1] - 10, 4, 9 + (r() - 0.5) * 3, 0, 0, 7); g.fill(); g.fillStyle = '#fff0b0'; g.beginPath(); g.ellipse(tt[0], tt[1] - 8, 1.8, 4.6, 0, 0, 7); g.fill(); }
+    // mech i pnącza na piętrach, zawalony narożnik
+    if (sp.moss) for (let i = 0; i < 12; i++) { const P = Ps[i % 3], q = P(r.range(-50, 50), 20, r.range(2, 40)); blob(q[0], q[1], r.range(8, 18), r.range(3, 6), '#4a6a30', 0.5); }
+    for (let i = 0; i < 3; i++) { const P = Ps[2], t = P(r.range(-30, 30), 38, 54); g.beginPath(); g.moveTo(t[0], t[1]); g.quadraticCurveTo(t[0] + r.range(-6, 6), t[1] + 16, t[0] + r.range(-3, 3), t[1] + r.range(24, 40)); g.lineWidth = 1.6; g.strokeStyle = '#3a5a28'; g.stroke(); }
+    // gruz, skrzynie i palisada obozowiska, nagrobki
+    for (let i = 0; i < 10; i++) { const p = P0(r.range(-150, 150), b0 + r.range(14, 40), 0); ell(p[0], p[1], r.range(3, 8) * sp.ruin, r.range(2, 4), shade(stone, r.range(-0.12, 0.06)), 1.2); }
+    for (let i = 0; i < 4; i++) { const p = P0(a0 + 40 + i * 10, b0 + 30 - (i % 2) * 14, 0); isoBox(g, p[0], p[1], 22, 22, 22, { left: '#8a6a3a', right: '#6a4e2a', top: '#a88850' }); }
+    for (let i = 0; i < 4; i++) { const p = P0(-a0 - 34 - i * 9, b0 + 26 + (i % 2) * 6, 0); poly([[p[0] - 3, p[1]], [p[0], p[1] - 38 - i * 4], [p[0] + 3, p[1]]], '#5a4228', 1.4); }
+    for (let i = 0; i < sp.slabs; i++) { const p = P0(-a0 - 70 - i * 22, b0 + 10, 0); grave(g, p[0], p[1], 0.9); }
   } else {
     // olbrzymie drzewo (to samo malarskie drzewo co w lesie, tylko większe) z jamą między korzeniami, pajęczynami i kokonami
     const tw = sp.trunkW * 1.5, th = sp.height * 1.15;

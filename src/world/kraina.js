@@ -18,7 +18,7 @@ export const BUILD_K = 1.7;      // budynki rysujemy 1,7 razy większe niż gene
 // drogi jako łamane (punkty w siatce) i ich szerokość; ścieżka na wzgórze ma profil wysokości
 const PATH_UP = [at(0, 24), at(-9, 8), at(8, -4), at(-8, -16), at(2, -25)];
 const ROAD_E = [at(0, 30), at(22, 22), at(42, 14), at(70, 12), at(92, 14)];
-const ROAD_W = [at(0, 34), at(-30, 40), at(-60, 38), at(-82, 34)];
+const ROAD_W = [at(0, 34), at(-30, 40), at(-56, 38), at(-74, 34)];
 const RIVER = [at(44, -140), at(52, -70), at(44, -10), at(42, 14), at(40, 40), at(46, 100), at(30, 170)];
 const FORDS = [at(42, 14)];
 const FOREST_PATH = [at(92, 14), at(96, 19), at(98, 24), at(100, 26)];
@@ -45,6 +45,9 @@ export function generateWorld(seed = 1) {
   const pathLen = (() => { let l = 0; for (let i = 0; i < PATH_UP.length - 1; i++) l += Math.hypot(PATH_UP[i + 1][0] - PATH_UP[i][0], PATH_UP[i + 1][1] - PATH_UP[i][1]); return l; })();
   const [cx0, cy0] = ENTRANCES[0].at, CRYPT_H = 4.4;
   // odległość z zaburzeniem: wzgórze i las mają nieregularny obrys, nie koło
+  // oś przepaści: kręta, nie prosta
+  const rav = (x, y) => (x - y) - RAVINE_E - 7 * Math.sin((x + y) / 17) - 4 * (fbm(seed + 80, x / 18, y / 18, 2) - 0.5);
+  const landK = (x, y) => { const e = x - y, ss = x + y - N, rr = Math.hypot(e / (0.84 * N), ss / (0.64 * N)) * (0.82 + 0.34 * fbm(seed + 60, x / 26, y / 26, 3) + 0.1 * Math.sin((x * 0.11 + y * 0.07))); return smoothstep(1.02, 0.9, rr); };
   const wob = (x, y, sd) => 0.78 + 0.44 * fbm(seed + sd, x / 22, y / 22, 3);
   const dHill = (x, y) => Math.hypot(x - hx, y - hy) * wob(x, y, 40) / (1 + 0.25 * Math.sin((x - y) / 18)), dForest = (x, y) => Math.hypot(x - fx, y - fy) * wob(x, y, 50);
   // wysokość wierzchołka siatki
@@ -65,7 +68,7 @@ export function generateWorld(seed = 1) {
     for (const f of FORDS) if (Math.hypot(x - f[0], y - f[1]) < 7) depth = -0.72;
     const rv = smoothstep(7.5, 1.6, dr); h = lerp(h, Math.min(h, depth), rv);
     // przepaść zachodnia
-    const re = Math.abs((x - y) - RAVINE_E); h = lerp(h, Math.min(h, -3.2), smoothstep(5.5, 2, re));
+    const re = Math.abs(rav(x, y)); h = lerp(h, Math.min(h, -3.2), smoothstep(5.5, 2, re));
     // ścieżka na wzgórze: gładki profil od 0 do poziomu krypty, wygładzony i szeroki
     const [dp, pr] = polyDist(x, y, PATH_UP);
     if (dp < 5) { const target = CRYPT_H * smoothstep(0.08, 0.98, pr), a = smoothstep(5, 1.8, dp); h = lerp(h, target, a); }
@@ -73,8 +76,8 @@ export function generateWorld(seed = 1) {
     const dc = Math.hypot(x - cx0, y - cy0); h = lerp(h, CRYPT_H, smoothstep(9, 3.5, dc));
     // drogi: lekkie wygładzenie
     for (const road of [ROAD_E, ROAD_W]) { const [d] = polyDist(x, y, road); if (d < 3) h = lerp(h, h * 0.4, smoothstep(3, 1, d)); }
-    // góry na brzegu świata
-    const de = Math.min(x, y, N - x, N - y); h += 11 * smoothstep(9, 1, de);
+    // wybrzeże: nieregularny kontynent, poza nim morze
+    h -= 4.6 * (1 - landK(x, y));
     return h;
   };
   for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) H[hi(x, y)] = heightAtVertex(x, y);
@@ -86,7 +89,7 @@ export function generateWorld(seed = 1) {
     if (Math.hypot(x - vx, y - vy) < VILLAGE_R + 3) return 1;
     if (dHill(x, y) < HILL_R) return 2;
     if (dForest(x, y) < FOREST_R) return 3;
-    if (Math.abs((x - y) - RAVINE_E) < 28 && (x - y) < RAVINE_E + 28) return 4;
+    if (Math.abs(rav(x, y)) < 28 && rav(x, y) < 28) return 4;
     return 0;
   };
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
@@ -98,8 +101,8 @@ export function generateWorld(seed = 1) {
     else kind = n > 0.6 ? KIND.meadow : KIND.grass;
     if (mx - mn > CLIFF * 0.75 || mean > 5.2) kind = KIND.rock;
     if (mx - mn > CLIFF) steep[k] = 1;
-    if (mn < WATER - 0.1) kind = Math.abs((x + 0.5 - y - 0.5) - RAVINE_E) < 6.5 ? KIND.chasm : KIND.water;
-    else if (mean < WATER + 0.1 && mean >= WATER - 0.05 && Math.abs((x - y) - RAVINE_E) > 7) kind = KIND.sand;
+    if (mn < WATER - 0.1) kind = Math.abs(rav(x + 0.5, y + 0.5)) < 6.5 ? KIND.chasm : KIND.water;
+    else if (mean < WATER + 0.1 && mean >= WATER - 0.05 && Math.abs(rav(x, y)) > 7) kind = KIND.sand;
     cellKind[k] = kind;
     if (steep[k] || mn < DEEP || Math.min(x, y, N - 1 - x, N - 1 - y) < 2) blocked[k] = 1;
   }
@@ -169,7 +172,7 @@ export function generateWorld(seed = 1) {
   const roadsAll = [PATH_UP, ROAD_E, ROAD_W];
   const fieldAt = (x, y) => {
     let dr = 1e9; for (const r of roadsAll) dr = Math.min(dr, polyDist(x, y, r)[0]);
-    const chasm = Math.abs((x - y) - RAVINE_E) < 8 ? smoothstep(-0.9, -2.4, heightAtVertex(x, y)) : 0;
+    const chasm = Math.abs(rav(x, y)) < 8 ? smoothstep(-0.9, -2.4, heightAtVertex(x, y)) : 0;
     return { forest: 1 - smoothstep(FOREST_R - 9, FOREST_R + 1, dForest(x, y)), road: 1 - smoothstep(0.9, 2.1, dr), plaza: 1 - smoothstep(6.2, 7.6, Math.hypot(x - vx, y - vy)), chasm };
   };
   const entrances = ENTRANCES.map((e) => ({ ...e, approach: [e.at[0] - 1.6, e.at[1] + 2.6] }));

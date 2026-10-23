@@ -23,13 +23,13 @@ export function groundRGB(w, x, y) {
   // trawa, na wyżynie sucha, w lesie mech
   let c = hslRgb(97 + 14 * (n1 - 0.5), 0.5, 0.45 + 0.13 * (n1 - 0.5) + 0.04 * (n3 - 0.5));
   c = mix(c, hslRgb(66, 0.4, 0.46 + 0.05 * (n3 - 0.5)), smoothstep(1.6, 4.2, h));
-  c = mix(c, hslRgb(122, 0.3, 0.24 + 0.06 * (n2 - 0.5) + 0.04 * (n3 - 0.5)), f.forest);
+  c = mix(c, hslRgb(122, 0.3, 0.24 + 0.06 * (n2 - 0.5) + 0.04 * (n3 - 0.5)), smoothstep(0.42, 0.5, f.forest + (n3 - 0.5) * 0.45));
   c = mix(c, hslRgb(48, 0.42, 0.66), smoothstep(WATER + 0.3, WATER + 0.02, h) * (1 - f.forest * 0.5));
-  c = mix(c, hslRgb(36, 0.36, 0.58 + 0.05 * (n2 - 0.5)), f.road);
+  c = mix(c, hslRgb(36, 0.36, 0.58 + 0.05 * (n2 - 0.5)), smoothstep(0.48, 0.54, f.road + (n2 - 0.5) * 0.3));
   const stone = Math.floor(x * 1.6) * 7 + Math.floor(y * 1.6) * 13, st = ((Math.sin(stone) * 43758.5) % 1 + 1) % 1;
-  c = mix(c, hslRgb(38, 0.1, 0.5 + 0.1 * st), f.plaza);
+  c = mix(c, hslRgb(38, 0.1, 0.5 + 0.1 * st), smoothstep(0.46, 0.52, f.plaza + (n3 - 0.5) * 0.12));
   // skała na stromiznach i szczytach, z poziomymi warstwami
-  const rk = Math.max(smoothstep(0.34, 0.8, slope), smoothstep(5.2, 6.4, h));
+  const rk = Math.max(smoothstep(0.5, 0.58, slope + (n3 - 0.5) * 0.18), smoothstep(5.2, 6.4, h));
   if (rk > 0) c = mix(c, hslRgb(30, 0.1, 0.42 + 0.05 * Math.sin(h * 9 + n1 * 7) + 0.04 * (n2 - 0.5)), rk);
   // światło z lewej góry: zbocze rosnące ku +x patrzy w stronę światła
   const L = 0.5 + (gx * 0.7 - gy * 0.26) * 0.55, k = Math.max(0.55, Math.min(1.3, 0.74 + 0.52 * L));

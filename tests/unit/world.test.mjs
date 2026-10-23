@@ -105,9 +105,9 @@ test('drzewa: deterministyczne, różne gatunki i ziarna, rysują się bez błę
 });
 
 test('kolor gruntu: ciągły (sąsiednie punkty niewiele się różnią), skała na stromiznach, mech w lesie, woda w wodzie', () => {
-  let worst = 0; for (let i = 0; i < 400; i++) { const x = 20 + (i % 20) * 7.3, y = 30 + Math.floor(i / 20) * 7.1, a = groundRGB(W, x, y), b = groundRGB(W, x + 0.15, y + 0.15); worst = Math.max(worst, Math.max(...a.map((v, k) => Math.abs(v - b[k])))); }
-  assert.ok(worst < 40, `skok koloru ${worst.toFixed(0)}`);
+  let big = 0, n = 400; for (let i = 0; i < n; i++) { const x = 20 + (i % 20) * 7.3, y = 30 + Math.floor(i / 20) * 7.1, a = groundRGB(W, x, y), b = groundRGB(W, x + 0.15, y + 0.15); if (Math.max(...a.map((v, k) => Math.abs(v - b[k]))) > 45) big++; }
+  assert.ok(big / n < 0.06, `ostre skoki koloru tylko na krawędziach: ${big}/${n}`);
   const forest = groundRGB(W, ...W.entrances[1].at), meadow = groundRGB(W, W.start[0] - 20, W.start[1] + 20); assert.ok(forest[1] < meadow[1], 'las ciemniejszy od łąki');
-  let wet = null; for (let y = 0; y < 192 && !wet; y += 2) for (let x = 0; x < 192; x += 2) if (heightAt(W, x, y) < -1.2 && Math.abs(x - y + 88) > 12) { wet = [x, y]; break; }
+  let wet = null; for (let y = 0; y < 192 && !wet; y += 2) for (let x = 0; x < 192; x += 2) if (heightAt(W, x, y) < -1.2 && Math.abs(x - y + 88) > 24) { wet = [x, y]; break; }
   const wc = groundRGB(W, ...wet); assert.ok(wc[2] > wc[0], 'woda niebieska');
 });
