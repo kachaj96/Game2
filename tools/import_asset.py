@@ -23,7 +23,8 @@ arr[:, :, 3] = np.clip((arr[:, :, 3] - a.lo) / a.span, 0, 1) * 255
 ys, xs = np.where(arr[:, :, 3] > 20)
 if not len(xs): sys.exit('pusty obraz po czyszczeniu')
 im2 = Image.fromarray(arr.astype(np.uint8)).crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)); w, h = im2.size
-tw = max(16, round(a.world_w * a.px_per_unit)); th = round(h * tw / w); im2 = im2.resize((tw, th), Image.LANCZOS)
+tw = min(w, max(16, round(a.world_w * a.px_per_unit)))   # nie powiększamy ponad oryginał
+th = round(h * tw / w); im2 = im2.resize((tw, th), Image.LANCZOS)
 os.makedirs(a.out, exist_ok=True); path = os.path.join(a.out, a.key + '.png'); im2.save(path, optimize=True)
 wh = round(a.world_w * h / w); foot = a.foot if a.foot is not None else round(wh * 0.03)
 print(f'zapisano {path} ({tw}x{th}, {os.path.getsize(path)//1024} KB)')

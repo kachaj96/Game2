@@ -18,6 +18,8 @@ export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2, LEVELS = [0.5, 0.75, 
 
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
+// rodzaje obiektów świata rysowane z gotowych obrazów (gdy się wczytały): sc przelicza skalę obiektu na skalę obrazu, vary dodaje drobne różnice rozmiaru
+const IMG_KIND = { oak: { key: 'dab', vary: true }, pine: { key: 'sosna', vary: true }, birch: { key: 'brzoza', vary: true }, dead: { key: 'martwe', vary: true }, rock: { key: 'glaz', sc: (o) => 0.5 + 0.5 * (o.sc || 1) }, bush: { key: 'krzew', sc: (o) => (o.sc || 1) * 1.1 }, crate: { key: 'skrzynia' }, barrel: { key: 'beczka' }, lamp: { key: 'latarnia' }, well: { key: 'studnia' }, stump: { key: 'pniak' }, grave: { key: 'nagrobek' } };
 const TREE = { oak: 1, pine: 1, birch: 1, dead: 1, swamp: 1 };
 const SMALL = { bush: (g, x, y, sc, s, o) => NA.bush(g, x, y, s, { biome: o.biome, sc: sc * 0.62 }), rock: (g, x, y, sc, s) => NA.rock(g, x, y, s, { sc: sc * 1.15 }), flowers: (g, x, y, sc, s) => NA.flowers(g, x, y, s, { sc: 0.8 }), mushrooms: (g, x, y, sc, s) => NA.mushrooms(g, x, y, s, { sc: 1.1 }), stump: (g, x, y, sc, s) => NA.stump(g, x, y, s, { sc: 1.1 }) };
 const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1.35), bench: (g, x, y) => bench(g, x, y, 1.25), barrel: (g, x, y, s) => barrel(g, x, y, 1.1, s), crate: (g, x, y, s) => crate(g, x, y, 1.1, s), cart: (g, x, y, s) => cart(g, x, y, 1.2, s), sack: (g, x, y) => sack(g, x, y, 1.1), logs: (g, x, y) => logs(g, x, y, 1.2), well: (g, x, y, s) => well(g, x, y, 1.2, s), fence: (g, x, y, s, o) => fence(g, x, y, 1.2, s, o && o.dir) };
@@ -253,8 +255,8 @@ export class WorldView {
   }
   objectDrawer(o) {
     const sd = o.seed % 7 + 1;
-    if (o.k === 'oak' && this.imgs.dab) { const flip = sd % 2 === 1, sc = 0.88 + 0.12 * (sd % 3); return [`img:dab:${flip ? 1 : 0}:${sd % 3}`, assetDim('dab', sc), (gg, ax, ay) => drawAsset(gg, this.imgs.dab, 'dab', ax, ay, { flip, sc })]; }
-    if (o.k === 'barrel' && this.imgs.beczka) return ['img:beczka', assetDim('beczka'), (gg, ax, ay) => drawAsset(gg, this.imgs.beczka, 'beczka', ax, ay)];
+    const I = IMG_KIND[o.k];
+    if (I && this.imgs[I.key]) { const flip = sd % 2 === 1, q = Math.round((I.sc ? I.sc(o) : 1) * 8) / 8 * (I.vary ? 0.9 + 0.1 * (sd % 3) : 1), key = `img:${I.key}:${flip ? 1 : 0}:${q.toFixed(2)}`; return [key, assetDim(I.key, q), (gg, ax, ay) => drawAsset(gg, this.imgs[I.key], I.key, ax, ay, { flip, sc: q })]; }
     if (TREE[o.k]) { const spec = genTree(sd, o.k, o.biome || 'summer'); return [`${o.k}:${sd}:${o.biome || ''}`, SPR[o.k], (gg, ax, ay) => drawTree(gg, ax, ay, spec)]; }
     if (SMALL[o.k]) { const sc = o.sc || 1; return [`${o.k}:${sd}:${o.biome || ''}:${Math.round(sc * 4)}`, SPR[o.k], (gg, ax, ay) => SMALL[o.k](gg, ax, ay, sc, sd, o)]; }
     if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
@@ -264,7 +266,7 @@ export class WorldView {
   // źródła światła w świecie (lampy, pochodnie przy wejściach) w pikselach świata: używane w nocy i do migotania
   collectLights() {
     const out = [], w = this.w;
-    for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y); out.push({ x: p[0], y: p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
+    for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y), L = ASSETS.latarnia, lit = this.imgs.latarnia; out.push({ x: lit ? p[0] + (L.lights[0][0] - 0.5) * L.w : p[0], y: lit ? p[1] + L.lights[0][1] * L.h - (L.h - L.foot) : p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
     // wejścia: światło wychodzi z pochodni (płomienie na słupach przy portyku krypty) albo z dziupli jamy, a nie z całej bryły
     w.entrances.forEach((e, i) => { const p = this.pos(e.at[0], e.at[1]), sc = this.entSpecs[i].scale || 1;
       const A = ASSETS.krypta; if (e.kind === 'krypta' && this.imgs.krypta) for (const [fx, fy] of A.lights) out.push({ x: p[0] + (fx - 0.5) * A.w, y: p[1] + fy * A.h - (A.h - A.foot), r: 95, a: 0.95, ph: i + fx * 7 });
@@ -337,8 +339,10 @@ export class WorldView {
   drawWithOcclusion(g, occ, scale, drawFn) {
     drawFn(); if (occ && occ.length) for (const k of occ) this.redrawTile(g, k, scale);
   }
+  // chata z obrazu na podstawie budynku typu cottage: szerokość z obrysu, podstawa w środku obrysu
+  bldDraw(b) { if (b.s.kind === 'cottage' && this.imgs.chata) { const A = ASSETS.chata, sc = (b.w + b.d) * 36 * 0.95 / A.w; return [`bi:${b.s.seed}`, assetDim('chata', sc), (gg, ax, ay) => drawAsset(gg, this.imgs.chata, 'chata', ax, ay, { sc }), true]; } return [`b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, false]; }
   // rysunek wejścia: gotowy obraz (krypta), gdy się wczytał, inaczej generator
-  entDraw(i) { const e = this.w.entrances[i]; if (e.kind === 'krypta' && this.imgs.krypta) return [`ei:${i}`, assetDim('krypta'), (gg, ax, ay) => drawAsset(gg, this.imgs.krypta, 'krypta', ax, ay)]; return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i])]; }
+  entDraw(i) { const e = this.w.entrances[i]; if (e.kind === 'krypta' && this.imgs.krypta) return [`ei:${i}`, assetDim('krypta'), (gg, ax, ay) => drawAsset(gg, this.imgs.krypta, 'krypta', ax, ay)]; if (e.kind === 'jama' && this.imgs.jama) return [`ei:${i}`, assetDim('jama'), (gg, ax, ay) => drawAsset(gg, this.imgs.jama, 'jama', ax, ay)]; return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i])]; }
   // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom). Najpierw cały teren (niezależna warstwa), potem wszystkie
   // przedmioty i postacie od tyłu do przodu; wyższy teren zasłania tylko te przedmioty, które faktycznie leżą za nim.
   draw(g, cam, view, zoom, dpr, t, entities = []) {
@@ -367,9 +371,9 @@ export class WorldView {
     for (const it of items) {
       if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (!dr) continue; if (o._occ === undefined) o._occ = this.occluderTiles(o.x, o.y, heightAt(w, o.x, o.y));
         const fa = TREE[o.k] ? this.fadeAlpha(o, dr[0], [sx - dr[1][2], sy - dr[1][3], dr[1][0], dr[1][1]], it.d, player) : 1; g.globalAlpha = fa; this.drawWithOcclusion(g, o._occ, scale, () => this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale)); g.globalAlpha = 1; }
-      else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), [sx, sy] = this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z);
-        g.globalAlpha = this.fadeAlpha(b, `b:${b.s.seed}`, [sx - SPR.budynek[2], sy - SPR.budynek[3], SPR.budynek[0], SPR.budynek[1]], it.d - 1.2, player); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale)); g.globalAlpha = 1;
-        if (this.quality.smoke) this.drawSmoke(g, b, sx, sy, t); }
+      else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), bd = this.bldDraw(b), [sx, sy] = bd[3] ? this.proj(b.sx - b.w / 2, b.sy - b.d / 2, z) : this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z);
+        g.globalAlpha = this.fadeAlpha(b, bd[0], [sx - bd[1][2], sy - bd[1][3], bd[1][0], bd[1][1]], it.d - 1.2, player); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, bd[0], bd[1], bd[2], sx, sy, scale)); g.globalAlpha = 1;
+        if (this.quality.smoke && !bd[3]) this.drawSmoke(g, b, sx, sy, t); }
       else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]), ed = this.entDraw(i); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1]));
         g.globalAlpha = this.fadeAlpha(e, ed[0], [sx - ed[1][2], sy - ed[1][3], ed[1][0], ed[1][1]], it.d - 1.5 - 1.2, player); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, ed[0], ed[1], ed[2], sx, sy, scale)); g.globalAlpha = 1; }
       else { const e = it.e, occ = this.occluderTiles(e.x, e.y, heightAt(w, e.x, e.y)); this.drawWithOcclusion(g, occ, scale, () => e.draw(g, ...this.pos(e.x, e.y))); }
