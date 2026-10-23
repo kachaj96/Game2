@@ -13,8 +13,8 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 #hint:empty{display:none}
 #bubble{left:50%;top:38%;transform:translateX(-50%);max-width:min(60vw,520px);text-align:center;font-size:14px;line-height:1.4;display:none}
 #bubble b{display:block;color:#e0b44a;margin-bottom:2px}
-#mini{position:fixed;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:150px;height:78px;pointer-events:none;opacity:.92}
-#mini canvas{position:absolute;left:0;top:-36px;width:150px;height:150px;transform:rotate(45deg) scaleY(.5);transform-origin:50% 50%}
+#mini{position:fixed;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:176px;height:96px;pointer-events:none}
+#mini canvas{width:176px;height:96px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
 .zb{position:fixed;right:max(8px,env(safe-area-inset-right));width:44px;height:44px;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 20px system-ui;padding:0}
 #zin{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 50px)}#zout{bottom:max(8px,env(safe-area-inset-bottom))}
 #card{left:50%;top:50%;transform:translate(-50%,-50%);display:none;pointer-events:auto;min-width:260px;max-width:min(78vw,430px);padding:6px 10px 10px}
@@ -29,7 +29,7 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 <canvas id="c"></canvas>
 <div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small></div>
 <div id="toast" class="pill"></div>
-<div id="mini"><canvas id="mm" width="192" height="192"></canvas><canvas id="mh" width="192" height="192"></canvas></div>
+<div id="mini"><canvas id="mm" width="352" height="192"></canvas></div>
 <button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
 <div id="bubble" class="pill"></div>
 <div id="card" class="pill"></div>
@@ -61,14 +61,20 @@ let vig=null;function drawVig(){if(!vig||vig.width!==cv.width||vig.height!==cv.h
 function resize(){dpr=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr)}
 addEventListener('resize',resize);resize();
 {const p=wv.pos(hero.x,hero.y);cam.x=p[0];cam.y=p[1]-30}
-// minimapa: jeden raz rysowana mapa gruntu i wysokości (obracana w CSS do rombu)
-{const c=$('mm'),m=c.getContext('2d'),im=m.createImageData(N,N),B=[[98,.5,.5],[88,.55,.56],[128,.34,.32],[62,.4,.46],[32,.08,.44],[38,.42,.62],[40,.1,.55],[48,.45,.68],[205,.5,.42],[30,.3,.3],[20,.12,.07]];
+// minimapa: romb jak świat w grze, jedna płótno; tło (teren, ramka) rysowane raz, na nim wejścia i bohater
+const MW=352,MH=192,MR=6,mmc=$('mm').getContext('2d'),mbg=document.createElement('canvas');mbg.width=MW;mbg.height=MH;
+const mpt=(x,y)=>[MW/2+(x-y)/N*(MW/2-MR),MR+(x+y)/N*(MH/2-MR)];
+{const base=document.createElement('canvas');base.width=base.height=N;const m=base.getContext('2d'),im=m.createImageData(N,N),B=[[98,.5,.5],[88,.55,.56],[128,.34,.32],[62,.4,.46],[32,.08,.44],[38,.42,.62],[40,.1,.55],[48,.45,.68],[205,.5,.42],[30,.3,.3],[20,.12,.07]];
   const hsl2=(h,s,l)=>{const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[f(0),f(8),f(4)].map(v=>Math.round(v*255))};
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const kind=world.cellKind[y*N+x],b=B[kind],h=heightAt(world,x+.5,y+.5),rgb=hsl2(b[0],b[1],Math.max(.1,Math.min(.8,b[2]+h*.03)));const i=(y*N+x)*4;im.data[i]=rgb[0];im.data[i+1]=rgb[1];im.data[i+2]=rgb[2];im.data[i+3]=255}
-  m.putImageData(im,0,0)}
-const mh=$('mh').getContext('2d');
-function mini(){mh.clearRect(0,0,N,N);for(const e of world.entrances){mh.fillStyle='#ffd24a';mh.beginPath();mh.arc(e.at[0],e.at[1],4,0,7);mh.fill();mh.strokeStyle='#000';mh.lineWidth=1.5;mh.stroke()}
-  mh.fillStyle='#ff4a3a';mh.beginPath();mh.arc(hero.x,hero.y,4.5,0,7);mh.fill();mh.strokeStyle='#fff';mh.lineWidth=1.5;mh.stroke()}
+  m.putImageData(im,0,0);
+  const g=mbg.getContext('2d'),dia=()=>{g.beginPath();g.moveTo(MW/2,MR);g.lineTo(MW-MR,MH/2);g.lineTo(MW/2,MH-MR);g.lineTo(MR,MH/2);g.closePath()};
+  g.save();dia();g.clip();g.setTransform((MW/2-MR)/N,(MH/2-MR)/N,-(MW/2-MR)/N,(MH/2-MR)/N,MW/2,MR);g.imageSmoothingEnabled=true;g.drawImage(base,0,0);g.restore();
+  g.save();dia();g.clip();const sh=g.createLinearGradient(0,0,0,MH);sh.addColorStop(0,'rgba(255,255,255,.1)');sh.addColorStop(1,'rgba(0,0,20,.22)');g.fillStyle=sh;g.fillRect(0,0,MW,MH);g.restore();
+  dia();g.lineJoin='round';g.lineWidth=7;g.strokeStyle='#15110f';g.stroke();g.lineWidth=3.2;g.strokeStyle='#b08a3a';g.stroke();g.lineWidth=1;g.strokeStyle='#e8d29a';g.stroke()}
+function mini(){mmc.clearRect(0,0,MW,MH);mmc.drawImage(mbg,0,0);
+  for(const e of world.entrances){const p=mpt(e.at[0],e.at[1]);mmc.fillStyle='#ffd24a';mmc.beginPath();mmc.arc(p[0],p[1],5,0,7);mmc.fill();mmc.strokeStyle='#15110f';mmc.lineWidth=2;mmc.stroke()}
+  const h=mpt(hero.x,hero.y);mmc.fillStyle='#ff4a3a';mmc.beginPath();mmc.arc(h[0],h[1],6,0,7);mmc.fill();mmc.strokeStyle='#fff';mmc.lineWidth=2.2;mmc.stroke()}
 const say=t=>{$('hint').textContent=t};
 const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),2600)};
 const dirOf=(dx,dy)=>{const sx=dx-dy,sy=dx+dy;return sx>=0?(sy>=0?'SE':'NE'):(sy>=0?'SW':'NW')};

@@ -118,6 +118,8 @@ export function generateWorld(seed = 1) {
   const objects = [], clear = new Set();
   for (const e of ENTRANCES) for (let dy = -6; dy <= 6; dy++) for (let dx = -7; dx <= 7; dx++) clear.add((Math.floor(e.at[1]) + dy) * N + Math.floor(e.at[0]) + dx);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (polyDist(x + 0.5, y + 0.5, FOREST_PATH)[0] < 3.2) clear.add(y * N + x);
+  // przy schodach nic nie rośnie ani nie stoi (dwa kafle zapasu), żeby drzewa nie wyglądały na zawieszone nad stopniami
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (ramp[y * N + x]) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (x + dx >= 0 && y + dy >= 0 && x + dx < N && y + dy < N) clear.add((y + dy) * N + x + dx);
   const R = rng(seed * 977 + 5);
   const put = (k, x, y, extra = {}) => objects.push({ k, x, y, seed: Math.floor(hash2(seed, Math.floor(x * 4), Math.floor(y * 4)) * 1e6) % 9973, ...extra });
   for (let y = 2; y < N - 2; y++) for (let x = 2; x < N - 2; x++) {

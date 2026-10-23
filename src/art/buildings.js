@@ -155,16 +155,26 @@ export function drawBuilding(g, X, Y, s) {
       const glassTop = lit ? '#ffe9a0' : dark ? '#7fb0c8' : '#a8d8ee', glassBot = lit ? '#ffb84a' : dark ? '#4a7a98' : '#6aa4c4';
       if (s.shutter && s.winType !== 'slit') { const sw = 5.6 * pxu, sc = dark ? shade(s.shutter, -0.08) : s.shutter; for (const sd of [-1, 1]) { const a = sd < 0 ? uc - hw - sw : uc + hw, b = sd < 0 ? uc - hw : uc + hw + sw; Q(a, v0 - 1, b, v1 + 1, sc, 1.2); for (let q = 1; q < 4; q++) ln([F(a, v0 + (v1 - v0) * q / 4), F(b, v0 + (v1 - v0) * q / 4)], 0.7, 'rgba(0,0,0,.35)'); } }
       const rise = s.winType === 'arch' ? 6 : 0;
-      let pts;
-      if (s.winType === 'round') { pts = []; const vc = (v0 + v1) / 2; for (let a = 0; a < Math.PI * 2; a += 0.4) pts.push(F(uc + hw * 1.05 * Math.cos(a), vc + 8 * Math.sin(a))); }
-      else { pts = [F(uc - hw, v0), F(uc + hw, v0), F(uc + hw, v1)]; if (rise) for (let a = 0.3; a < Math.PI; a += 0.4) pts.push(F(uc + hw * Math.cos(a), v1 + rise * Math.sin(a))); pts.push(F(uc - hw, v1)); }
+      // kształt otworu: pad poszerza go o ościeżnicę (padU w jednostkach u, padV w px)
+      const mk = (padU, padV) => {
+        if (s.winType === 'round') { const out = [], vc = (v0 + v1) / 2; for (let a = 0; a < Math.PI * 2; a += 0.4) out.push(F(uc + (hw * 1.05 + padU) * Math.cos(a), vc + (8 + padV) * Math.sin(a))); return out; }
+        const out = [F(uc - hw - padU, v0 - padV), F(uc + hw + padU, v0 - padV), F(uc + hw + padU, v1 + padV)];
+        if (rise) for (let a = 0.3; a < Math.PI; a += 0.4) out.push(F(uc + (hw + padU) * Math.cos(a), v1 + padV + (rise + padU / pxu * 0.4) * Math.sin(a)));
+        out.push(F(uc - hw - padU, v1 + padV)); return out;
+      };
+      const pts = mk(0, 0);
+      // kamienna ościeżnica: otwór ma grubość muru, więc widać obramowanie, a szyba siedzi w głębi
+      if (s.winType !== 'slit') poly(mk(1.9 * pxu, 1.8), dark ? shade(s.stone, -0.1) : shade(s.stone, 0.1), 1.3);
       if (s.winType === 'slit') { poly(pts, '#2a2a30', 1.4); continue; }
       const gy0 = F(uc, v0)[1], gy1 = F(uc, v1 + rise)[1];
       poly(pts, lg(0, gy1, 0, gy0, glassTop, glassBot), 1.9);
       if (lit) blob(F(uc, (v0 + v1) / 2)[0], F(uc, (v0 + v1) / 2)[1], 12, 12, '#ffd84a', 0.18);
       else { ln([F(uc - hw * 0.5, v1 - 2), F(uc - hw * 0.1, v1 - 6)], 1.2, 'rgba(255,255,255,.7)'); }
+      // cień w głębi otworu: góra i lewa strona (światło z lewej góry) zasłonięte murem
+      if (s.winType !== 'round') { Q(uc - hw, v1 - 3.2, uc + hw, v1, 'rgba(12,10,34,.5)', 0); Q(uc - hw, v0, uc - hw + 2.6 * pxu, v1, 'rgba(12,10,34,.34)', 0); }
       ln([F(uc, v0), F(uc, v1 + (rise ? rise : 0))], 1, OUT); ln([F(uc - hw, (v0 + v1) / 2), F(uc + hw, (v0 + v1) / 2)], 1, OUT);
-      Q(uc - hw - 1.5 * pxu, v0 - 2.2, uc + hw + 1.5 * pxu, v0, shade(s.stone, 0.1), 1);
+      Q(uc - hw - 1.5 * pxu, v0 - 6, uc + hw + 2.5 * pxu, v0 - 2.2, 'rgba(25,12,6,.26)', 0);
+      Q(uc - hw - 2.4 * pxu, v0 - 2.6, uc + hw + 2.4 * pxu, v0 - 0.2, shade(s.stone, 0.14), 1);
       if (s.flowerBox && kf < 2 && r() < 0.7) { Q(uc - hw - 1 * pxu, v0 - 6, uc + hw + 1 * pxu, v0 - 2, '#7a4a26', 1.1); for (let q = 0; q < 6; q++) { const p = F(uc - hw + (q + 0.5) * (hw * 2 / 6), v0 - 5 + 1); circ(p[0], p[1] - 3 - r() * 2, 2.1, r.pick(FLOWER), 0.9); } }
     }
     if (hasDoor) {
@@ -172,10 +182,12 @@ export function drawBuilding(g, X, Y, s) {
       const stepA = F(u0 - 0.02, 0), stepB = F(u1 + 0.02, 0), nn = f.n;
       poly([stepA, stepB, [stepB[0] + nn[0] * 6, stepB[1] + nn[1] * 6], [stepA[0] + nn[0] * 6, stepA[1] + nn[1] * 6]], shade(s.stone, 0.1), 1.3);
       const wood = shade(s.timber, dark ? 0.08 : 0.16, 0.05);
+      { const fr = s.doorType === 'arch' ? [F(u0 - 2.2 * pxu, 0), F(u1 + 2.2 * pxu, 0), F(u1 + 2.2 * pxu, dh - 6)] : [F(u0 - 2.2 * pxu, 0), F(u1 + 2.2 * pxu, 0), F(u1 + 2.2 * pxu, dh + 3)]; if (s.doorType === 'arch') { for (let a = 0.2; a < Math.PI; a += 0.4) fr.push(F(du + (dw + 2.2 * pxu) * Math.cos(a), dh - 6 + 9 * Math.sin(a))); fr.push(F(u0 - 2.2 * pxu, dh - 6)); } else fr.push(F(u0 - 2.2 * pxu, dh + 3)); poly(fr, shade(s.stone, dark ? -0.08 : 0.12), 1.4); }
       let pts;
       if (s.doorType === 'arch') { pts = [F(u0, 0), F(u1, 0), F(u1, dh - 6)]; for (let a = 0.2; a < Math.PI; a += 0.4) pts.push(F(du + dw * Math.cos(a), dh - 6 + 7 * Math.sin(a))); pts.push(F(u0, dh - 6)); }
       else pts = [F(u0, 0), F(u1, 0), F(u1, dh), F(u0, dh)];
       poly(pts, lg(0, F(du, dh)[1], 0, F(du, 0)[1], shade(wood, 0.04), shade(wood, -0.1)), 2);
+      Q(u0, 0, u0 + 2.8 * pxu, dh - 6, 'rgba(10,6,4,.42)', 0); Q(u0, dh - 8, u1, dh - 6 + (s.doorType === 'arch' ? 0 : 6), 'rgba(10,6,4,.3)', 0);
       if (s.doorType === 'double') ln([F(du, 0), F(du, dh)], 1.3, OUT);
       for (let q = 1; q < 5; q++) ln([F(u0 + (u1 - u0) * q / 5, 0), F(u0 + (u1 - u0) * q / 5, dh - 4)], 0.7, 'rgba(40,20,8,.4)');
       ln([F(u0, 8), F(u1, 8)], 1.4, '#3a3a42'); ln([F(u0, 19), F(u1, 19)], 1.4, '#3a3a42');

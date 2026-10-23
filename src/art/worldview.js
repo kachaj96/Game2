@@ -25,7 +25,7 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 export class WorldView {
   constructor(world, deps = {}) {
     this.w = world; this.grid = makeGrid(); this.sprites = new Map(); this.sprScale = 0; this.chunks = new Map(); this.chunkScale = 0; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0;
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.shadows = new Map(); this.shScale = 0;
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -51,8 +51,42 @@ export class WorldView {
     g.save(); g.scale(scale, scale); g.translate(-X0, -Y0);
     const tiles = []; for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) tiles.push([tx, ty]); tiles.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
     for (const [tx, ty] of tiles) this.drawTile(g, tx, ty);
+    this.castShadows(g, x0, y0, x1, y1, scale, X0, Y0, X1, Y1);
     g.restore(); this.baked++;
     return { canvas, X0, Y0, w: X1 - X0, h: Y1 - Y0 };
+  }
+  // obrazek obiektu do rysowania: [klucz, wymiary, funkcja rysująca, x, y na ekranie świata]
+  spriteOf(it) {
+    const w = this.w;
+    if (it.o) { const o = it.o, dr = this.objectDrawer(o); if (!dr) return null; const [sx, sy] = this.pos(o.x, o.y); return [dr[0], dr[1], dr[2], sx, sy]; }
+    if (it.b) { const b = it.b, [sx, sy] = this.proj(b.sx, b.sy, heightAt(w, b.sx - 0.5, b.sy - 0.5)); return [`b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy]; }
+    const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy];
+  }
+  // sylwetka obrazka w kolorze cienia (liczona raz)
+  shadowSprite(key, dim, draw, scale) {
+    const c = this.sprite(key, dim, draw, scale); if (!c) return null;
+    if (this.shScale !== this.sprScale) { this.shadows = new Map(); this.shScale = this.sprScale; }
+    let sh = this.shadows.get(key);
+    if (!sh) { sh = this.doc.createElement('canvas'); sh.width = c.width; sh.height = c.height; const q = sh.getContext('2d'); q.drawImage(c, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = '#140c28'; q.fillRect(0, 0, sh.width, sh.height); q.globalCompositeOperation = 'source-over'; for (let i = 0; i < 3; i++) q.drawImage(sh, 0, 0); this.shadows.set(key, sh); }
+    return sh;
+  }
+  // cienie rzucane na grunt w stronę prawo-dół (światło z lewej góry): sylwetka obiektu ściśnięta i pochylona. Pieczone w blok razem z terenem,
+  // więc uwzględniamy obiekty z kafli leżących w stronę światła
+  castShadows(g, x0, y0, x1, y1, scale, X0, Y0, X1, Y1) {
+    if (!this.doc) return; const w = this.w;
+    g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip(); g.globalCompositeOperation = 'source-atop';   // tylko na już narysowany teren tego bloku
+    const list = [];
+    for (let ty = Math.max(0, y0 - 8); ty < Math.min(N, y1 + 4); ty++) for (let tx = Math.max(0, x0 - 14); tx < Math.min(N, x1 + 1); tx++) {
+      const k = ty * N + tx, objs = w.byTile.get(k); if (objs) for (const o of objs) if (TREE[o.k] || o.k === 'rock' || PROP[o.k]) list.push({ o });
+      const bl = this.bld.get(k); if (bl) for (const b of bl) list.push({ b });
+      const en = this.ent.get(k); if (en) for (const i of en) list.push({ en: i });
+    }
+    for (const it of list) {
+      const sp = this.spriteOf(it); if (!sp) continue; const [key, dim, draw, sx, sy] = sp, sh = this.shadowSprite(key, dim, draw, scale); if (!sh) continue;
+      const big = it.b || it.en !== undefined, k1 = big ? 0.5 : 0.7, k2 = big ? 0.2 : 0.3;
+      g.save(); g.transform(1, 0, -k1, -k2, sx, sy); g.globalAlpha = big ? 0.34 : 0.3; g.drawImage(sh, -dim[2], -dim[3], dim[0], dim[1]); g.restore();
+    }
+    g.restore();
   }
   drawTile(g, tx, ty) {
     const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
@@ -63,6 +97,13 @@ export class WorldView {
       const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz);
       g.fillStyle = groundColor(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2);
       g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill();
+    }
+    // cień przylegający do podstawy ściany skalnej (sąsiad od strony -x lub -y leży wyżej)
+    for (const [dx, dy] of [[-1, 0], [0, -1]]) {
+      const nx = tx + dx, ny = ty + dy; if (nx < 0 || ny < 0 || w.lvl[ny * N + nx] <= w.lvl[k] || w.ramp[ny * N + nx] || w.cellKind[ny * N + nx] === K.water) continue;
+      const wd = 0.5, e0 = dx ? [P(0, 0, z[0]), P(0, 1, z[0]), P(wd, 1, z[0]), P(wd, 0, z[0])] : [P(0, 0, z[0]), P(1, 0, z[0]), P(1, wd, z[0]), P(0, wd, z[0])];
+      const gr = g.createLinearGradient(e0[0][0], e0[0][1], e0[2][0], e0[2][1]); gr.addColorStop(0, 'rgba(18,10,30,.42)'); gr.addColorStop(1, 'rgba(18,10,30,0)');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(e0[0][0], e0[0][1]); for (let i = 1; i < 4; i++) g.lineTo(e0[i][0], e0[i][1]); g.closePath(); g.fill();
     }
     // trawiaste kępki malarsko pokrywają równe powierzchnie
     if (kind <= K.moss || kind === K.dry) { const gc = kind === K.moss ? ['#2a4a2a', '#4a7a3a'] : ['#3a7a2a', '#8ab84a']; g.lineWidth = 1.4; g.lineCap = 'round';
@@ -79,17 +120,41 @@ export class WorldView {
       this.drawWall(g, A, B, Math.max(0, (ta - na)) * HZ, Math.max(0, (tb - nb)) * HZ, tx * 131 + ty * 17 + (dx ? 1 : 2), side, k, w.cellKind[ty * N + tx]);
     }
   }
-  // pochylnia jako schody: nachylony czworokąt z kamiennymi stopniami
+  // pochylnia jako schody: kamienne stopnie z podstopniami, cieniem pod każdym i bocznymi policzkami (murkami)
   drawRamp(g, tx, ty, z) {
-    const w = this.w, k = ty * N + tx, r = w.ramp[k], P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), L = w.lvl[k], STEPS = 6;
-    const at = (t) => (r === 1 ? [[t, 0], [t, 1]] : r === 2 ? [[1 - t, 0], [1 - t, 1]] : r === 3 ? [[0, t], [1, t]] : [[0, 1 - t], [1, 1 - t]]);
-    for (let i = 0; i < STEPS; i++) {
-      const t0 = i / STEPS, t1 = (i + 1) / STEPS, zA = L + (i + 0.5) / STEPS * 1, [a0, b0] = at(t0), [a1, b1] = at(t1), zz0 = L + t0, zz1 = L + t1;
-      const p0 = P(a0[0], a0[1], zz0), p1 = P(b0[0], b0[1], zz0), p2 = P(b1[0], b1[1], zz1), p3 = P(a1[0], a1[1], zz1), light = 0.5 + 0.08 * (i % 2) + (r === 3 || r === 1 ? 0.05 : 0);
-      g.fillStyle = rgbStr(hslRgb(36, 0.22, light)); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.lineTo(p2[0], p2[1]); g.lineTo(p3[0], p3[1]); g.closePath(); g.fill();
-      g.strokeStyle = 'rgba(40,28,16,.45)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(p3[0], p3[1]); g.lineTo(p2[0], p2[1]); g.stroke();
-      g.strokeStyle = 'rgba(255,240,200,.25)'; g.beginPath(); g.moveTo(p0[0], p0[1] + 1); g.lineTo(p1[0], p1[1] + 1); g.stroke();
+    const w = this.w, k = ty * N + tx, r = w.ramp[k], P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), L = w.lvl[k], S = 5, CH = 0.34, along = r <= 2;   // along: schody biegną wzdłuż osi x
+    const pt = (t, c, zz) => (r === 1 ? P(t, c, zz) : r === 2 ? P(1 - t, c, zz) : r === 3 ? P(c, t, zz) : P(c, 1 - t, zz));
+    const fill = (pts, col, stroke) => { g.fillStyle = col; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1.2; g.stroke(); } };
+    const stone = (l, sat = 0.2) => rgbStr(hslRgb(36, sat, l)), faceLit = along ? 0.6 : 0.46;
+    // policzek: ściana wzdłuż schodów na krawędzi c (0 lub 1), jej wierzch idzie w górę razem ze stopniami
+    const cheek = (c) => {
+      const nx = along ? tx : tx + (c ? 1 : -1), ny = along ? ty + (c ? 1 : -1) : ty;   // sąsiedni kafel tych samych schodów: bez murku w środku
+      if (nx >= 0 && ny >= 0 && nx < N && ny < N && w.ramp[ny * N + nx] === r && w.lvl[ny * N + nx] === L) return;
+      const near = c === 1, out = near ? 1 : 0, inn = near ? 0.9 : 0.1;
+      for (let i = 0; i < S; i++) {
+        const t0 = i / S, t1 = (i + 1) / S, zb0 = L + t0, zb1 = L + t1, a = pt(t0, out, zb0), b = pt(t1, out, zb1), a2 = pt(t0, out, zb0 + CH), b2 = pt(t1, out, zb1 + CH);
+        fill([a, b, b2, a2], stone(faceLit - 0.04 * (i % 2)), 'rgba(40,26,14,.55)');
+        const c1 = pt(t0, inn, zb0 + CH), c2 = pt(t1, inn, zb1 + CH); fill([a2, b2, c2, c1], stone(0.72), 'rgba(40,26,14,.5)');
+      }
+    };
+    cheek(0);
+    const order = r === 2 || r === 4 ? [...Array(S).keys()].reverse() : [...Array(S).keys()];
+    for (const i of order) {
+      const t0 = i / S, t1 = (i + 1) / S, zt = L + t1, zb = L + t0;
+      // podstopień (widoczny, gdy stopnie rosną od widza, czyli przy r = 2 i 4)
+      if (r === 2 || r === 4) { fill([pt(t0, 0, zb), pt(t0, 1, zb), pt(t0, 1, zt), pt(t0, 0, zt)], stone(along ? 0.5 : 0.4, 0.22), 'rgba(40,26,14,.6)'); }
+      // płaszczyzna stopnia
+      const q = [pt(t0, 0.1, zt), pt(t0, 0.9, zt), pt(t1, 0.9, zt), pt(t1, 0.1, zt)];
+      const g2 = g.createLinearGradient(q[0][0], q[0][1], q[2][0], q[2][1]); const vv = (hash2(71 + i, tx, ty) - 0.5) * 0.09; g2.addColorStop(0, stone(0.7 - 0.02 * i + vv)); g2.addColorStop(1, stone(0.6 - 0.02 * i + vv));
+      fill([pt(t0, 0, zt), pt(t0, 1, zt), pt(t1, 1, zt), pt(t1, 0, zt)], g2, 'rgba(40,26,14,.5)');
+      // jasny nos stopnia na krawędzi od strony niższej i ciemna szczelina na styku z wyższym
+      const nose = r === 2 || r === 4 ? t0 : t1; g.strokeStyle = 'rgba(255,244,214,.6)'; g.lineWidth = 1.6; g.beginPath(); const n0 = pt(nose, 0.04, zt), n1 = pt(nose, 0.96, zt); g.moveTo(n0[0], n0[1]); g.lineTo(n1[0], n1[1]); g.stroke();
+      const gap = pt(r === 2 || r === 4 ? t1 : t0, 0.5, zt), gp0 = pt(r === 2 || r === 4 ? t1 : t0, 0.02, zt), gp1 = pt(r === 2 || r === 4 ? t1 : t0, 0.98, zt); g.strokeStyle = 'rgba(30,18,8,.55)'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(gp0[0], gp0[1]); g.lineTo(gp1[0], gp1[1]); g.stroke(); void gap;
     }
+    // zużycie: pęknięcia i mech na stopniach, różne na każdym kaflu
+    for (let q = 0; q < 3; q++) { const i = Math.floor(hash2(81 + q, tx, ty) * S), c = 0.15 + 0.7 * hash2(91 + q, tx, ty), zt = L + (i + 1) / S, p0 = pt(i / S + 0.03, c, zt), p1 = pt(i / S + 0.1 + 0.08 * hash2(95 + q, tx, ty), c + (hash2(97 + q, tx, ty) - 0.5) * 0.25, zt);
+      if (hash2(99 + q, tx, ty) < 0.6) { g.strokeStyle = 'rgba(40,26,14,.5)'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo((p0[0] + p1[0]) / 2 + 2, (p0[1] + p1[1]) / 2 + 1.5); g.lineTo(p1[0], p1[1]); g.stroke(); } else { g.fillStyle = 'rgba(70,112,40,.5)'; g.beginPath(); g.ellipse(p0[0], p0[1], 7, 2.6, 0, 0, 7); g.fill(); } }
+    cheek(1);
     // boczne ściany pochylni
     for (const [dx, dy, side] of [[1, 0, 'R'], [0, 1, 'L']]) {
       const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue;
