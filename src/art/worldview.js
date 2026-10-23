@@ -196,7 +196,32 @@ export class WorldView {
     if (PROP[o.k]) return [`${o.k}:${sd}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd)];
     return null;
   }
-  // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom)
+  // kafle wyższe od gruntu przedmiotu i leżące przed nim (większa głębokość) w zasięgu jego obrazu: tylko one mogą go naprawdę zasłonić
+  occluderTiles(x, y, z) {
+    const out = [], d0 = x + y, e0 = x - y, w = this.w, fx = Math.floor(x), fy = Math.floor(y);
+    for (let ty = Math.max(0, fy - 6); ty < Math.min(N, fy + 15); ty++) for (let tx = Math.max(0, fx - 6); tx < Math.min(N, fx + 15); tx++) {
+      const dd = tx + ty + 1 - d0; if (dd < 0.5 || dd > 15 || Math.abs(tx - ty - e0) > 6) continue;
+      const k = ty * N + tx, top = w.lvl[k] + (w.ramp[k] ? 1 : 0);
+      if (top > z + 0.5 && dd <= 2 * top + 3 && w.cellKind[k] !== w.KIND.water) out.push(k);
+    }
+    return out;
+  }
+  // dorysowuje z gotowych bloków terenu powierzchnię i ściany kafla k (zasłania przedmiot leżący za nim)
+  redrawTile(g, k, scale) {
+    const w = this.w, tx = k % N, ty = (k - tx) / N, ch = this.chunks.get(Math.floor(ty / CS) * 1000 + Math.floor(tx / CS)); if (!ch || !ch.canvas) return;
+    const z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), polys = [[P(0, 0, z[0]), P(1, 0, z[1]), P(1, 1, z[2]), P(0, 1, z[3])]];
+    for (const [dx, dy] of [[1, 0], [0, 1]]) { const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue; const nz = this.cornersZ(nx, ny), ta = dx ? z[1] : z[3], tb = z[2], na = nz[0], nb = dx ? nz[3] : nz[1]; if (ta - na < 0.15 && tb - nb < 0.15) continue; const A = dx ? P(1, 0, ta) : P(0, 1, ta), B = P(1, 1, tb); polys.push([A, B, [B[0], B[1] + Math.max(0, tb - nb) * HZ], [A[0], A[1] + Math.max(0, ta - na) * HZ]]); }
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const pl of polys) for (const p of pl) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    x0 -= 3; y0 -= 6; x1 += 3; y1 += 6; const sc = ch.canvas.width / ch.w;
+    g.save(); g.beginPath(); for (const pl of polys) { g.moveTo(pl[0][0], pl[0][1]); for (let i = 1; i < pl.length; i++) g.lineTo(pl[i][0], pl[i][1]); g.closePath(); } g.clip();
+    g.drawImage(ch.canvas, (x0 - ch.X0) * sc, (y0 - ch.Y0) * sc, (x1 - x0) * sc, (y1 - y0) * sc, x0, y0, x1 - x0, y1 - y0); g.restore();
+  }
+  // przedmiot (drzewo, budynek, postać) i zasłaniające go fragmenty wyższego terenu
+  drawWithOcclusion(g, occ, scale, drawFn) {
+    drawFn(); if (occ && occ.length) for (const k of occ) this.redrawTile(g, k, scale);
+  }
+  // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom). Najpierw cały teren (niezależna warstwa), potem wszystkie
+  // przedmioty i postacie od tyłu do przodu; wyższy teren zasłania tylko te przedmioty, które faktycznie leżą za nim.
   draw(g, cam, view, zoom, dpr, t, entities = []) {
     const w = this.w, grid = this.grid, scale = zoom * dpr;
     const hw = view.w / 2 / zoom, hh = view.h / 2 / zoom, L = cam.x - hw - 40, R = cam.x + hw + 40, T = cam.y - hh - 60, B = cam.y + hh + MAXZ * HZ + 20;
@@ -205,25 +230,24 @@ export class WorldView {
     const ents = new Map(); for (const e of entities) { const k = Math.floor(e.y) * N + Math.floor(e.x); (ents.get(k) || ents.set(k, []).get(k)).push(e); }
     const list = []; for (let cy = Math.floor(gy0 / CS); cy <= Math.floor(gy1 / CS); cy++) for (let cx = Math.floor(gx0 / CS); cx <= Math.floor(gx1 / CS); cx++) list.push([cx, cy]);
     list.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
-    const budget = { n: this.baked < 1 ? 999 : 4 };
+    const budget = { n: this.baked < 1 ? 999 : 4 }, items = [];
     for (const [cx, cy] of list) {
       const ch = this.chunk(cx, cy, scale, budget);
-      if (ch && ch.canvas) { if (ch.X0 > R + 100 || ch.X0 + ch.w < L - 100 || ch.Y0 > B + 340 || ch.Y0 + ch.h < T - 40) continue; g.drawImage(ch.canvas, ch.X0, ch.Y0, ch.w, ch.h); }
-      const items = [];
+      if (ch && ch.canvas && !(ch.X0 > R + 100 || ch.X0 + ch.w < L - 100 || ch.Y0 > B + 340 || ch.Y0 + ch.h < T - 40)) g.drawImage(ch.canvas, ch.X0, ch.Y0, ch.w, ch.h);
       for (let ty = cy * CS; ty < Math.min(N, cy * CS + CS); ty++) for (let tx = cx * CS; tx < Math.min(N, cx * CS + CS); tx++) {
         const k = ty * N + tx;
         const objs = w.byTile.get(k); if (objs) for (const o of objs) items.push({ d: o.x + o.y, o });
         const bl = this.bld.get(k); if (bl) for (const b of bl) items.push({ d: b.sx + b.sy - 1, b });
-        const en = this.ent.get(k); if (en) for (const i of en) items.push({ d: w.entrances[i].at[0] + w.entrances[i].at[1], en: i });
+        const en = this.ent.get(k); if (en) for (const i of en) items.push({ d: w.entrances[i].at[0] + w.entrances[i].at[1] + 1.5, en: i });
         const es = ents.get(k); if (es) for (const e of es) items.push({ d: e.x + e.y + 0.001, e });
       }
-      items.sort((a, b) => a.d - b.d);
-      for (const it of items) {
-        if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (dr) this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale); }
-        else if (it.b) { const b = it.b, [sx, sy] = this.proj(b.sx, b.sy, heightAt(w, b.sx - 0.5, b.sy - 0.5)); this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale); }
-        else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale); }
-        else it.e.draw(g, ...this.pos(it.e.x, it.e.y));
-      }
+    }
+    items.sort((a, b) => a.d - b.d);
+    for (const it of items) {
+      if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (!dr) continue; if (o._occ === undefined) o._occ = this.occluderTiles(o.x, o.y, heightAt(w, o.x, o.y)); this.drawWithOcclusion(g, o._occ, scale, () => this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale)); }
+      else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), [sx, sy] = this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale)); }
+      else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1])); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale)); }
+      else { const e = it.e, occ = this.occluderTiles(e.x, e.y, heightAt(w, e.x, e.y)); this.drawWithOcclusion(g, occ, scale, () => e.draw(g, ...this.pos(e.x, e.y))); }
     }
   }
 }

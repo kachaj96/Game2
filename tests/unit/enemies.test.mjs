@@ -178,3 +178,15 @@ test('najgorsza runda: cztery trafiające wszystkie ataki wroga zabierają maks.
 test('kompani podnoszą liczbę wrogów, a boss z dodatkami da się pokonać (symulacja)', () => {
   const r = fight(10, 3, { companions: 0, boss: true }); assert.ok(r.rounds >= 3);
 });
+
+test('AI: przeciwnik obchodzi ścianę w poprzek planszy zamiast stać w miejscu, a po kilku turach dociera do wroga', () => {
+  // ściana x=4 z jedną przerwą na y=8; wróg po jednej stronie, bohater po drugiej
+  const blocked = []; for (let y = 0; y < 8; y++) blocked.push({ x: 4, y });
+  let s = mk([hero(6, 2, { initiative: 1 }), { ...E('kopacz', 'e', 2, 2), initiative: 99 }], { blocked });
+  const start = { ...unitById(s, 'e') }; let moved = 0;
+  for (let t = 0; t < 8 && Math.abs(unitById(s, 'e').x - 6) + Math.abs(unitById(s, 'e').y - 2) > 1; t++) {
+    s = playTurn(s, applyCommand).state; const e = unitById(s, 'e'); if (e.x !== start.x || e.y !== start.y) moved++;
+    if (currentUnit(s).id !== 'e') s = end(s).state;
+  }
+  const e = unitById(s, 'e'); assert.ok(moved >= 2, 'rusza się w kolejnych turach'); assert.ok(e.x >= 4 || e.y >= 6, `obszedł ścianę (${e.x},${e.y})`);
+});

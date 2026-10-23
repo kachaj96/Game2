@@ -43,16 +43,24 @@ function bestCast(state, u, foes, { pushBonus = false, weakestFirst = false } = 
   }
   return best ? best.cmd : null;
 }
-// krok w stronę celów (lista kafli): wybiera osiągalny kafel najbliższy celowi, tylko gdy to realne zbliżenie
+// odległość po ścieżce (BFS po kaflach bez jednostek) od zbioru celów do każdego kafla: przeciwnik wybiera ruch, który faktycznie zbliża go
+// do celu drogą naokoło ścian, a nie ten, który jest bliżej w linii prostej (stąd wcześniej stawał w ślepym zaułku przed murem)
+function distField(g, goals) {
+  const d = new Map(), q = []; for (const c of goals) { const k = g.key(c.x, c.y); if (!d.has(k)) { d.set(k, 0); q.push(c); } }
+  for (let i = 0; i < q.length; i++) { const c = q[i], dc = d.get(g.key(c.x, c.y)); for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = g.key(x, y); if (!g.walkable(x, y) || d.has(k)) continue; d.set(k, dc + 1); q.push({ x, y }); } }
+  return d;
+}
+// krok w stronę celów (lista kafli): z osiągalnych kafli wybiera ten o najmniejszej odległości drogą, tylko gdy to realne zbliżenie
 function stepToward(state, u, goals) {
   if (!goals.length) return null;
-  const moves = [...legalMoves(state, u.id).values()].sort(byCell), near = (c) => Math.min(...goals.map((q) => dist(c, q)));
+  const g = gridOf(state), field = distField(g, goals), here = field.get(g.key(u.x, u.y));
+  if (here === undefined) return null;
   let pick = null;
-  for (const m of moves) { const d = near(m); if (!pick || d < pick.d) pick = { m, d }; }
-  if (!pick || pick.d >= near(u)) return null;
+  for (const m of [...legalMoves(state, u.id).values()].sort(byCell)) { const d = field.get(g.key(m.x, m.y)); if (d !== undefined && (!pick || d < pick.d)) pick = { m, d }; }
+  if (!pick || pick.d >= here) return null;
   return { type: 'move', unit: u.id, to: { x: pick.m.x, y: pick.m.y } };
 }
-// kafle przy najbliższym (po ścieżce) wrogu
+// idzie w stronę najbliższego (po ścieżce) wroga; gdy kafle przy nim zajmują sojusznicy, celuje w sam kafel wroga
 function approach(state, u, foes) {
   const g = gridOf(state), occ = occupied(state, u.id);
   let best = null;
@@ -60,8 +68,9 @@ function approach(state, u, foes) {
     const adj = [[1, 0], [0, 1], [-1, 0], [0, -1]].map(([dx, dy]) => ({ x: f.x + dx, y: f.y + dy })).filter((c) => g.walkable(c.x, c.y) && !occ.has(g.key(c.x, c.y)));
     for (const c of adj) { const p = findPath(g, u, c, occ); if (p && (!best || p.length < best.len || (p.length === best.len && f.id < best.foe.id))) best = { foe: f, len: p.length, goal: c }; }
   }
-  if (!best || !legalMoves(state, u.id).size) return null;
-  return stepToward(state, u, [best.goal]);
+  if (best) return legalMoves(state, u.id).size ? stepToward(state, u, [best.goal]) : null;
+  // wszystkie kafle przy wrogach są zajęte albo odcięte: podejdź jak najbliżej drogą (cel to kafle wrogów)
+  return stepToward(state, u, foes.map((f) => ({ x: f.x, y: f.y })));
 }
 const hasSpell = (u, id) => u.spells.some((s) => s.id === id);
 
