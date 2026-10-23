@@ -53,10 +53,10 @@ const world=generateWorld(Number(Q.get('seed'))||1),wv=new WorldView(world),cv=$
 const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;$('lvl').textContent='poziom '+LEVEL;
 const hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
 const hero=newWalker(...world.start);let face='SE';
-const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4]};
+const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9]};
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
-const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.25}));
-let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},preview=null,pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
+const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
+let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 let vig=null;function drawVig(){if(!vig||vig.width!==cv.width||vig.height!==cv.height){vig=document.createElement('canvas');vig.width=cv.width;vig.height=cv.height;applyMood(vig.getContext('2d'),vig.width,vig.height,'dzien')}g.drawImage(vig,0,0)}
 function resize(){dpr=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr)}
 addEventListener('resize',resize);resize();
@@ -82,16 +82,22 @@ function resolveTap(cx,cy){
   for(const n of world.npcs)if(Math.hypot(gx-n.at[0],gy-n.at[1])<1.3)return{kind:'npc',n,target:[n.at[0]+0.9,n.at[1]+1.2],label:n.name};
   return{kind:'ground',target:[gx,gy],label:''};
 }
-function tap(cx,cy){
-  if($('card').style.display==='block'){return}
+// Dofus-owy ruch: jedno dotknięcie wysyła bohatera od razu, a przytrzymanie palca prowadzi go za palcem.
+let marker=null,down=null;
+function goTo(cx,cy,hold=false){
+  if($('card').style.display==='block')return;
   $('bubble').style.display='none';
-  const tp=resolveTap(cx,cy);
-  if(preview&&Math.hypot(tp.target[0]-preview.tp.target[0],tp.target[1]-preview.tp.target[1])<1.1&&preview.path){setPath(hero,preview.path);pending=preview.tp.kind==='ground'?null:preview.tp;preview=null;say('');if(!hero.moving&&pending)arrive();return}
+  let tp=resolveTap(cx,cy);if(hold&&tp.kind!=='ground')tp={kind:'ground',target:tp.target,label:''};
   const path=findPath(world,[hero.x,hero.y],tp.target);
-  if(!path){preview=null;say('Tam nie da się dojść.');return}
-  preview={tp,path};say(tp.label?`${tp.label}: dotknij ponownie, by tam pójść.`:'Dotknij ponownie, by iść.');
+  if(!path){if(!hold)say('Tam nie da się dojść.');return}
+  setPath(hero,path);pending=tp.kind==='ground'?null:tp;say('');
+  marker={x:tp.target[0],y:tp.target[1],t:0,kind:tp.kind};
+  if(!hero.moving&&pending)arrive();
 }
-cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();tap(e.clientX-r.left,e.clientY-r.top);e.preventDefault()});
+const rel=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}const [x,y]=rel(e);down={t:performance.now(),x:e.clientX,y:e.clientY,hold:false,last:performance.now(),cur:[x,y]};goTo(x,y);e.preventDefault()});
+cv.addEventListener('pointermove',e=>{if(!down)return;down.cur=rel(e);if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)down.hold=true});
+const up=()=>{down=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 $('zin').onclick=()=>{zoom=Math.min(1.3,zoom*1.15)};$('zout').onclick=()=>{zoom=Math.max(0.5,zoom/1.15)};
 
 function arrive(){const p=pending;pending=null;if(!p)return;if(p.kind==='ent')openEntrance(p.i);else if(p.kind==='npc')npcSay(p.n)}
@@ -107,6 +113,7 @@ function npcSay(n){const b=$('bubble');b.innerHTML=`<b>${n.name}</b>${n.line}`;b
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;const tt=(now-t0)/1000;
+  if(down){const n=performance.now();if(n-down.t>350)down.hold=true;if(down.hold&&n-down.last>130){down.last=n;goTo(down.cur[0],down.cur[1],true)}}
   const wasMoving=hero.moving;stepWalker(world,hero,dt);
   if(hero.moving||wasMoving)face=dirOf(hero.dx,hero.dy);
   if(hero.arrived){hero.arrived=false;arrive()}
@@ -115,21 +122,19 @@ function frame(now){
   const reg=regionAt(hero.x,hero.y);if(reg.id!==lastReg){lastReg=reg.id;$('reg').textContent=reg.name;toast(reg.name)}
   const s=zoom*dpr;g.setTransform(1,0,0,1,0,0);g.fillStyle='#10140e';g.fillRect(0,0,cv.width,cv.height);
   g.setTransform(s,0,0,s,cv.width/2-cam.x*s,cv.height/2-cam.y*s);
-  const heroDraw=(gg,x,y)=>drawCharacter(gg,x,y,{...hspec,sc:hspec.sc*1.25},{...DIRS[face],t:hero.moving?hero.t:undefined});
+  const heroDraw=(gg,x,y)=>drawCharacter(gg,x,y,{...hspec,sc:hspec.sc*1.0},{...DIRS[face],t:hero.moving?hero.t:undefined});
   const ents=[{x:hero.x,y:hero.y,draw:heroDraw}];
   for(const [i,n] of world.npcs.entries()){const d=Math.hypot(hero.x-n.at[0],hero.y-n.at[1]);const f=d<7?dirOf(hero.x-n.at[0],hero.y-n.at[1]):'SW';ents.push({x:n.at[0],y:n.at[1],draw:(gg,x,y)=>drawCharacter(gg,x,y,npcSpec[i],{...DIRS[f]})})}
   wv.draw(g,cam,{w:CW,h:CH},zoom,dpr,tt,ents);
   // trasa i cel podglądu, rysowane na wierzchu
-  if(preview&&preview.path){const P=preview.path;g.lineWidth=3/zoom;g.strokeStyle='rgba(255,224,102,.9)';g.setLineDash([8/zoom,6/zoom]);g.beginPath();let first=true;
-    for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/0.6));for(let j=(i?1:0);j<=n;j++){const f=j/n,x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f,p=wv.pos(x,y);if(first){g.moveTo(p[0],p[1]);first=false}else g.lineTo(p[0],p[1])}}
-    g.stroke();g.setLineDash([]);const e=P[P.length-1],p=wv.pos(e[0],e[1]);g.beginPath();g.ellipse(p[0],p[1],18,9,0,0,7);g.strokeStyle='#ffe066';g.lineWidth=3/zoom;g.stroke()}
+  if(marker){marker.t+=dt;if(marker.t>0.7)marker=null;else{const p=wv.pos(marker.x,marker.y),f=marker.t/0.7;g.strokeStyle=`rgba(255,224,102,${1-f})`;g.lineWidth=3/zoom;g.beginPath();g.ellipse(p[0],p[1],10+26*f,5+13*f,0,0,7);g.stroke()}}
   // sylwetka bohatera przez przeszkody
   g.globalAlpha=.3;heroDraw(g,...wv.pos(hero.x,hero.y));g.globalAlpha=1;
   g.setTransform(1,0,0,1,0,0);if(!Q.get('nomood'))drawVig();
   mini();requestAnimationFrame(frame)
 }
-say('Dotknij ziemi, by zobaczyć trasę, dotknij ponownie, by iść. Wejścia do lochów szukaj na wzgórzu i w lesie.');setTimeout(()=>{if($('hint').textContent.startsWith('Dotknij ziemi'))say('')},9000);
+say('Dotknij ziemi, by tam pójść. Przytrzymaj palec, by iść za nim. Wejścia do lochów szukaj na wzgórzu i w lesie.');setTimeout(()=>{if($('hint').textContent.startsWith('Dotknij ziemi'))say('')},9000);
 requestAnimationFrame(frame);
-window.__swiat={world,hero,wv,get preview(){return preview},get zoom(){return zoom},get cam(){return cam},get face(){return face},
+window.__swiat={world,hero,wv,get marker(){return marker},get zoom(){return zoom},get cam(){return cam},get face(){return face},
   css:(gx,gy)=>{const p=wv.pos(gx,gy);return[CW/2+(p[0]-cam.x)*zoom,CH/2+(p[1]-cam.y)*zoom]},open:openEntrance,get card(){return $('card').style.display}};
 </script></body></html>

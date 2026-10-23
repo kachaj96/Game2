@@ -1,30 +1,31 @@
-// Rysowanie świata: teren z wysokościami (kafel po kaflu, od tyłu do przodu), obiekty z podręcznych obrazków, postacie w kolejności głębokości.
-// Rzut jest ten sam co w walce (IsoGrid, 2:1, kafel 72x36), wysokość to przesunięcie w górę o HZ pikseli na poziom.
+// Rysowanie świata. Teren jest pieczony w bloki 6 x 6 kafli z gładkim, ciągłym kolorowaniem (bez kafli i schodków), a obiekty, budynki
+// i postacie rysujemy po kolei od tyłu do przodu, blok po bloku. Rzut jest ten sam co w walce (IsoGrid, 2:1, kafel 72x36),
+// wysokość to przesunięcie w górę o HZ pikseli na poziom.
 import { IsoGrid } from '../grid.js';
-import { N, HZ, CLIFF, WATER } from '../world/kraina.js';
+import { N, HZ } from '../world/kraina.js';
 import { heightAt } from '../world/nav.js';
-import { hsl } from './color.js';
-import { hash2 } from '../world/noise.js';
+import { groundColor } from './groundcolor.js';
 import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
+import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
 
-export const MAXZ = 12;
-export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 40 });
-// kolory gruntu: [odcień, nasycenie, jasność] na rodzaj
-const BASE = [[98, 0.5, 0.5], [88, 0.55, 0.56], [128, 0.34, 0.32], [62, 0.4, 0.46], [32, 0.08, 0.44], [38, 0.42, 0.62], [40, 0.1, 0.55], [48, 0.45, 0.68], [205, 0.5, 0.42], [30, 0.3, 0.3], [20, 0.12, 0.07]];
+export const MAXZ = 14, CS = 6, SUB = 6;
+const BAKE = 0.5;   // teren pieczemy w niższej rozdzielczości i rysujemy z wygładzaniem: miękkie, malarskie przejścia
+export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
-const NATURE = { oak: NA.oak, pine: NA.pine, birch: NA.birch, dead: NA.deadTree, bush: NA.bush, rock: NA.rock, flowers: NA.flowers, mushrooms: NA.mushrooms, stump: NA.stump };
-const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1), bench: (g, x, y) => bench(g, x, y, 1), barrel: (g, x, y, s) => barrel(g, x, y, 1, s), crate: (g, x, y, s) => crate(g, x, y, 1, s), cart: (g, x, y, s) => cart(g, x, y, 1, s), sack: (g, x, y) => sack(g, x, y, 1), logs: (g, x, y) => logs(g, x, y, 1) };
+const TREE = { oak: 1, pine: 1, birch: 1, dead: 1, swamp: 1 };
+const SMALL = { bush: (g, x, y, sc, s, o) => NA.bush(g, x, y, s, { biome: o.biome, sc: sc * 0.62 }), rock: (g, x, y, sc, s) => NA.rock(g, x, y, s, { sc: sc * 1.15 }), flowers: (g, x, y, sc, s) => NA.flowers(g, x, y, s, { sc: 0.8 }), mushrooms: (g, x, y, sc, s) => NA.mushrooms(g, x, y, s, { sc: 1.1 }), stump: (g, x, y, sc, s) => NA.stump(g, x, y, s, { sc: 1.1 }) };
+const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1.35), bench: (g, x, y) => bench(g, x, y, 1.25), barrel: (g, x, y, s) => barrel(g, x, y, 1.1, s), crate: (g, x, y, s) => crate(g, x, y, 1.1, s), cart: (g, x, y, s) => cart(g, x, y, 1.2, s), sack: (g, x, y) => sack(g, x, y, 1.1), logs: (g, x, y) => logs(g, x, y, 1.2) };
 // rozmiar obrazka i punkt zaczepienia (podstawa obiektu) w jednostkach świata
-const SPR = { default: [150, 170, 75, 140], oak: [150, 170, 75, 140], pine: [130, 170, 65, 150], birch: [120, 170, 60, 150], dead: [120, 160, 60, 135], rock: [90, 70, 45, 52], bush: [90, 70, 45, 52], flowers: [70, 50, 35, 38], mushrooms: [70, 50, 35, 38], stump: [60, 50, 30, 40], lamp: [60, 130, 30, 118], bench: [90, 60, 45, 48], barrel: [60, 60, 30, 50], crate: [60, 60, 30, 50], cart: [140, 100, 70, 80], sack: [60, 50, 30, 42], logs: [90, 60, 45, 48], krypta: [300, 240, 150, 180], jama: [330, 330, 165, 290], budynek: [420, 460, 210, 380] };
+const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210, 310, 105, 282], birch: [220, 300, 110, 272], dead: [220, 240, 110, 214], bush: [110, 80, 55, 62], rock: [170, 120, 85, 96], flowers: [80, 60, 40, 46], mushrooms: [80, 60, 40, 46], stump: [80, 70, 40, 56], lamp: [90, 190, 45, 176], bench: [130, 90, 65, 70], barrel: [90, 90, 45, 74], crate: [90, 90, 45, 74], cart: [190, 140, 95, 108], sack: [80, 70, 40, 54], logs: [140, 90, 70, 70], krypta: [640, 440, 330, 330], jama: [420, 470, 210, 380], budynek: [700, 700, 350, 560] };
 
 export class WorldView {
   constructor(world, deps = {}) {
-    this.w = world; this.grid = makeGrid(); this.sprites = new Map(); this.sprScale = 0; this.colors = new Map(); this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind));
-    this.bld = new Map(); world.buildings.forEach((b, i) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
+    this.w = world; this.grid = makeGrid(); this.sprites = new Map(); this.sprScale = 0; this.chunks = new Map(); this.chunkScale = 0; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0;
+    this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
   // ekran (px świata) punktu siatki na wysokości z
@@ -36,15 +37,30 @@ export class WorldView {
     for (let i = 0; i < 7; i++) { [gx, gy] = this.grid.toGrid(wx, wy + z * HZ); z = heightAt(this.w, gx, gy); }
     return [gx, gy];
   }
-  tileColor(x, y) {
-    const k = y * N + x, hit = this.colors.get(k); if (hit) return hit;
-    const w = this.w, H = w.heights, W1 = N + 1, c = [H[y * W1 + x], H[y * W1 + x + 1], H[(y + 1) * W1 + x + 1], H[(y + 1) * W1 + x]];
-    const mn = Math.min(...c), mx = Math.max(...c), dx = (c[1] + c[2] - c[0] - c[3]) / 2, dy = (c[3] + c[2] - c[0] - c[1]) / 2, kind = w.cellKind[k];
-    const b = BASE[kind] || BASE[0], v = hash2(7, x, y), v2 = hash2(8, x >> 1, y >> 1);
-    let l = b[2] + (v - 0.5) * 0.05 + (v2 - 0.5) * 0.04 + (0.2 * dx - 0.07 * dy) * 0.9, s = b[1], h = b[0] + (v2 - 0.5) * 8;
-    if (kind === 8) { l -= 0.12; }
-    const fill = hsl(h, s, Math.max(0.12, Math.min(0.85, l))), rec = { fill, dark: hsl(h + 6, Math.min(0.7, s + 0.1), Math.max(0.1, l - 0.16)), tufts: (kind <= 2 && v < 0.4 && mx - mn < CLIFF * 0.75) ? 0.8 + v : 0, rock: kind === 4, steep: mx - mn > CLIFF * 0.75, water: mn < WATER && kind === 8, wl: 0, mn };
-    this.colors.set(k, rec); return rec;
+  // blok terenu: wszystkie kafle bloku jako jeden obraz, każdy kafel dzielony na SUB x SUB pól o ciągłym kolorze
+  bakeChunk(cx, cy, scale, ctx2d) {
+    const w = this.w, x0 = cx * CS, y0 = cy * CS, x1 = Math.min(N, x0 + CS), y1 = Math.min(N, y0 + CS), W1 = N + 1;
+    let zmin = 99, zmax = -99; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const h = w.heights[y * W1 + x]; zmin = Math.min(zmin, h); zmax = Math.max(zmax, h); }
+    const gr = this.grid, X0 = gr.ox + (x0 - y1) * 36 - 6, X1 = gr.ox + (x1 - y0) * 36 + 6, Y0 = gr.oy + (x0 + y0) * 18 - zmax * HZ - 6, Y1 = gr.oy + (x1 + y1) * 18 - zmin * HZ + 6;
+    let g = ctx2d, canvas = null;
+    if (!g && this.doc) { canvas = this.doc.createElement('canvas'); canvas.width = Math.ceil((X1 - X0) * scale * BAKE); canvas.height = Math.ceil((Y1 - Y0) * scale * BAKE); g = canvas.getContext('2d'); }
+    if (!g) return null;
+    g.save(); g.scale(scale * BAKE, scale * BAKE); g.translate(-X0, -Y0);
+    const e = 0.9;   // lekkie nachodzenie pól, żeby nie było szwów
+    for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) for (let j = 0; j < SUB; j++) for (let i = 0; i < SUB; i++) {
+      const u0 = i / SUB, u1 = (i + 1) / SUB, v0 = j / SUB, v1 = (j + 1) / SUB;
+      const a = this.proj(tx + u0, ty + v0, heightAt(w, tx + u0, ty + v0)), b = this.proj(tx + u1, ty + v0, heightAt(w, tx + u1, ty + v0)), c = this.proj(tx + u1, ty + v1, heightAt(w, tx + u1, ty + v1)), d = this.proj(tx + u0, ty + v1, heightAt(w, tx + u0, ty + v1));
+      g.fillStyle = groundColor(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2);
+      g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill();
+    }
+    g.restore(); this.baked++;
+    return { canvas, X0, Y0, w: X1 - X0, h: Y1 - Y0 };
+  }
+  chunk(cx, cy, scale, budget) {
+    if (Math.abs(scale - this.chunkScale) > this.chunkScale * 0.08) { this.chunks.clear(); this.chunkScale = scale; }
+    const key = cy * 1000 + cx; let c = this.chunks.get(key);
+    if (!c && budget.n > 0) { budget.n--; c = this.bakeChunk(cx, cy, scale); if (c) this.chunks.set(key, c); }
+    return c;
   }
   // obrazek obiektu: rysowany raz w skali ekranu i potem tylko kopiowany
   sprite(key, [sw, sh, ax, ay], draw, scale) {
@@ -56,41 +72,42 @@ export class WorldView {
   }
   drawSprite(g, key, dim, draw, x, y, scale) {
     const c = this.sprite(key, dim, draw, scale);
-    if (c) g.drawImage(c, x - dim[2], y - dim[3], dim[0], dim[1]); else { g.save(); g.translate(x - dim[2] + dim[2], y - dim[3] + dim[3]); draw(g, 0, 0); g.restore(); }
+    if (c) g.drawImage(c, x - dim[2], y - dim[3], dim[0], dim[1]); else { g.save(); g.translate(x, y); draw(g, 0, 0); g.restore(); }
+  }
+  objectDrawer(o) {
+    const sd = o.seed % 7 + 1;
+    if (TREE[o.k]) { const spec = genTree(sd, o.k, o.biome || 'summer'); return [`${o.k}:${sd}:${o.biome || ''}`, SPR[o.k], (gg, ax, ay) => drawTree(gg, ax, ay, spec)]; }
+    if (SMALL[o.k]) { const sc = o.sc || 1; return [`${o.k}:${sd}:${o.biome || ''}:${Math.round(sc * 4)}`, SPR[o.k], (gg, ax, ay) => SMALL[o.k](gg, ax, ay, sc, sd, o)]; }
+    if (PROP[o.k]) return [`${o.k}:${sd}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd)];
+    return null;
   }
   // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom)
   draw(g, cam, view, zoom, dpr, t, entities = []) {
-    const w = this.w, W1 = N + 1, H = w.heights, grid = this.grid, scale = zoom * dpr;
+    const w = this.w, grid = this.grid, scale = zoom * dpr;
     const hw = view.w / 2 / zoom, hh = view.h / 2 / zoom, L = cam.x - hw - 40, R = cam.x + hw + 40, T = cam.y - hh - 60, B = cam.y + hh + MAXZ * HZ + 20;
-    const cs = [grid.toGrid(L, T), grid.toGrid(R, T), grid.toGrid(R, B), grid.toGrid(L, B)];
-    const x0 = Math.max(0, Math.floor(Math.min(...cs.map((c) => c[0])))), x1 = Math.min(N - 1, Math.ceil(Math.max(...cs.map((c) => c[0])))), y0 = Math.max(0, Math.floor(Math.min(...cs.map((c) => c[1])))), y1 = Math.min(N - 1, Math.ceil(Math.max(...cs.map((c) => c[1]))));
+    const cs = [grid.toGrid(L, T), grid.toGrid(R, T), grid.toGrid(R, B + 320), grid.toGrid(L, B + 320)];
+    const gx0 = Math.max(0, Math.floor(Math.min(...cs.map((c) => c[0])))), gx1 = Math.min(N - 1, Math.ceil(Math.max(...cs.map((c) => c[0])))), gy0 = Math.max(0, Math.floor(Math.min(...cs.map((c) => c[1])))), gy1 = Math.min(N - 1, Math.ceil(Math.max(...cs.map((c) => c[1]))));
     const ents = new Map(); for (const e of entities) { const k = Math.floor(e.y) * N + Math.floor(e.x); (ents.get(k) || ents.set(k, []).get(k)).push(e); }
-    const lineW = 1.1 / zoom;
-    for (let d = x0 + y0; d <= x1 + y1; d++) {
-      for (let x = Math.max(x0, d - y1); x <= Math.min(x1, d - y0); x++) {
-        const y = d - x, k = y * N + x, col = this.tileColor(x, y);
-        const h0 = H[y * W1 + x], h1 = H[y * W1 + x + 1], h2 = H[(y + 1) * W1 + x + 1], h3 = H[(y + 1) * W1 + x];
-        const p0 = this.proj(x, y, h0), p1 = this.proj(x + 1, y, h1), p2 = this.proj(x + 1, y + 1, h2), p3 = this.proj(x, y + 1, h3);
-        if (Math.max(p1[1], p2[1], p3[1]) < T - 40 || Math.min(p0[1], p1[1], p3[1]) > B + 280 || p1[0] < L - 130 || p3[0] > R + 130) continue;   // poza ekranem (obiekty wystają w górę, więc dół ma zapas)
-        { const e = 0.7 / zoom, cx = (p0[0] + p2[0]) / 2, cy = (p0[1] + p2[1]) / 2; g.beginPath(); g.moveTo(p0[0], p0[1] - e); g.lineTo(p1[0] + e, p1[1]); g.lineTo(p2[0], p2[1] + e); g.lineTo(p3[0] - e, p3[1]); g.closePath(); g.fillStyle = col.fill; g.fill(); }
-        if (col.tufts) { const cx = (p0[0] + p2[0]) / 2, cy = (p0[1] + p2[1]) / 2, v = col.tufts; g.strokeStyle = col.dark; g.lineWidth = 1.3 / zoom; g.beginPath(); for (let i = 0; i < 2; i++) { const ox = (hash2(11 + i, x, y) - 0.5) * 36, oy = (hash2(14 + i, x, y) - 0.5) * 12; g.moveTo(cx + ox - 2, cy + oy); g.lineTo(cx + ox - 3, cy + oy - 6 * v); g.moveTo(cx + ox, cy + oy); g.lineTo(cx + ox, cy + oy - 7 * v); g.moveTo(cx + ox + 2, cy + oy); g.lineTo(cx + ox + 3.5, cy + oy - 6 * v); } g.stroke(); }
-        if (col.steep) { g.strokeStyle = 'rgba(30,22,16,.35)'; g.lineWidth = 1 / zoom; for (let i = 1; i < 4; i++) { const f = i / 4; g.beginPath(); g.moveTo(p0[0] + (p3[0] - p0[0]) * f, p0[1] + (p3[1] - p0[1]) * f); g.lineTo(p1[0] + (p2[0] - p1[0]) * f, p1[1] + (p2[1] - p1[1]) * f); g.stroke(); } }
-        if (col.water) {
-          const q0 = this.proj(x, y, WATER), q1 = this.proj(x + 1, y, WATER), q2 = this.proj(x + 1, y + 1, WATER), q3 = this.proj(x, y + 1, WATER), depth = Math.min(1, (WATER - col.mn) / 1.3);
-          g.beginPath(); g.moveTo(q0[0], q0[1]); g.lineTo(q1[0], q1[1]); g.lineTo(q2[0], q2[1]); g.lineTo(q3[0], q3[1]); g.closePath(); g.fillStyle = `rgba(${52 - depth * 22},${120 - depth * 40},${170 - depth * 40},${0.62 + depth * 0.3})`; g.fill();
-          if (hash2(3, x, y) < 0.35) { const ph = (t * 0.6 + hash2(4, x, y) * 6) % 1, cx = (q0[0] + q2[0]) / 2, cy = (q0[1] + q2[1]) / 2; g.strokeStyle = `rgba(255,255,255,${0.28 * Math.sin(ph * Math.PI)})`; g.lineWidth = 1.4 / zoom; g.beginPath(); g.moveTo(cx - 8, cy); g.lineTo(cx + 8, cy); g.stroke(); }
-        }
-        // obiekty na kaflu
-        const objs = w.byTile.get(k);
-        if (objs) for (const o of objs) {
-          const [sx, sy] = this.pos(o.x, o.y), key = `${o.k}:${o.seed % 6}:${o.biome || ''}`;
-          if (sx < L - 100 || sx > R + 100) continue;
-          const f = NATURE[o.k] ? (gg, ax, ay) => NATURE[o.k](gg, ax, ay, o.seed % 6 + 1, { biome: o.biome }) : PROP[o.k] ? (gg, ax, ay) => PROP[o.k](gg, ax, ay, o.seed % 6 + 1) : null;
-          if (f) this.drawSprite(g, key, SPR[o.k] || SPR.default, f, sx, sy, scale);
-        }
-        const bl = this.bld.get(k); if (bl) for (const b of bl) { const [sx, sy] = this.proj(b.sx, b.sy, heightAt(w, b.sx - 0.5, b.sy - 0.5)); this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => drawBuilding(gg, ax, ay, b.s), sx, sy, scale); }
-        const en = this.ent.get(k); if (en) for (const i of en) { const e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale); }
-        const es = ents.get(k); if (es) for (const e of es) e.draw(g, ...this.pos(e.x, e.y));
+    const list = []; for (let cy = Math.floor(gy0 / CS); cy <= Math.floor(gy1 / CS); cy++) for (let cx = Math.floor(gx0 / CS); cx <= Math.floor(gx1 / CS); cx++) list.push([cx, cy]);
+    list.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
+    const budget = { n: this.baked < 1 ? 999 : 4 };
+    for (const [cx, cy] of list) {
+      const ch = this.chunk(cx, cy, scale, budget);
+      if (ch && ch.canvas) { if (ch.X0 > R + 100 || ch.X0 + ch.w < L - 100 || ch.Y0 > B + 340 || ch.Y0 + ch.h < T - 40) continue; g.drawImage(ch.canvas, ch.X0, ch.Y0, ch.w, ch.h); }
+      const items = [];
+      for (let ty = cy * CS; ty < Math.min(N, cy * CS + CS); ty++) for (let tx = cx * CS; tx < Math.min(N, cx * CS + CS); tx++) {
+        const k = ty * N + tx;
+        const objs = w.byTile.get(k); if (objs) for (const o of objs) items.push({ d: o.x + o.y, o });
+        const bl = this.bld.get(k); if (bl) for (const b of bl) items.push({ d: b.sx + b.sy - 1, b });
+        const en = this.ent.get(k); if (en) for (const i of en) items.push({ d: w.entrances[i].at[0] + w.entrances[i].at[1], en: i });
+        const es = ents.get(k); if (es) for (const e of es) items.push({ d: e.x + e.y + 0.001, e });
+      }
+      items.sort((a, b) => a.d - b.d);
+      for (const it of items) {
+        if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (dr) this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale); }
+        else if (it.b) { const b = it.b, [sx, sy] = this.proj(b.sx, b.sy, heightAt(w, b.sx - 0.5, b.sy - 0.5)); this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale); }
+        else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale); }
+        else it.e.draw(g, ...this.pos(it.e.x, it.e.y));
       }
     }
   }

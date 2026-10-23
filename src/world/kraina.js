@@ -5,7 +5,7 @@ import { noise2, fbm, hash2, smoothstep, clamp, lerp } from './noise.js';
 import { rng } from '../art/rng.js';
 import { genBuilding, footprintCells } from '../art/buildings.js';
 
-export const N = 192, HZ = 14;           // N kafli w boku świata, 1 poziom wysokości = 14 px na ekranie
+export const N = 192, HZ = 20;           // N kafli w boku świata, 1 poziom wysokości = 20 px na ekranie
 export const CLIFF = 1.1;                 // różnica wysokości w obrębie kafla, od której teren jest klifem
 export const WATER = -0.45, DEEP = -1.0;  // poziom wody i próg głębokiej wody (niechodliwej)
 const C = N / 2;
@@ -13,7 +13,8 @@ const C = N / 2;
 export const at = (e, s) => [C + (s + e) / 2, C + (s - e) / 2];
 
 export const VILLAGE = at(0, 34), HILL = at(0, -42), FOREST = at(98, 14);
-const HILL_R = 38, FOREST_R = 44, VILLAGE_R = 17;
+const HILL_R = 38, FOREST_R = 44, VILLAGE_R = 26;
+export const BUILD_K = 1.7;      // budynki rysujemy 1,7 razy większe niż generator, żeby drzwi i piętra pasowały do postaci
 // drogi jako łamane (punkty w siatce) i ich szerokość; ścieżka na wzgórze ma profil wysokości
 const PATH_UP = [at(0, 24), at(-9, 8), at(8, -4), at(-8, -16), at(2, -25)];
 const ROAD_E = [at(0, 30), at(22, 22), at(42, 14), at(70, 12), at(92, 14)];
@@ -42,7 +43,7 @@ export function generateWorld(seed = 1) {
   const hi = (x, y) => y * W1 + x;
   const [vx, vy] = VILLAGE, [hx, hy] = HILL, [fx, fy] = FOREST;
   const pathLen = (() => { let l = 0; for (let i = 0; i < PATH_UP.length - 1; i++) l += Math.hypot(PATH_UP[i + 1][0] - PATH_UP[i][0], PATH_UP[i + 1][1] - PATH_UP[i][1]); return l; })();
-  const [cx0, cy0] = ENTRANCES[0].at, CRYPT_H = 3.6;
+  const [cx0, cy0] = ENTRANCES[0].at, CRYPT_H = 4.4;
   // odległość z zaburzeniem: wzgórze i las mają nieregularny obrys, nie koło
   const wob = (x, y, sd) => 0.78 + 0.44 * fbm(seed + sd, x / 22, y / 22, 3);
   const dHill = (x, y) => Math.hypot(x - hx, y - hy) * wob(x, y, 40) / (1 + 0.25 * Math.sin((x - y) / 18)), dForest = (x, y) => Math.hypot(x - fx, y - fy) * wob(x, y, 50);
@@ -53,7 +54,7 @@ export function generateWorld(seed = 1) {
     // wioska i okolica: płasko
     h *= smoothstep(VILLAGE_R + 10, VILLAGE_R - 2, dv) < 0.001 ? 1 : 1 - 0.92 * smoothstep(VILLAGE_R + 12, VILLAGE_R - 2, dv);
     // Cmentarne Wzgórze: kopiec z tarasami; ostrość stopni zależy od kierunku (gdzieniegdzie klif, gdzieniegdzie łagodny stok)
-    const bump = smoothstep(HILL_R, 3, dh), raw = 6.4 * Math.pow(bump, 1.25), step = 1.7, tt = raw / step, fl = Math.floor(tt), fr = tt - fl;
+    const bump = smoothstep(HILL_R, 3, dh), raw = 8.2 * Math.pow(bump, 1.2), step = 2.1, tt = raw / step, fl = Math.floor(tt), fr = tt - fl;
     const w = lerp(0.03, 0.4, noise2(seed + 5, x / 14, y / 14)), terr = (fl + smoothstep(1 - w, 1, fr)) * step;
     h += lerp(raw, Math.min(terr, raw + 0.4), 0.85) * (bump > 0.02 ? 1 : 0);
     // Las Robali: niecka z korzeniami
@@ -114,18 +115,19 @@ export function generateWorld(seed = 1) {
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x + 0.5 - vx, y + 0.5 - vy) < 6.5) cellKind[y * N + x] = KIND.plaza;
   const isRoad = (x, y) => { const k = cellKind[(y | 0) * N + (x | 0)]; return k === KIND.road || k === KIND.plaza; };
   // budynki wioski: róg S w punkcie siatki, podstawa na pełnych kaflach
-  const bdefs = [[-9, -9, 11, 'tavern'], [-9, 2, 5, 'tower'], [9, -9, 37, 'townhouse'], [11, 2, 61, 'farmhouse'], [-4, 11, 23, 'shop'], [5, 12, 72, 'cottage'], [-14, 13, 48, 'cottage'], [14, 13, 88, 'townhouse']];
+  const bdefs = [[-13, -12, 11, 'tavern'], [-15, 1, 5, 'tower'], [7, -13, 37, 'townhouse'], [10, 0, 61, 'farmhouse'], [-7, 10, 23, 'shop'], [6, 11, 72, 'cottage'], [-17, 11, 48, 'cottage'], [14, 10, 88, 'townhouse']];
   const buildings = [], taken = new Set();
   for (const [dx, dy, bs, kind] of bdefs) {
-    const s = genBuilding(bs, kind), sx = Math.round(vx + dx + s.w), sy = Math.round(vy + dy + s.d), cells = footprintCells(s, sx, sy);
+    const s0 = genBuilding(bs, kind), bw = Math.max(3, Math.round(s0.w * BUILD_K * 1.25)), bd = Math.max(3, Math.round(s0.d * BUILD_K * 1.25)), s = { ...s0, w: bw / BUILD_K, d: bd / BUILD_K };   // pełne kafle: podstawa dokładnie tam, gdzie rysunek
+    const sx = Math.round(vx + dx + bw), sy = Math.round(vy + dy + bd), cells = []; for (let i = 0; i < bw; i++) for (let j = 0; j < bd; j++) cells.push({ x: sx - bw + i, y: sy - bd + j });
     if (cells.some((c) => taken.has(c.y * N + c.x) || isRoad(c.x, c.y) || blocked[c.y * N + c.x])) continue;
     for (const c of cells) { taken.add(c.y * N + c.x); blocked[c.y * N + c.x] = 1; }
-    buildings.push({ s, sx, sy });
+    buildings.push({ s, sx, sy, k: BUILD_K, w: bw, d: bd });
   }
   // obiekty: drzewa, krzewy, kamienie, kwiaty; stałe, zależne od ziarna i położenia
   const objects = [], clear = new Set();
-  for (const e of ENTRANCES) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear.add((Math.floor(e.at[1]) + dy) * N + Math.floor(e.at[0]) + dx);
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (polyDist(x + 0.5, y + 0.5, FOREST_PATH)[0] < 2.2) clear.add(y * N + x);
+  for (const e of ENTRANCES) for (let dy = -6; dy <= 6; dy++) for (let dx = -7; dx <= 7; dx++) clear.add((Math.floor(e.at[1]) + dy) * N + Math.floor(e.at[0]) + dx);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (polyDist(x + 0.5, y + 0.5, FOREST_PATH)[0] < 3.2) clear.add(y * N + x);
   const R = rng(seed * 977 + 5);
   const put = (k, x, y, extra = {}) => objects.push({ k, x, y, seed: Math.floor(hash2(seed, Math.floor(x * 4), Math.floor(y * 4)) * 1e6) % 9973, ...extra });
   for (let y = 2; y < N - 2; y++) for (let x = 2; x < N - 2; x++) {
@@ -134,38 +136,45 @@ export function generateWorld(seed = 1) {
     const r = hash2(seed + 31, x, y), ox = 0.2 + 0.6 * hash2(seed + 32, x, y), oy = 0.2 + 0.6 * hash2(seed + 33, x, y), px = x + ox, py = y + oy;
     if (blocked[k] || Math.hypot(px - vx, py - vy) < VILLAGE_R - 3) { if (!blocked[k] && r < 0.07) put('flowers', px, py); continue; }
     let tree = 0.045;
-    if (reg === 3) tree = 0.16 + 0.26 * smoothstep(0.48, 0.68, fbm(seed + 8, x / 9, y / 9, 3)); else if (reg === 2) tree = 0.07; else if (kind === KIND.sand) tree = 0.01; else tree = 0.06 + 0.2 * smoothstep(0.55, 0.75, fbm(seed + 8, x / 12, y / 12, 3));
+    if (reg === 3) tree = 0.09 + 0.2 * smoothstep(0.5, 0.7, fbm(seed + 8, x / 9, y / 9, 3)); else if (reg === 2) tree = 0.07; else if (kind === KIND.sand) tree = 0.01; else tree = 0.06 + 0.2 * smoothstep(0.55, 0.75, fbm(seed + 8, x / 12, y / 12, 3));
     if (r < tree) {
       const q = hash2(seed + 34, x, y);
       let kk = q < 0.5 ? 'oak' : q < 0.8 ? 'pine' : 'birch';
-      if (reg === 3) kk = q < 0.4 ? 'dead' : q < 0.7 ? 'pine' : 'oak';
+      if (reg === 3) kk = q < 0.12 ? 'dead' : q < 0.5 ? 'pine' : 'swamp';
       if (reg === 2) kk = q < 0.7 ? 'pine' : 'dead';
       put(kk, px, py, { biome: reg === 3 ? 'dark' : reg === 2 ? 'summer' : (hash2(seed + 35, x >> 3, y >> 3) < 0.18 ? 'autumn' : 'summer'), block: true });
       blocked[k] = Math.max(blocked[k], 2);   // 2 = zajęte przez obiekt (omijane przez ścieżki, nie przez teren)
-    } else if (r < tree + 0.05) put('bush', px, py, { biome: reg === 3 ? 'dark' : 'summer' });
+    } else if (r < tree + 0.05) put('bush', px, py, { biome: reg === 3 ? 'dark' : 'summer', sc: 0.6 + 0.4 * hash2(seed + 37, x, y) });
     else if (r < tree + 0.075) put(reg === 3 ? 'mushrooms' : 'flowers', px, py);
-    else if (r < tree + 0.088) { put('rock', px, py, { block: true }); blocked[k] = Math.max(blocked[k], 2); }
+    else if (r < tree + 0.088) { put('rock', px, py, { block: true, sc: 1 + 1.3 * hash2(seed + 36, x, y) }); blocked[k] = Math.max(blocked[k], 2); }
     else if (r < tree + 0.095 && reg !== 3) put('stump', px, py);
   }
   // zawalony most nad przepaścią: belki i skrzynie przy krawędzi drogi zachodniej
   { const [ex, ey] = ROAD_W[3]; for (const [dx, dy, kk] of [[3.2, -1.6, 'logs'], [2.2, 1.9, 'logs'], [4.2, 0.4, 'crate'], [1.6, -2.8, 'barrel']]) put(kk, ex + dx, ey + dy, { prop: true }); }
-  const vprops = [['lamp', -3.4, -3.6], ['lamp', 3.6, -3.4], ['lamp', -3.6, 3.8], ['lamp', 3.8, 3.6], ['bench', -5.6, 1.4], ['bench', 6.2, 1.6], ['barrel', -6.6, -6.4], ['crate', -7.8, -6.6], ['barrel', 6.8, -6.2], ['cart', 2.4, 9.8], ['sack', -1.6, 9.6]];
+  const vprops = [['lamp', -4, -4.4], ['lamp', 4.4, -4], ['lamp', -4.4, 4.6], ['lamp', 4.8, 4.4], ['bench', -5.8, 1.6], ['bench', 6.2, 1.8], ['barrel', -7.4, -6.6], ['crate', -8.6, -7], ['barrel', 7.4, -6.6], ['cart', 2.8, 9.2], ['sack', -2, 9]];
   for (const [kk, dx, dy] of vprops) put(kk, vx + dx, vy + dy, { prop: true });
   objects.sort((a, b) => (a.x + a.y) - (b.x + b.y));
   const byTile = new Map();
   for (const o of objects) { const key = Math.floor(o.y) * N + Math.floor(o.x); (byTile.get(key) || byTile.set(key, []).get(key)).push(o); }
   // postaci niezależne: stoją w wiosce i na drogach
   const npcs = [
-    { id: 'karczmarz', name: 'Karczmarz', role: 'villager', seed: 14, at: [vx - 4.5, vy - 3.2], line: 'Do areny schodzi się przez cmentarz na wzgórzu. Zimą nikt nie wraca tą samą drogą.' },
-    { id: 'kowal', name: 'Kowalka', role: 'warrior', seed: 23, at: [vx + 5.5, vy - 2.8], line: 'Kopacze znoszą ziemię w korytarzach pod wzgórzem. Słyszę ich w nocy przez kowadło.' },
-    { id: 'kupiec', name: 'Kupiec', role: 'merchant', seed: 31, at: [vx + 1.2, vy + 5.2], line: 'Za rzeką jest las. Kto wchodzi głębiej niż ścieżka, wraca z pajęczyną we włosach, jeśli wraca.' },
-    { id: 'dziecko', name: 'Dziecko', role: 'child', seed: 41, at: [vx - 2.5, vy + 6.8], line: 'Nie wolno nam na wzgórze. Ale tam jest dziura, widziałem.' },
+    { id: 'karczmarz', name: 'Karczmarz', role: 'villager', seed: 14, at: [vx - 5, vy - 3.4], line: 'Do areny schodzi się przez cmentarz na wzgórzu. Zimą nikt nie wraca tą samą drogą.' },
+    { id: 'kowal', name: 'Kowalka', role: 'warrior', seed: 23, at: [vx + 5.6, vy - 3], line: 'Kopacze znoszą ziemię w korytarzach pod wzgórzem. Słyszę ich w nocy przez kowadło.' },
+    { id: 'kupiec', name: 'Kupiec', role: 'merchant', seed: 31, at: [vx + 1.4, vy + 5.6], line: 'Za rzeką jest las. Kto wchodzi głębiej niż ścieżka, wraca z pajęczyną we włosach, jeśli wraca.' },
+    { id: 'dziecko', name: 'Dziecko', role: 'child', seed: 41, at: [vx - 2.8, vy + 6.4], line: 'Nie wolno nam na wzgórze. Ale tam jest dziura, widziałem.' },
     { id: 'straznik', name: 'Strażnik Traktu', role: 'warrior', seed: 53, at: [ROAD_W[3][0] + 1.5, ROAD_W[3][1] - 1.2], line: 'Most runął w zimie. Droga na zachód zamknięta, dopóki ktoś go nie odbuduje.' },
     { id: 'starzec', name: 'Starzec', role: 'elder', seed: 62, at: [ROAD_E[3][0] - 2.4, ROAD_E[3][1] + 2.4], line: 'Brodem da się przejść. Mostu nie ma, bo woda go lubi.' },
   ];
+  // pola ciągłe do kolorowania gruntu bez kafli: las, droga, plac, przepaść
+  const roadsAll = [PATH_UP, ROAD_E, ROAD_W];
+  const fieldAt = (x, y) => {
+    let dr = 1e9; for (const r of roadsAll) dr = Math.min(dr, polyDist(x, y, r)[0]);
+    const chasm = Math.abs((x - y) - RAVINE_E) < 8 ? smoothstep(-0.9, -2.4, heightAtVertex(x, y)) : 0;
+    return { forest: 1 - smoothstep(FOREST_R - 9, FOREST_R + 1, dForest(x, y)), road: 1 - smoothstep(0.9, 2.1, dr), plaza: 1 - smoothstep(6.2, 7.6, Math.hypot(x - vx, y - vy)), chasm };
+  };
   const entrances = ENTRANCES.map((e) => ({ ...e, approach: [e.at[0] - 1.6, e.at[1] + 2.6] }));
   const start = [vx + 0.5, vy + 8.5];
-  return { n: N, seed, heights: H, cellKind, cellRegion, blocked, steep, objects, byTile, buildings, npcs, entrances, start, KIND, regions: REGIONS, roads: { up: PATH_UP, east: ROAD_E, west: ROAD_W }, river: RIVER };
+  return { n: N, seed, fieldAt, heights: H, cellKind, cellRegion, blocked, steep, objects, byTile, buildings, npcs, entrances, start, KIND, regions: REGIONS, roads: { up: PATH_UP, east: ROAD_E, west: ROAD_W }, river: RIVER };
 }
 export const REGIONS = [
   { id: 0, name: 'Pola nad rzeką' }, { id: 1, name: 'Kopiec' }, { id: 2, name: 'Cmentarne Wzgórze' }, { id: 3, name: 'Las Robali' }, { id: 4, name: 'Stary Trakt' },

@@ -4,6 +4,8 @@ import { noise2, fbm } from '../../src/world/noise.js';
 import { generateWorld, N, CLIFF, WATER, ENTRANCES } from '../../src/world/kraina.js';
 import { heightAt, tileBlocked, freeAt, moveWithCollision, findPath, pathLength, newWalker, setPath, stepWalker, lineFree } from '../../src/world/nav.js';
 import { WorldView } from '../../src/art/worldview.js';
+import { genTree, drawTree, SPECIES } from '../../src/art/trees.js';
+import { groundRGB } from '../../src/art/groundcolor.js';
 import { genEntrance, drawEntrance, ENTRANCE_KINDS } from '../../src/art/entrances.js';
 import { mockCtx } from './mockctx.mjs';
 
@@ -55,7 +57,8 @@ test('chodzenie: przepaść na zachodzie nie do przejścia, wody głębokiej i k
 
 test('wioska: budynki stoją na wolnym gruncie, nie na drodze i nie na sobie, a ich podstawa blokuje ruch', () => {
   const seen = new Set();
-  for (const b of W.buildings) for (let i = 0; i < b.s.w; i++) for (let j = 0; j < b.s.d; j++) { const x = b.sx - Math.ceil(b.s.w) + i, y = b.sy - Math.ceil(b.s.d) + j, k = y * N + x; assert.ok(!seen.has(k), 'budynki się nakładają'); seen.add(k); assert.ok(W.blocked[k], 'podstawa budynku blokuje'); assert.notEqual(W.cellKind[k], W.KIND.road); assert.notEqual(W.cellKind[k], W.KIND.plaza); }
+  for (const b of W.buildings) { assert.ok(Number.isInteger(b.w) && Number.isInteger(b.d), 'pełne kafle'); assert.ok(Math.abs(b.s.w * b.k - b.w) < 1e-9 && Math.abs(b.s.d * b.k - b.d) < 1e-9, 'rysunek zgadza się z podstawą'); }
+  for (const b of W.buildings) for (let i = 0; i < b.w; i++) for (let j = 0; j < b.d; j++) { const x = b.sx - b.w + i, y = b.sy - b.d + j, k = y * N + x; assert.ok(!seen.has(k), 'budynki się nakładają'); seen.add(k); assert.ok(W.blocked[k], 'podstawa budynku blokuje'); assert.notEqual(W.cellKind[k], W.KIND.road); assert.notEqual(W.cellKind[k], W.KIND.plaza); }
 });
 
 test('kolizje: bohater nie wchodzi w blokadę i ślizga się po ścianie', () => {
@@ -93,4 +96,18 @@ test('rysowanie świata i wejść: bez błędów, wejścia deterministyczne i r�
   const sig2 = (o) => JSON.stringify(o);
   for (const k of ENTRANCE_KINDS) { assert.equal(sig2(genEntrance(4, k)), sig2(genEntrance(4, k))); assert.notEqual(sig2(genEntrance(4, k)), sig2(genEntrance(5, k))); for (let s = 1; s <= 8; s++) { const g = mockCtx(); drawEntrance(g, 100, 100, genEntrance(s, k)); assert.ok(g.__state.calls > 40); assert.deepEqual(g.__state.bad, [], `${k}#${s}`); } }
   assert.equal(new Set(Array.from({ length: 20 }, (_, i) => genEntrance(i + 1).kind)).size, ENTRANCE_KINDS.length);
+});
+
+test('drzewa: deterministyczne, różne gatunki i ziarna, rysują się bez błędów we wszystkich biomach', () => {
+  const sg = (o) => JSON.stringify(o);
+  for (const sp of SPECIES) { assert.equal(sg(genTree(3, sp)), sg(genTree(3, sp))); assert.notEqual(sg(genTree(3, sp)), sg(genTree(4, sp))); for (const biome of ['summer', 'autumn', 'dark']) for (let s = 1; s <= 5; s++) { const g = mockCtx(); drawTree(g, 100, 200, genTree(s, sp, biome)); assert.ok(g.__state.calls > 20); assert.deepEqual(g.__state.bad, [], `${sp}/${biome}#${s}`); } }
+  assert.equal(new Set(Array.from({ length: 40 }, (_, i) => genTree(i + 1).species)).size, SPECIES.length);
+});
+
+test('kolor gruntu: ciągły (sąsiednie punkty niewiele się różnią), skała na stromiznach, mech w lesie, woda w wodzie', () => {
+  let worst = 0; for (let i = 0; i < 400; i++) { const x = 20 + (i % 20) * 7.3, y = 30 + Math.floor(i / 20) * 7.1, a = groundRGB(W, x, y), b = groundRGB(W, x + 0.15, y + 0.15); worst = Math.max(worst, Math.max(...a.map((v, k) => Math.abs(v - b[k])))); }
+  assert.ok(worst < 40, `skok koloru ${worst.toFixed(0)}`);
+  const forest = groundRGB(W, ...W.entrances[1].at), meadow = groundRGB(W, W.start[0] - 20, W.start[1] + 20); assert.ok(forest[1] < meadow[1], 'las ciemniejszy od łąki');
+  let wet = null; for (let y = 0; y < 192 && !wet; y += 2) for (let x = 0; x < 192; x += 2) if (heightAt(W, x, y) < -1.2 && Math.abs(x - y + 88) > 12) { wet = [x, y]; break; }
+  const wc = groundRGB(W, ...wet); assert.ok(wc[2] > wc[0], 'woda niebieska');
 });
