@@ -1,0 +1,148 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Edytor map v3</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0a0908;color:#f1e7d3;font:14px system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#panel{position:fixed;left:0;top:0;bottom:0;width:244px;background:rgba(18,15,12,.95);border-right:1px solid #3a3126;overflow-y:auto;padding:8px;z-index:2}
+#panel.off{display:none}
+#tog{position:fixed;right:8px;top:8px;z-index:3;min-height:40px;min-width:46px;border:1px solid #5a4a34;background:#2a2318;color:#f1e7d3;font:700 18px system-ui}
+h4{margin:10px 0 4px;color:#e8a860;font:700 11px system-ui;letter-spacing:.12em;text-transform:uppercase}
+button,select,input,textarea{font:inherit;color:#f1e7d3}
+.b{min-height:38px;border:1px solid #3a3126;background:linear-gradient(180deg,#3a3228,#221d16);padding:0 8px;margin:2px 2px 2px 0}.b.on{background:linear-gradient(180deg,#d4601c,#8a3410);border-color:#ffb070}.b.danger{border-color:#8a3030}
+input[type=text],input[type=number]{min-height:34px;background:#1c1814;border:1px solid #3a3126;padding:0 6px;margin:2px 0;width:100%}
+.row{display:flex;gap:6px}.row>*{flex:1;min-width:0}
+small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
+#pal{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}#pal button{height:64px;padding:2px;border:1px solid #3a3126;background:#1c1814;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px}#pal button.on{border-color:#ffb070;background:#3a2410}
+#pal canvas{max-width:100%;max-height:44px}
+#res div{padding:3px 0 3px 18px;position:relative;line-height:1.3}#res div:before{position:absolute;left:0;font-weight:700}
+#res .ok:before{content:'✓';color:#5ad07a}#res .warn:before{content:'!';color:#f0b840}#res .fail:before{content:'✗';color:#ff7060}
+#msg{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(18,15,12,.92);border:1px solid #3a3126;padding:6px 12px;z-index:3;max-width:60vw;text-align:center;opacity:0;transition:opacity .2s}
+#err{display:none;position:fixed;left:252px;right:8px;top:8px;z-index:10;background:#5a1a14;border:1px solid #ff7050;padding:10px;line-height:1.4}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9;display:none;align-items:center;justify-content:center}#dlg .box{background:#1c1814;border:1px solid #5a4a34;padding:14px;width:min(560px,92vw)}
+#dlg textarea{width:100%;height:220px;background:#120f0c;border:1px solid #3a3126;padding:6px;font:12px ui-monospace,monospace;-webkit-user-select:text;user-select:text}
+</style></head><body>
+<canvas id="c"></canvas>
+<button id="tog" aria-label="Panel">☰</button>
+<div id="err"></div>
+<div id="panel">
+<h4>Tryb</h4>
+<div id="modes"><button class="b" data-m="obj">Obiekty</button><button class="b" data-m="col">Kolizje</button><button class="b" data-m="lvl">Wysokości</button><button class="b" data-m="exit">Przejścia</button><button class="b" data-m="start">Start</button><button class="b" data-m="play">Graj</button></div>
+<div id="sub"></div>
+<small id="help"></small>
+<h4>Widok</h4><label><input type="checkbox" id="gridchk" checked> siatka</label> <label><input type="checkbox" id="colchk"> kolizje</label> <label><input type="checkbox" id="oschk" checked> osadzenie</label>
+<h4>Edycja</h4><button class="b" id="undo">Cofnij</button><button class="b" id="redo">Ponów</button>
+<h4>Dane</h4>
+<button class="b" id="save">Zapisz roboczą</button><button class="b" id="cp">Kopiuj JSON</button><button class="b" id="ld">Wczytaj</button><button class="b" id="orig">Wróć do pliku</button>
+<h4>Sprawdź mapę</h4><button class="b" id="val">Sprawdź</button><div id="res"></div>
+<small id="stat"></small>
+</div>
+<div id="msg"></div>
+<div id="dlg"><div class="box"><div id="dt" style="margin-bottom:8px"></div><textarea id="dta" spellcheck="false"></textarea><input type="file" id="file" accept=".json,application/json" style="display:none"><div style="margin-top:10px"><button class="b" id="dok">OK</button><button class="b" id="dno">Anuluj</button><button class="b" id="dfile" style="display:none">Z pliku</button></div></div></div>
+<script type="module">
+import {createScene, loadAssets, MAP_W, MAP_H} from './src/scena.js';
+import {validateMap} from './src/walidacja.js';
+import {spriteDefs} from './src/scena.js';
+addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Jeśli przyciski nie działają, strona jest prawdopodobnie otwarta z pliku (file://). Otwórz ją przez serwer (npm start) albo adres https.'});
+setTimeout(()=>{if(!window.__edytor){const b=document.getElementById('err');b.style.display='block';b.textContent='Skrypt edytora się nie uruchomił, dlatego przyciski nie działają. Otwórz stronę przez serwer (npm start) albo adres https, nie z pliku.'}},4000);
+const $=id=>document.getElementById(id),cv=$('c'),Q=new URLSearchParams(location.search),MAP=Q.get('map')||'pilot',KEY='arena.mapdraft.v3.'+MAP;
+const LIB=window.__LIB||await (await fetch('gra/biblioteka.json')).json();
+const url=p=>(window.__ASSETS&&window.__ASSETS[p])||('gra/'+p);
+const FILE=async()=>window.__MAPS?JSON.parse(JSON.stringify(window.__MAPS[MAP])):await (await fetch('maps/'+MAP+'.json')).json();
+let def=null;try{def=JSON.parse(localStorage.getItem(KEY))}catch(_){}
+const fromDraft=!!(def&&def.objects);if(!fromDraft)def=await FILE();
+const A=await loadAssets(LIB,url),SP=spriteDefs(LIB);
+let msgT=0;const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=0,2600)};
+if(fromDraft)toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');
+// ---- okienka w stronie (prompt i confirm nie działają w WebView ani w artefakcie) ----
+function dialog(title,{text='',ok='OK',area=false,file=false}={}){return new Promise(res=>{$('dt').textContent=title;const ta=$('dta');ta.style.display=area?'block':'none';ta.value=text;$('dok').textContent=ok;$('dfile').style.display=file?'inline-block':'none';$('dlg').style.display='flex';if(area){ta.focus();ta.select()}
+ const done=v=>{$('dlg').style.display='none';res(v)};$('dok').onclick=()=>done(area?ta.value:true);$('dno').onclick=()=>done(null);$('dfile').onclick=()=>$('file').click();
+ $('file').onchange=async e=>{const f=e.target.files[0];if(f){ta.value=await f.text()}e.target.value=''}})}
+// ---- stan ----
+let mode='obj',placing=null,sel=-1,exSel=-1,lvl=1,brush='add',ramp=false,undo=[],redo=[],drag=null,ghost=null;
+const snap=()=>JSON.stringify(def),clone=o=>JSON.parse(JSON.stringify(o));
+const push=()=>{undo.push(snap());if(undo.length>80)undo.shift();redo=[]};
+const sc=createScene(cv,LIB,A,def,{toast});sc.showGrid=true;sc.play=false;
+const PW=()=>$('panel').classList.contains('off')?0:244;
+const key=(x,y)=>x+','+y;
+function changed(save=true,lazy=true){sc.setDef(def,{keepHero:mode==='play',lazy});if(save)try{localStorage.setItem(KEY,snap())}catch(_){}stat()}
+function stat(){$('stat').textContent=`Obiektów: ${def.objects.length}, ręcznych blokad: ${(def.blocked||[]).length}, przejść: ${def.exits.length}`}
+sc.resize(PW());addEventListener('resize',()=>sc.resize(PW()));
+// ---- paleta ----
+const pal=$('pal');
+function drawPalette(el){el.innerHTML='';for(const [n,s] of Object.entries(LIB.sprites)){const b=document.createElement('button');b.dataset.s=n;const c=document.createElement('canvas'),k=Math.min(56/s.w,44/s.h);c.width=Math.round(s.w*k);c.height=Math.round(s.h*k);c.getContext('2d').drawImage(A.IMG[n],0,0,c.width,c.height);b.append(c);const t=document.createElement('span');t.textContent=n+' '+s.footprint.w+'x'+s.footprint.d;b.append(t);b.classList.toggle('on',placing===n);b.onclick=()=>{placing=placing===n?null:n;sel=-1;ui()};el.append(b)}}
+// ---- panel zależny od trybu ----
+const HELP={obj:'Wybierz obiekt z listy i dotknij mapy, by go postawić (dotknięty kafel to przedni kafel odcisku). Dotknij obiekt na mapie, by go zaznaczyć i przeciągnąć.',
+ col:'Maluj kafle, na które nie można wejść (pomarańczowa ramka). Odciski obiektów blokują same, tu dodajesz wyjątki.',
+ lvl:'Maluj poziom wysokości kafla. Różnica 1 poziomu wymaga rampy, 2 i więcej to klif.',
+ exit:'Przejście to zestaw kafli na krawędzi. Wybierz przejście, maluj jego kafle i wpisz mapę docelową oraz kafel startu w niej. Wejście w kafel przenosi od razu, bez przycisku.',
+ start:'Dotknij kafla, na którym bohater zaczyna.',play:'Dotknij ziemi, by bohater poszedł. Sprawdzasz kolizje, głębię i przejścia.'};
+function ui(){
+ for(const b of $('modes').children)b.classList.toggle('on',b.dataset.m===mode);$('help').textContent=HELP[mode];const sub=$('sub');sub.innerHTML='';
+ const btn=(t,on,f,cls='')=>{const b=document.createElement('button');b.className='b'+(on?' on':'')+(cls?' '+cls:'');b.textContent=t;b.onclick=f;sub.append(b);return b};
+ const inp=(label,val,f,type='text')=>{const l=document.createElement('label');l.style.display='block';l.textContent=label;const i=document.createElement('input');i.type=type;i.value=val;i.onchange=()=>f(i.value);l.append(i);sub.append(l)};
+ if(mode==='obj'){const pe=document.createElement('div');pe.id='pal';sub.append(pe);drawPalette(pe);
+  const o=def.objects[sel];if(o){const s=LIB.sprites[o.sprite];const h=document.createElement('small');h.textContent=`Zaznaczony: ${o.sprite}, róg S (${o.x}, ${o.y}), odcisk ${s.footprint.w}x${s.footprint.d}, poziom ${o.z||0}, sortowanie ${o.bias||0}`;sub.append(h);
+   btn('Usuń',false,()=>{push();def.objects.splice(sel,1);sel=-1;changed(true,false);ui()},'danger');btn('Kopiuj',false,()=>{push();def.objects.push({...clone(o),x:o.x+1,y:o.y+1});sel=def.objects.length-1;changed();ui()});
+   btn('Poziom −',false,()=>{push();o.z=Math.max(0,(o.z||0)-1);changed();ui()});btn('Poziom +',false,()=>{push();o.z=(o.z||0)+1;changed();ui()});
+   btn('Sort −',false,()=>{push();o.bias=(o.bias||0)-1;changed();ui()});btn('Sort +',false,()=>{push();o.bias=(o.bias||0)+1;changed();ui()});
+   const h2=document.createElement('small');h2.textContent='Sort ± to wyjątek: ręczne przesunięcie obiektu przed lub za innymi. Jeśli potrzebujesz go często, poprawiamy odcisk.';sub.append(h2)}}
+ if(mode==='col'){btn('Blokuj',brush==='add',()=>{brush='add';ui()});btn('Gumka',brush==='del',()=>{brush='del';ui()})}
+ if(mode==='lvl'){for(const n of [0,1,2,3])btn('Poziom '+n,!ramp&&lvl===n,()=>{lvl=n;ramp=false;ui()});btn('Rampa',ramp,()=>{ramp=!ramp;ui()})}
+ if(mode==='exit'){def.exits.forEach((e,i)=>btn(`${i+1}: ${e.to.map||'(bez celu)'} (${e.cells.length})`,exSel===i,()=>{exSel=i;ui()}));btn('Nowe przejście',false,()=>{push();def.exits.push({cells:[],to:{map:'',x:2,y:2}});exSel=def.exits.length-1;changed();ui()});
+  const e=def.exits[exSel];if(e){inp('Mapa docelowa',e.to.map,v=>{push();e.to.map=v.trim();changed();ui()});const r=document.createElement('div');r.className='row';sub.append(r);
+   for(const [lab,k] of [['Kafel x','x'],['Kafel y','y']]){const l=document.createElement('label');l.textContent=lab;const i=document.createElement('input');i.type='number';i.value=e.to[k];i.onchange=()=>{push();e.to[k]=+i.value;changed()};l.append(i);r.append(l)}
+   btn('Dodaj kafle',brush==='add',()=>{brush='add';ui()});btn('Gumka',brush==='del',()=>{brush='del';ui()});btn('Usuń przejście',false,()=>{push();def.exits.splice(exSel,1);exSel=-1;changed();ui()},'danger')}}
+ if(mode==='play')btn('Ustaw bohatera na starcie',false,()=>{sc.hero.x=def.start[0];sc.hero.y=def.start[1];sc.hero.path=[]});
+}
+$('modes').onclick=e=>{const m=e.target.dataset&&e.target.dataset.m;if(!m)return;mode=m;placing=null;sc.play=m==='play';sc.showCol=m==='play'?false:($('colchk').checked||m==='col'||m==='exit');if(m!=='play')sc.setDef(def,{keepHero:false,lazy:true});ui()};
+// ---- widok ----
+$('gridchk').onchange=e=>sc.showGrid=e.target.checked;$('colchk').onchange=e=>sc.showCol=e.target.checked;$('oschk').onchange=e=>sc.osad=e.target.checked;
+$('tog').onclick=()=>{$('panel').classList.toggle('off');sc.resize(PW())};
+// ---- obiekty na mapie: trafianie i przeciąganie ----
+function objAt(cx,cy){const z=sc.view.z,list=def.objects.map((o,i)=>({o,i,k:o.x+o.y+(o.bias||0)+(LIB.sprites[o.sprite].base==='center'?-1:0)})).sort((a,b)=>b.k-a.k);
+ for(const {o,i} of list){const P=sc.objPos(o),s=P.s,left=sc.view.ox+(P.x-s.w/4)*z,top=sc.view.oy+(P.y-s.h/2)*z,px=Math.floor((cx-left)/z*2),py=Math.floor((cy-top)/z*2);
+  if(px<0||py<0||px>=s.w||py>=s.h)continue;const al=sc.spriteAlpha[o.sprite];const sx=Math.floor(px*al.w/s.w),sy=Math.floor(py*al.h/s.h);if(al.a[sy*al.w+sx]>40)return i}return -1}
+const inMap=(cx,cy)=>sc.M.inMap(cx,cy);
+function paintCell(cx,cy){if(!inMap(cx,cy))return;const k=key(cx,cy);
+ if(mode==='col'){def.blocked=def.blocked||[];const i=def.blocked.findIndex(([a,b])=>a===cx&&b===cy);if(brush==='add'&&i<0)def.blocked.push([cx,cy]);if(brush==='del'&&i>=0)def.blocked.splice(i,1)}
+ if(mode==='lvl'){def.levels=def.levels||{};def.ramps=def.ramps||[];if(ramp){const i=def.ramps.findIndex(([a,b])=>a===cx&&b===cy);if(i<0)def.ramps.push([cx,cy]);else def.ramps.splice(i,1)}else if(lvl>0)def.levels[k]=lvl;else delete def.levels[k]}
+ if(mode==='exit'){const e=def.exits[exSel];if(!e)return;const i=e.cells.findIndex(([a,b])=>a===cx&&b===cy);if(brush==='add'&&i<0)e.cells.push([cx,cy]);if(brush==='del'&&i>=0)e.cells.splice(i,1)}}
+cv.addEventListener('pointerdown',e=>{if(e.target!==cv)return;const m=sc.toMap(e.clientX,e.clientY),[cx,cy]=m.cell;cv.setPointerCapture(e.pointerId);
+ if(mode==='play'){sc.moveTo(cx,cy);return}
+ if(mode==='obj'){const i=objAt(e.clientX,e.clientY);
+  if(placing&&i<0){if(!inMap(cx,cy)){toast('Tu jest poza mapą.');return}push();def.objects.push({sprite:placing,x:cx+1,y:cy+1});sel=def.objects.length-1;changed(true,false);ui();return}
+  sel=i;ui();if(i>=0){push();drag={i,dx:def.objects[i].x-(cx+1),dy:def.objects[i].y-(cy+1),moved:false}}return}
+ if(mode==='start'){if(!inMap(cx,cy))return;push();def.start=[cx+.5,cy+.5];changed(true,false);toast('Start ustawiony.');return}
+ if(mode==='exit'&&exSel<0){toast('Najpierw wybierz lub dodaj przejście.');return}
+ push();drag={paint:true,last:null};paintCell(cx,cy);changed(true,false)});
+cv.addEventListener('pointermove',e=>{const m=sc.toMap(e.clientX,e.clientY),[cx,cy]=m.cell;ghost=mode==='obj'&&placing&&!drag?[cx+1,cy+1]:null;if(!drag)return;
+ if(drag.paint){const k=key(cx,cy);if(drag.last!==k){drag.last=k;paintCell(cx,cy);changed(true,true)}return}
+ const o=def.objects[drag.i],nx=cx+1+drag.dx,ny=cy+1+drag.dy;if(nx!==o.x||ny!==o.y){o.x=nx;o.y=ny;drag.moved=true;changed(false,true)}});
+const end=()=>{if(drag){if(drag.paint||drag.moved)changed(true,false);else if(drag.i!==undefined)undo.pop();drag=null}};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if((e.key==='Delete'||e.key==='Backspace')&&mode==='obj'&&sel>=0){push();def.objects.splice(sel,1);sel=-1;changed(true,false);ui()}
+ if(e.key==='z'&&(e.ctrlKey||e.metaKey))$('undo').click();if(e.key==='y'&&(e.ctrlKey||e.metaKey))$('redo').click();if(e.key==='Escape'){placing=null;ui()}});
+// ---- nakładka edytora ----
+const P4=(cx,cy,w=1,d=1,z=0)=>[[cx,cy],[cx+w,cy],[cx+w,cy+d],[cx,cy+d]].map(([a,b])=>sc.S2(a,b,z));
+function poly(g,pts,d){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0]*d,p[1]*d):g.moveTo(p[0]*d,p[1]*d));g.closePath()}
+sc.overlay=(g,s)=>{if(mode==='play')return;const d=s.dpr,fp=o=>{const f=LIB.sprites[o.sprite].footprint;return P4(o.x-f.w,o.y-f.d,f.w,f.d,o.z||0)};
+ g.save();g.lineWidth=2*d;
+ if(mode==='col')for(const [cx,cy] of def.blocked||[]){poly(g,P4(cx,cy),d);g.strokeStyle='#ff9a2a';g.stroke()}
+ if(mode==='lvl'){const C=['','rgba(60,140,255,.4)','rgba(170,80,255,.4)','rgba(255,80,160,.4)'];for(const c of s.iso.cells()){const n=(def.levels||{})[key(...c)]||0;if(n){poly(g,P4(c[0],c[1]),d);g.fillStyle=C[n];g.fill();const p=s.S2(c[0]+.5,c[1]+.5);g.fillStyle='#fff';g.font=`${14*d}px system-ui`;g.textAlign='center';g.fillText(n,p[0]*d,p[1]*d+5*d)}}
+  for(const [cx,cy] of def.ramps||[]){poly(g,P4(cx,cy),d);g.strokeStyle='#ffe040';g.stroke();const p=s.S2(cx+.5,cy+.5);g.fillStyle='#ffe040';g.font=`${15*d}px system-ui`;g.textAlign='center';g.fillText('▲',p[0]*d,p[1]*d+5*d)}}
+ if(mode==='exit')def.exits.forEach((e,i)=>{for(const [cx,cy] of e.cells){poly(g,P4(cx,cy),d);g.fillStyle=i===exSel?'rgba(60,170,255,.55)':'rgba(60,170,255,.22)';g.fill();if(i===exSel){g.strokeStyle='#9ad0ff';g.stroke()}}});
+ if(mode==='obj'){def.objects.forEach((o,i)=>{if(i!==sel)return;poly(g,fp(o),d);g.strokeStyle='#40e0ff';g.stroke();const P=s.objPos(o),z=s.view.z,l=(s.view.ox+(P.x-P.s.w/4)*z)*d,t=(s.view.oy+(P.y-P.s.h/2)*z)*d;g.setLineDash([6*d,4*d]);g.strokeRect(l,t,P.s.w/2*z*d,P.s.h/2*z*d);g.setLineDash([])});
+  if(ghost&&placing){const f=LIB.sprites[placing].footprint;poly(g,P4(ghost[0]-f.w,ghost[1]-f.d,f.w,f.d),d);g.fillStyle='rgba(64,224,255,.25)';g.fill();g.strokeStyle='#40e0ff';g.stroke()}}
+ if(def.start){const p=s.S2(def.start[0],def.start[1]);g.beginPath();g.arc(p[0]*d,p[1]*d,6*d,0,7);g.fillStyle='#3aff6a';g.fill();g.strokeStyle='#063';g.stroke()}
+ g.restore()};
+// ---- dane ----
+$('undo').onclick=()=>{if(!undo.length)return;redo.push(snap());def=JSON.parse(undo.pop());changed(true,false);ui()};
+$('redo').onclick=()=>{if(!redo.length)return;undo.push(snap());def=JSON.parse(redo.pop());changed(true,false);ui()};
+$('save').onclick=()=>{try{localStorage.setItem(KEY,snap());toast('Zapisano wersję roboczą w tej przeglądarce.')}catch(_){toast('Przeglądarka nie pozwala zapisać wersji roboczej.')}};
+$('cp').onclick=async()=>{const js=JSON.stringify(def);try{await navigator.clipboard.writeText(js);toast('Skopiowano JSON do schowka. Wklej go w czacie.')}catch(_){await dialog('Skopiuj ten JSON (zaznaczony) i wklej w czacie:',{text:js,area:true,ok:'Zamknij'})}};
+$('ld').onclick=async()=>{const t=await dialog('Wklej JSON mapy albo wybierz plik:',{area:true,file:true,ok:'Wczytaj'});if(!t)return;try{const d=JSON.parse(t);if(!d.objects||!d.exits||!d.start)throw 0;push();def=d;sel=-1;exSel=-1;changed(true,false);ui();toast('Wczytano mapę.')}catch(_){toast('To nie jest poprawny plik mapy.')}};
+$('orig').onclick=async()=>{if(!(await dialog('Usunąć wersję roboczą i wczytać oryginał z pliku?')))return;try{localStorage.removeItem(KEY)}catch(_){}push();def=await FILE();sel=-1;exSel=-1;changed(false,false);ui()};
+$('val').onclick=()=>{const r=validateMap(def,SP),el=$('res');el.innerHTML='';for(const c of r){const d=document.createElement('div');d.className=c.level;d.textContent=c.msg;el.append(d)}};
+ui();stat();
+window.__edytor={get def(){return def},sc,setMode:m=>$('modes').querySelector(`[data-m=${m}]`).click(),view:()=>sc.view,undoLen:()=>undo.length};
+const loop=t=>{requestAnimationFrame(loop);sc.draw(t)};requestAnimationFrame(loop);
+</script></body></html>

@@ -95,3 +95,15 @@ test('cień domyślnie pada w lewo (światło z prawej góry, jasna prawa ścian
   assert.ok(maxX <= m.ox + 12 + 2, 'nic na prawo od słupa: ' + maxX);
   assert.ok(maxY > h, 'cień schodzi ku widzowi');
 });
+
+import { validateMap } from '../../mapy/src/walidacja.js';
+test('walidacja: poprawna mapa przechodzi, błędne przypadki są nazwane', () => {
+  const d = def(); d.start = [4.5, 8.5]; const sp = def().sprites;
+  const ok = validateMap(d, sp); assert.ok(!ok.some((c) => c.level === 'fail'), JSON.stringify(ok));
+  const noStart = def(); delete noStart.start; assert.ok(validateMap(noStart, sp).some((c) => c.level === 'fail' && /start/i.test(c.msg)));
+  const blockedStart = def(); blockedStart.start = [8.5, 8.5]; assert.ok(validateMap(blockedStart, sp).some((c) => c.level === 'fail' && /zablokowanym/.test(c.msg)));
+  const noTarget = def(); noTarget.start = [4.5, 8.5]; noTarget.exits[0].to.map = ''; assert.ok(validateMap(noTarget, sp).some((c) => /nie ma mapy docelowej/.test(c.msg)));
+  const walled = def(); walled.start = [4.5, 8.5]; walled.blocked = []; for (let x = -5; x < 30; x++) walled.blocked.push([x, 10]); assert.ok(validateMap(walled, sp).some((c) => c.level === 'fail' && /nie da się dojść/.test(c.msg)));
+  const overlap = def(); overlap.start = [4.5, 8.5]; overlap.objects.push({ sprite: 'chata', x: 11, y: 11 }); assert.ok(validateMap(overlap, sp).some((c) => /nakładają/.test(c.msg)));
+  const bad = def(); bad.objects = [{ sprite: 'nieistnieje', x: 1, y: 1 }]; assert.ok(validateMap(bad, sp).some((c) => c.level === 'fail'));
+});
