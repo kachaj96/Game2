@@ -53,3 +53,7 @@ Czyści półprzezroczystą poświatę, przycina, skaluje, zapisuje do `www/img/
 4. Czy bez cienia w obrazie cienie z gry wyglądają dobrze?
 5. Czy tło areny trzyma siatkę?
 Po pilotażu decydujemy: skalujemy podejście, mieszamy z kodem, czy wracamy do generatorów.
+
+## Stan po pilotażu
+- Grafika z obrazów jest **wyłączona domyślnie** (gra rysuje wszystko kodem). Włączenie: Menu, Grafika, "Obrazy (test)" albo `?obrazy=1` w adresie świata i walki.
+- Mapa wioski z obrazu to osobny eksperyment: `www/wioska-mapa.html`. Dane w `www/maps/wioska.json`, edytor kolizji `www/edytor-kolizji.html` (maluje kafle, obrysowuje podstawy i sylwetki, zapisuje JSON; "Testuj w grze" używa wersji roboczej).

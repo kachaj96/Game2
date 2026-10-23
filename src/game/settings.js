@@ -10,9 +10,9 @@ export const QUALITY = {
 export const TIME_NAMES = { cycle: 'Zmienna', day: 'Zawsze dzień', night: 'Zawsze noc' };
 export const THEMES = ['default', 'bonta', 'brakmar', 'szmaragd', 'zloto'];
 export const THEME_NAMES = { default: 'Domyślny', bonta: 'Bonta', brakmar: 'Brakmar', szmaragd: 'Szmaragd', zloto: 'Złoto' };
-export const DEFAULTS = { quality: 'medium', time: 'cycle', fps: false, theme: 'default' };
+export const DEFAULTS = { quality: 'medium', time: 'cycle', fps: false, theme: 'default', images: false };
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
-export function validSettings(s) { return !!s && typeof s === 'object' && QUALITY_IDS.includes(s.quality) && TIME_MODES.includes(s.time) && typeof s.fps === 'boolean' && (s.theme === undefined || THEMES.includes(s.theme)); }
+export function validSettings(s) { return !!s && typeof s === 'object' && QUALITY_IDS.includes(s.quality) && TIME_MODES.includes(s.time) && typeof s.fps === 'boolean' && (s.theme === undefined || THEMES.includes(s.theme)) && (s.images === undefined || typeof s.images === 'boolean'); }
 export function loadSettings(storage = store()) {
   if (!storage) return { ...DEFAULTS };
   try { const s = JSON.parse(storage.getItem(SETTINGS_KEY)); return validSettings(s) ? { ...DEFAULTS, ...s } : { ...DEFAULTS }; } catch { return { ...DEFAULTS }; }

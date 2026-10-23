@@ -36,7 +36,7 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 <canvas id="c"></canvas>
 <div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small></div><div class="xpbar"><b id="xpb"></b><i id="xpt"></i></div>
 <div id="menu"><a class="pill" id="mchar" href="postac.html?back=swiat.html">Postać</a><button class="pill" id="mmenu" type="button">Menu</button></div>
-<div id="pause"><div class="win" id="pbox"><div class="wh">Menu<button class="x" id="pclose" type="button" aria-label="Zamknij">×</button></div><div class="wb"><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go btn-go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div></div>
+<div id="pause"><div class="win" id="pbox"><div class="wh">Menu<button class="x" id="pclose" type="button" aria-label="Zamknij">×</button></div><div class="wb"><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Grafika</span><div class="seg" id="oi"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go btn-go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div></div>
 <div id="fps" class="pill"></div>
 <div id="toast" class="pill"></div>
 <div id="mini"><canvas id="mm" width="240" height="240"></canvas></div>
@@ -70,7 +70,7 @@ const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,st
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
 const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');
-wv.setQuality(QUALITY[SET.quality]);const night=document.createElement('canvas');
+wv.setQuality(QUALITY[SET.quality]);if(SET.images||Q.get('obrazy')==='1')wv.setImages(true);const night=document.createElement('canvas');
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 // malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
 let beamT=null;function beamTex(){if(beamT)return beamT;const c=document.createElement('canvas');c.width=64;c.height=256;const q=c.getContext('2d');
@@ -132,6 +132,7 @@ function buildOpts(){
   const seg=(id,items,cur,fn)=>{const el=$(id);el.innerHTML='';for(const [k,name] of items){const b=document.createElement('button');b.type='button';b.textContent=name;b.className=k===cur?'on':'';b.onclick=()=>{fn(k);buildOpts()};el.append(b)}};
   seg('oq',QUALITY_IDS.map(k=>[k,QUALITY[k].name]),SET.quality,k=>{SET.quality=k;saveSettings(SET);wv.setQuality(QUALITY[k]);resize()});
   seg('ot',TIME_MODES.map(k=>[k,TIME_NAMES[k]]),SET.time,k=>{SET.time=k;saveSettings(SET)});
+  seg('oi',[[false,'Kod'],[true,'Obrazy (test)']],!!SET.images,k=>{SET.images=k;saveSettings(SET);wv.setImages(k)});
   seg('of',[[false,'Wył.'],[true,'Wł.']],SET.fps,k=>{SET.fps=k;saveSettings(SET)});
 }
 let paused=false;const setPause=v=>{paused=v;$('pause').classList.toggle('on',v);if(v)buildOpts()};

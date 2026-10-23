@@ -8,7 +8,7 @@
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "start": "node tools/serve.mjs",
     "shots": "node tools/shot.mjs",
-    "e2e": "node tests/e2e/walka.mjs && node tests/e2e/kreator.mjs && node tests/e2e/czary.mjs && node tests/e2e/pasek.mjs && node tests/e2e/postac.mjs && node tests/e2e/swiat.mjs && node tests/e2e/loch.mjs && node tests/e2e/petla.mjs && node tests/e2e/menu.mjs && node tests/e2e/wioska.mjs"
+    "e2e": "node tests/e2e/walka.mjs && node tests/e2e/kreator.mjs && node tests/e2e/czary.mjs && node tests/e2e/pasek.mjs && node tests/e2e/postac.mjs && node tests/e2e/swiat.mjs && node tests/e2e/loch.mjs && node tests/e2e/petla.mjs && node tests/e2e/menu.mjs && node tests/e2e/wioska.mjs && node tests/e2e/edytor.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^7.6.9",

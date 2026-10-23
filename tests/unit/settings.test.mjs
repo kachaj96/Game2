@@ -8,7 +8,7 @@ const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.
 
 test('ustawienia: domyślne, zapis i odczyt, uszkodzone dane wracają do domyślnych', () => {
   const st = mem(); assert.deepEqual(loadSettings(st), DEFAULTS);
-  assert.ok(saveSettings({ quality: 'low', time: 'night', fps: true }, st)); assert.deepEqual(loadSettings(st), { quality: 'low', time: 'night', fps: true, theme: 'default' });
+  assert.ok(saveSettings({ quality: 'low', time: 'night', fps: true }, st)); assert.deepEqual(loadSettings(st), { quality: 'low', time: 'night', fps: true, theme: 'default', images: false });
   assert.equal(saveSettings({ ...DEFAULTS, theme: 'neon' }, st), false);
   st.setItem(SETTINGS_KEY, '{"quality":"ultra"}'); assert.deepEqual(loadSettings(st), DEFAULTS); st.setItem(SETTINGS_KEY, 'zle'); assert.deepEqual(loadSettings(st), DEFAULTS);
   assert.equal(saveSettings({ quality: 'x', time: 'day', fps: false }, st), false); assert.equal(saveSettings(DEFAULTS, null), false); assert.equal(validSettings(DEFAULTS), true);
@@ -34,4 +34,8 @@ test('noc: warstwa rysuje się bez złych liczb, w dzień nic nie rysuje', () =>
 test('areny i wnętrza mają stałe światło: walka.html nie używa pory dnia ani nocy', async () => {
   const { readFileSync } = await import('node:fs'); const src = readFileSync(new URL('../../www/walka.html', import.meta.url), 'utf8');
   assert.ok(!/daylight|darkness|drawNight/.test(src), 'walka nie importuje modułu pory dnia');
+});
+
+test('grafika z obrazów jest domyślnie wyłączona i przełączalna', () => {
+  assert.equal(DEFAULTS.images, false); const st = mem(); assert.ok(saveSettings({ ...DEFAULTS, images: true }, st)); assert.equal(loadSettings(st).images, true); assert.equal(saveSettings({ ...DEFAULTS, images: 'tak' }, st), false);
 });

@@ -1,0 +1,139 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Edytor kolizji</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0a0908;color:#f1e7d3;font:14px system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#panel{position:fixed;left:0;top:0;bottom:0;width:230px;background:rgba(18,15,12,.94);border-right:1px solid #3a3126;overflow-y:auto;padding:8px;z-index:2}
+#panel.off{display:none}
+#tog{position:fixed;right:8px;top:8px;z-index:3;min-height:40px;min-width:46px;border:1px solid #5a4a34;background:#2a2318;color:#f1e7d3;font:700 18px system-ui}
+h4{margin:10px 0 4px;color:#e8a860;font:700 11px system-ui;letter-spacing:.12em;text-transform:uppercase}
+button,select,input{font:inherit;color:#f1e7d3}
+.b{min-height:38px;border:1px solid #3a3126;background:linear-gradient(180deg,#3a3228,#221d16);padding:0 8px;margin:2px 2px 2px 0}.b.on{background:linear-gradient(180deg,#d4601c,#8a3410);border-color:#ffb070}
+.b.danger{border-color:#8a3030}
+select,input[type=text]{width:100%;min-height:36px;background:#1c1814;border:1px solid #3a3126;padding:0 6px;margin:2px 0}
+small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
+#msg{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(18,15,12,.92);border:1px solid #3a3126;padding:6px 12px;z-index:3;max-width:70vw;text-align:center;display:none}
+</style></head><body>
+<canvas id="c"></canvas>
+<button id="tog" aria-label="Panel">☰</button>
+<div id="panel">
+<h4>Tryb</h4>
+<div id="modes"><button class="b" data-m="hand">Ręka</button><button class="b" data-m="tiles">Kafle</button><button class="b" data-m="obj">Obiekty</button><button class="b" data-m="walk">Obszar</button><button class="b" data-m="pts">Punkty</button></div>
+<div id="sub"></div>
+<small id="help"></small>
+<h4>Widok</h4><button class="b" id="zin">+</button><button class="b" id="zout">−</button><button class="b" id="fit">Dopasuj</button>
+<label><input type="checkbox" id="gridchk" checked> siatka</label> <label><input type="checkbox" id="maskchk" checked> maska</label>
+<h4>Edycja</h4><button class="b" id="undo">Cofnij</button><button class="b" id="redo">Ponów</button>
+<h4>Dane</h4>
+<button class="b" id="save">Zapisz roboczą</button><button class="b" id="dl">Pobierz JSON</button><button class="b" id="cp">Kopiuj JSON</button><button class="b" id="ld">Wczytaj plik</button><button class="b" id="orig">Wróć do pliku</button>
+<a class="b" id="test" href="wioska-mapa.html?draft=1" target="_blank" style="display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;margin-top:6px">Testuj w grze</a>
+<input type="file" id="file" accept=".json,application/json" style="display:none">
+<small id="stat"></small>
+</div>
+<div id="msg"></div>
+<script type="module">
+import {buildMap} from '../src/world/mapdata.js';
+const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d'),KEY='arena.mapdraft.wioska';
+let D=null,M=null,img=new Image(),imgOk=false,mode='tiles',tileMode='block',sel=0,part='foot',delMode=false,view={x:0,y:0,z:1},dirty=true,undo=[],redo=[],pm=null;
+const toast=t=>{const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>m.style.display='none',2400)};
+const snap=()=>JSON.stringify(D);
+function push(){undo.push(snap());if(undo.length>60)undo.shift();redo=[];}
+function changed(save=true){M=buildMap(D);if(save)try{localStorage.setItem(KEY,snap())}catch(_){}dirty=true;stat()}
+function load(d){D=d;M=buildMap(D);img=new Image();img.onload=()=>{imgOk=true;fit();dirty=true};img.src=D.image;sel=0;part='foot';ui()}
+async function init(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(_){}if(!d||!d.blocks){d=await fetch('maps/wioska.json').then(r=>r.json())}else toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');load(d)}
+// ---- widok ----
+const dpr=()=>Math.min(2,devicePixelRatio||1);
+function resize(){const r=cv.getBoundingClientRect();cv.width=Math.round(r.width*dpr());cv.height=Math.round(r.height*dpr());dirty=true}
+addEventListener('resize',resize);resize();
+const css=(ix,iy)=>[(ix-view.x)*view.z,(iy-view.y)*view.z],unc=(sx,sy)=>[sx/view.z+view.x,sy/view.z+view.y];
+function fit(){const r=cv.getBoundingClientRect(),pw=$('panel').classList.contains('off')?0:230,aw=r.width-pw;view.z=Math.min(aw/D.iw,r.height/D.ih);view.x=-(pw+(aw-D.iw*view.z)/2)/view.z;view.y=-((r.height-D.ih*view.z)/2)/view.z;dirty=true}
+function zoomAt(sx,sy,f){const [ix,iy]=unc(sx,sy);view.z=Math.max(0.2,Math.min(8,view.z*f));view.x=ix-sx/view.z;view.y=iy-sy/view.z;dirty=true}
+// ---- rysowanie ----
+function poly(pts,close=true){g.beginPath();pts.forEach(([x,y],i)=>{const p=css(x,y);i?g.lineTo(p[0]*dpr(),p[1]*dpr()):g.moveTo(p[0]*dpr(),p[1]*dpr())});if(close)g.closePath()}
+function draw(){
+  if(!D||!dirty)return;dirty=false;const r=dpr();g.setTransform(1,0,0,1,0,0);g.fillStyle='#14110f';g.fillRect(0,0,cv.width,cv.height);
+  if(imgOk)g.drawImage(img,-view.x*view.z*r,-view.y*view.z*r,D.iw*view.z*r,D.ih*view.z*r);
+  const P=M.proj,showMask=$('maskchk').checked,showGrid=$('gridchk').checked;
+  for(let y=0;y<D.rows;y++)for(let x=0;x<D.cols;x++){const k=y*D.cols+x,b=M.mask[k];if(!showMask&&!showGrid)break;
+    const c=[P.toImage(x,y),P.toImage(x+1,y),P.toImage(x+1,y+1),P.toImage(x,y+1)];poly(c);
+    if(showMask&&b){g.fillStyle='rgba(255,40,40,.38)';g.fill()}
+    const ov=(D.tiles.block.includes(k)?1:0)+(D.tiles.free.includes(k)?2:0);if(ov){g.lineWidth=2*r;g.strokeStyle=ov===1?'#ff9a2a':'#3aff6a';g.stroke()}
+    else if(showGrid){g.lineWidth=1;g.strokeStyle='rgba(255,255,255,.22)';g.stroke()}}
+  // obiekty
+  D.blocks.forEach((o,i)=>{for(const pt of ['foot','sil']){const pts=o[pt];if(!pts||pts.length<1)continue;const isSel=(mode==='obj'&&i===sel&&part===pt);
+    poly(pts,pts.length>2);g.lineWidth=(isSel?3:1.5)*r;g.setLineDash(pt==='sil'?[6*r,4*r]:[]);g.strokeStyle=pt==='foot'?'#ff4a3a':'#4ab0ff';g.stroke();g.setLineDash([]);
+    if(mode==='obj'&&pts.length>2){g.fillStyle=pt==='foot'?'rgba(255,60,40,.12)':'rgba(60,160,255,.08)';g.fill()}
+    if(isSel)pts.forEach(([x,y],j)=>{const p=css(x,y);g.fillStyle=j===0?'#fff':'#ffd24a';g.fillRect(p[0]*r-5*r,p[1]*r-5*r,10*r,10*r)})}
+    if(mode==='obj'&&o.foot&&o.foot.length){const c=css(...o.foot[0]);g.fillStyle=i===sel?'#fff':'#bbb';g.font=`${11*r}px system-ui`;g.fillText(o.id,c[0]*r+6*r,c[1]*r-6*r)}});
+  if(D.walk&&D.walk.length){poly(D.walk,D.walk.length>2);g.lineWidth=(mode==='walk'?3:1.5)*r;g.strokeStyle='#ffffff';g.stroke();if(mode==='walk')D.walk.forEach(([x,y],j)=>{const p=css(x,y);g.fillStyle=j===0?'#fff':'#9ff';g.fillRect(p[0]*r-5*r,p[1]*r-5*r,10*r,10*r)})}
+  for(const w of D.water||[]){poly(w);g.lineWidth=1.5*r;g.strokeStyle='#38f';g.stroke()}
+  const dot=(p,col,t)=>{const c=css(...p);g.fillStyle=col;g.beginPath();g.arc(c[0]*r,c[1]*r,(mode==='pts'?9:5)*r,0,7);g.fill();if(t){g.fillStyle='#fff';g.font=`${11*r}px system-ui`;g.fillText(t,c[0]*r+10*r,c[1]*r+4*r)}};
+  D.exits.forEach(e=>dot(e.at,'#2af',e.name));D.npcs.forEach(n=>dot(n.at,'#f4f',n.name));{const sp=P.toImage(...D.start);dot(sp,'#4f4','start')}
+}
+function loop(){draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+// ---- interakcja ----
+const ptrs=new Map();let drag=null,pinch=null,paintLast=-1;
+const rel=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+function nearVertex(pts,sx,sy,maxd=18){let best=-1,bd=maxd;pts&&pts.forEach(([x,y],i)=>{const p=css(x,y),d=Math.hypot(p[0]-sx,p[1]-sy);if(d<bd){bd=d;best=i}});return best}
+function curPts(){if(mode==='obj'){const o=D.blocks[sel];return o?o[part]:null}if(mode==='walk')return D.walk;return null}
+function tileAt(sx,sy){const [ix,iy]=unc(sx,sy),[gx,gy]=M.proj.toGrid(ix,iy),x=Math.floor(gx),y=Math.floor(gy);return(x>=0&&y>=0&&x<D.cols&&y<D.rows)?y*D.cols+x:-1}
+function paint(k){if(k<0||k===paintLast)return;paintLast=k;const b=D.tiles.block,f=D.tiles.free,rm=(a)=>{const i=a.indexOf(k);if(i>=0)a.splice(i,1)};rm(b);rm(f);if(tileMode==='block')b.push(k);else if(tileMode==='free')f.push(k);changed()}
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const [sx,sy]=rel(e);ptrs.set(e.pointerId,[sx,sy]);
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),cx:(a[0]+b[0])/2,cy:(a[1]+b[1])/2};drag=null;return}
+  if(e.button===1||e.button===2||mode==='hand'){drag={kind:'pan',sx,sy,vx:view.x,vy:view.y};return}
+  if(mode==='tiles'){push();paintLast=-1;paint(tileAt(sx,sy));drag={kind:'paint'};return}
+  if(mode==='pts'){const [ix,iy]=unc(sx,sy);const all=[...D.exits.map((o,i)=>({t:'e',i,at:o.at})),...D.npcs.map((o,i)=>({t:'n',i,at:o.at})),{t:'s',i:0,at:M.proj.toImage(...D.start)}];
+    let best=null,bd=26;for(const a of all){const p=css(...a.at),d=Math.hypot(p[0]-sx,p[1]-sy);if(d<bd){bd=d;best=a}}
+    if(best){push();drag={kind:'pt',a:best};return}drag={kind:'pan',sx,sy,vx:view.x,vy:view.y};return}
+  // obiekty / obszar: wierzchołki
+  const pts=curPts();
+  if(mode==='obj'||mode==='walk'){
+    const vi=nearVertex(pts,sx,sy);
+    if(vi>=0){if(delMode){push();pts.splice(vi,1);changed();return}push();drag={kind:'vert',pts,i:vi};return}
+    if(delMode){drag={kind:'pan',sx,sy,vx:view.x,vy:view.y};return}
+    if(mode==='obj'&&!D.blocks[sel]){toast('Najpierw dodaj obiekt (Nowy obiekt)');return}
+    // krótkie dotknięcie dodaje punkt, przeciągnięcie przesuwa widok
+    drag={kind:'tap',sx,sy,vx:view.x,vy:view.y,t:performance.now(),moved:false};return}
+});
+cv.addEventListener('pointermove',e=>{const [sx,sy]=rel(e);if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[sx,sy]);
+  if(pinch&&ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);zoomAt((a[0]+b[0])/2,(a[1]+b[1])/2,d/pinch.d);pinch.d=d;return}
+  if(!drag)return;
+  if(drag.kind==='pan'){view.x=drag.vx-(sx-drag.sx)/view.z;view.y=drag.vy-(sy-drag.sy)/view.z;dirty=true}
+  else if(drag.kind==='paint')paint(tileAt(sx,sy));
+  else if(drag.kind==='vert'){const [ix,iy]=unc(sx,sy);drag.pts[drag.i]=[Math.round(ix),Math.round(iy)];changed(false);dirty=true}
+  else if(drag.kind==='pt'){const [ix,iy]=unc(sx,sy),a=drag.a,p=[Math.round(ix),Math.round(iy)];if(a.t==='e')D.exits[a.i].at=p;else if(a.t==='n')D.npcs[a.i].at=p;else{const gg=M.proj.toGrid(ix,iy);D.start=[Math.round(gg[0]*10)/10,Math.round(gg[1]*10)/10]}changed(false);dirty=true}
+  else if(drag.kind==='tap'){if(Math.hypot(sx-drag.sx,sy-drag.sy)>8)drag.moved=true;if(drag.moved){view.x=drag.vx-(sx-drag.sx)/view.z;view.y=drag.vy-(sy-drag.sy)/view.z;dirty=true}}
+});
+function end(e){const [sx,sy]=ptrs.get(e.pointerId)||[0,0];ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+  if(drag&&drag.kind==='tap'&&!drag.moved){const pts=curPts(),[ix,iy]=unc(drag.sx,drag.sy);push();if(mode==='walk'){D.walk.push([Math.round(ix),Math.round(iy)])}else{const o=D.blocks[sel];if(!o[part])o[part]=[];o[part].push([Math.round(ix),Math.round(iy)])}changed()}
+  else if(drag&&(drag.kind==='vert'||drag.kind==='pt')){changed()}
+  if(!ptrs.size)drag=null}
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('wheel',e=>{e.preventDefault();const [sx,sy]=rel(e);zoomAt(sx,sy,e.deltaY<0?1.15:1/1.15)},{passive:false});cv.addEventListener('contextmenu',e=>e.preventDefault());
+// ---- panel ----
+const HELP={hand:'Przeciągnij palcem, by przesuwać obraz. Dwa palce lub kółko myszy: przybliżenie.',tiles:'Maluj kafle: przeciągaj po mapie. Blokuj = czerwony (ręczna blokada), Odblokuj = zielony (wymusza wolny), Gumka = wraca do wyniku z kształtów. Pomarańczowa i zielona ramka to ręczne poprawki.',obj:'Wybierz obiekt z listy albo dodaj nowy. Podstawa (czerwona) to miejsce na ziemi, które blokuje ruch: obrysuj dolną część obiektu. Sylwetka (niebieska) to cały obiekt z dachem: gdy postać stoi za podstawą, sylwetka rysuje się nad nią. Dotknij, by dodać punkt, przeciągnij punkt, by go przesunąć.',walk:'Obszar chodzenia (biały): reszta mapy (las, krawędzie) jest zablokowana. Dotknij, by dodać punkt, przeciągnij punkt, by go przesunąć. Włącz Usuń punkty, by kasować.',pts:'Przeciągnij: start (zielony), wyjścia (niebieskie) i postacie (różowe).'};
+function ui(){document.querySelectorAll('#modes .b').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));$('help').textContent=HELP[mode];const sub=$('sub');sub.innerHTML='';
+  const btn=(t,on,fn,cls='')=>{const b=document.createElement('button');b.className='b '+cls+(on?' on':'');b.textContent=t;b.onclick=fn;sub.append(b);return b};
+  if(mode==='tiles'){for(const [k,t] of [['block','Blokuj'],['free','Odblokuj'],['reset','Gumka']])btn(t,tileMode===k,()=>{tileMode=k;ui()})}
+  if(mode==='obj'||mode==='walk'){btn('Usuń punkty',delMode,()=>{delMode=!delMode;ui()},'danger');btn('− ostatni',false,()=>{const p=curPts();if(p&&p.length){push();p.pop();changed()}})}
+  if(mode==='obj'){const s=document.createElement('select');D.blocks.forEach((o,i)=>{const op=document.createElement('option');op.value=i;op.textContent=o.id+(o.sil?' (+sylwetka)':'');if(i===sel)op.selected=true;s.append(op)});s.onchange=()=>{sel=+s.value;dirty=true;ui()};sub.append(s);
+    btn('Podstawa',part==='foot',()=>{part='foot';ui();dirty=true});btn('Sylwetka',part==='sil',()=>{part='sil';ui();dirty=true});
+    btn('Nowy obiekt',false,()=>{const id=prompt('Nazwa obiektu (np. chata_3)','obiekt'+(D.blocks.length+1));if(!id)return;push();D.blocks.push({id,foot:[],sil:null});sel=D.blocks.length-1;part='foot';changed();ui()});
+    btn('Usuń obiekt',false,()=>{if(!D.blocks[sel]||!confirm('Usunąć '+D.blocks[sel].id+'?'))return;push();D.blocks.splice(sel,1);sel=Math.max(0,sel-1);changed();ui()},'danger');
+    btn('Usuń sylwetkę',false,()=>{const o=D.blocks[sel];if(o&&o.sil){push();o.sil=null;changed();ui()}},'danger')}
+  stat()}
+function stat(){if(!D)return;const blocked=M.mask.reduce((a,v)=>a+v,0);$('stat').textContent=`${D.cols}×${D.rows} kafli, zajętych ${blocked}, obiektów ${D.blocks.length}, ręcznych poprawek ${D.tiles.block.length+D.tiles.free.length}`}
+$('modes').onclick=e=>{const m=e.target.dataset.m;if(!m)return;mode=m;delMode=false;ui();dirty=true};
+$('zin').onclick=()=>zoomAt(cv.clientWidth/2,cv.clientHeight/2,1.3);$('zout').onclick=()=>zoomAt(cv.clientWidth/2,cv.clientHeight/2,1/1.3);$('fit').onclick=fit;
+$('gridchk').onchange=$('maskchk').onchange=()=>{dirty=true};
+$('tog').onclick=()=>{$('panel').classList.toggle('off');resize()};
+$('undo').onclick=()=>{if(!undo.length)return;redo.push(snap());D=JSON.parse(undo.pop());changed();ui()};
+$('redo').onclick=()=>{if(!redo.length)return;undo.push(snap());D=JSON.parse(redo.pop());changed();ui()};
+$('save').onclick=()=>{try{localStorage.setItem(KEY,snap());toast('Zapisano wersję roboczą w przeglądarce. "Testuj w grze" ją użyje.')}catch(_){toast('Nie udało się zapisać (pamięć przeglądarki).')}};
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:'application/json'}));a.download=D.id+'.json';a.click();toast('Pobrano '+D.id+'.json. Wyślij mi ten plik, żeby wszedł do gry.')};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(D));toast('Skopiowano JSON do schowka')}catch(_){prompt('Skopiuj JSON:',JSON.stringify(D))}};
+$('ld').onclick=()=>$('file').click();$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.blocks)throw 0;push();load(d);changed();toast('Wczytano plik')}catch(_){toast('To nie jest poprawny plik mapy')}};
+$('orig').onclick=async()=>{if(!confirm('Usunąć wersję roboczą i wczytać oryginał z pliku?'))return;try{localStorage.removeItem(KEY)}catch(_){}load(await fetch('maps/wioska.json').then(r=>r.json()));undo=[];redo=[]};
+window.__edytor={get D(){return D},get M(){return M},css,unc,get mode(){return mode},setMode:m=>{mode=m;ui()},get view(){return view}};
+init();
+</script></body></html>

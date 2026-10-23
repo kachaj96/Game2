@@ -33,16 +33,18 @@ import {installFrames} from '../src/art/ui.js';installFrames();
 import {genCharacter,drawCharacter,DIRS8,dir8} from '../src/art/characters.js';
 import {heroSpec} from '../src/art/classes.js';
 import {loadCharacter} from '../src/game/save.js';
-import {buildScene,OBJECTS,EXITS,NPCS} from '../src/world/wioska.js';
+import {buildMap,isBehind,inPoly} from '../src/world/mapdata.js';
 import {findPath,newWalker,setPath,stepWalker,freeAt} from '../src/world/scene.js';
 const $=id=>document.getElementById(id),Q=new URLSearchParams(location.search),cv=$('c'),g=cv.getContext('2d');
-const sc=buildScene(),S=72/sc.proj.tileSize(13,14)[0];     // skala świata: kafel obrazu (ok. 44 px) = 72 px świata, jak w reszcie gry
+// dane mapy: z pliku albo z wersji roboczej zapisanej przez edytor kolizji (?draft=1)
+const DATA=(()=>{if(Q.get('draft')){try{const d=JSON.parse(localStorage.getItem('arena.mapdraft.wioska'));if(d&&d.blocks)return Promise.resolve(d)}catch(_){}}return fetch('maps/wioska.json').then(r=>r.json())})();
+const sc=buildMap(await DATA),S=72/sc.proj.tileSize(13,14)[0],EXITS=sc.exits,NPCS=sc.npcs,OBJECTS=sc.blocks;     // skala świata: kafel obrazu (ok. 44 px) = 72 px świata, jak w reszcie gry
 const img=new Image();img.src=sc.image;let ready=false;img.onload=()=>{ready=true};
 const SAVED=loadCharacter(),hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
 const hero=newWalker(...sc.start);let face='SE';
 const npcs=NPCS.map(n=>({...n,gp:sc.proj.toGrid(...n.at),spec:{...genCharacter(n.seed,n.role),sc:1}}));
 // obiekty z sylwetką (dach nad postacią, gdy stoi za budynkiem)
-const occ=OBJECTS.filter(o=>o.sil).map(o=>({...o,base:Math.max(...o.foot.map(p=>p[1])),bx:[Math.min(...o.sil.map(p=>p[0])),Math.max(...o.sil.map(p=>p[0]))]}));
+const occ=sc.occ;
 let zoom=Number(Q.get('zoom'))||0.9,zoomT=zoom,CW=0,CH=0,dpr=1,cam={x:0,y:0},pending=null,marker=null,down=null;
 const ZMIN=0.8;
 function resize(){dpr=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr)}
@@ -70,7 +72,7 @@ cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catc
 cv.addEventListener('pointermove',e=>{if(!down)return;down.cur=rel(e);if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)down.hold=true});
 const up=()=>{down=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 $('zin').onclick=()=>{zoomT=Math.min(1.8,zoomT*1.2)};$('zout').onclick=()=>{zoomT=Math.max(ZMIN,zoomT/1.2)};
-const inPoly=(x,y,p)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [xi,yi]=p[i],[xj,yj]=p[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c};
+
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -87,8 +89,9 @@ function frame(now){
   for(const e of ents)e.f=feet(e.gx,e.gy);ents.sort((a,b)=>a.f[1]-b.f[1]);
   for(const e of ents){e.draw(e.f[0]*S,e.f[1]*S)}
   // obiekty nad postacią: gdy stopy są za podstawą obiektu i pod jego sylwetką, dorysowujemy wycinek obrazu
-  if(ready)for(const o of occ)for(const e of ents){const [fx,fy]=e.f;if(fy<o.base-6&&fx>o.bx[0]-30&&fx<o.bx[1]+30&&inPoly(fx,fy-18,o.sil)||fy<o.base-6&&inPoly(fx,fy-40,o.sil)){
-      g.save();g.beginPath();o.sil.forEach(([x,y],i)=>i?g.lineTo(x*S,y*S):g.moveTo(x*S,y*S));g.closePath();g.clip();g.drawImage(img,0,0,sc.iw*S,sc.ih*S);g.restore();break}}
+  // dorysowujemy wycinek obrazu tylko dla obiektów, za którymi stoi postać (stopy nad linią frontu podstawy) i których sylwetka zasłania jej tułów lub głowę
+  if(ready)for(const o of occ){let hit=false;for(const e of ents){const [fx,fy]=e.f;if(isBehind(o,fx,fy)&&(inPoly([fx,fy-14],o.sil)||inPoly([fx,fy-34],o.sil)||inPoly([fx,fy-52],o.sil))){hit=true;break}}
+    if(hit){g.save();g.beginPath();o.sil.forEach(([x,y],i)=>i?g.lineTo(x*S,y*S):g.moveTo(x*S,y*S));g.closePath();g.clip();g.drawImage(img,0,0,sc.iw*S,sc.ih*S);g.restore()}}
   if(marker){marker.t+=dt;if(marker.t>0.7)marker=null;else{const p=wp(marker.x,marker.y),f=marker.t/0.7;g.strokeStyle=`rgba(255,180,90,${1-f})`;g.lineWidth=3/zoom;g.beginPath();g.ellipse(p[0],p[1],10+26*f,5+13*f,0,0,7);g.stroke()}}
   // lekka winieta na krawędziach ekranu
   g.setTransform(1,0,0,1,0,0);const v=g.createRadialGradient(cv.width/2,cv.height/2,Math.min(cv.width,cv.height)*0.35,cv.width/2,cv.height/2,Math.max(cv.width,cv.height)*0.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.45)');g.fillStyle=v;g.fillRect(0,0,cv.width,cv.height);

@@ -29,7 +29,7 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 export class WorldView {
   constructor(world, deps = {}) {
     this.w = world; this.grid = makeGrid(); this.sprLv = new Map(); this.chunkLv = new Map(); this.lvCur = 0; this.lvPrev = 0; this.sprBudget = 99; this.shadeCache = new Map(); this.quality = { shadowRes: SHS, decals: true }; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.imgs = loadAssets(this.doc, () => { this._lamps = null; }); this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this._lamps = null;
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.imgs = deps.images ? loadAssets(this.doc, () => { this._lamps = null; }) : {}; this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this._lamps = null;
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -262,6 +262,8 @@ export class WorldView {
     if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
     return null;
   }
+  // grafika z obrazów jest eksperymentem (domyślnie wyłączona): przełączenie czyści obrazki obiektów i punkty światła
+  setImages(on) { this.imgs = on ? loadAssets(this.doc, () => { this._lamps = null; this.sprLv.clear(); this.masks.clear(); }) : {}; this._lamps = null; this.sprLv.clear(); this.masks.clear(); }
   get lamps() { return this._lamps || (this._lamps = this.collectLights()); }
   // źródła światła w świecie (lampy, pochodnie przy wejściach) w pikselach świata: używane w nocy i do migotania
   collectLights() {

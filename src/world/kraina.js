@@ -162,9 +162,6 @@ export function generateWorld(seed = 1) {
   { const [ex, ey] = ROAD_W[3]; for (const [dx, dy, kk] of [[3.2, -1.6, 'logs'], [2.2, 1.9, 'logs'], [4.2, 0.4, 'crate'], [1.6, -2.8, 'barrel']]) put(kk, ex + dx, ey + dy, { prop: true }); }
   const vprops = [['lamp', -4, -4.4], ['lamp', 4.4, -4], ['lamp', -4.4, 4.6], ['lamp', 4.8, 4.4], ['bench', -5.8, 1.6], ['bench', 6.2, 1.8], ['barrel', -7.4, -6.6], ['crate', -8.6, -7], ['barrel', 7.4, -6.6], ['cart', 2.8, 9.2], ['sack', -2, 9]];
   for (const [kk, dx, dy] of vprops) put(kk, vx + dx, vy + dy, { prop: true });
-  // nagrobki na cmentarnym wzgórzu: kilka przy platformie krypty (na jej poziomie), poza drogą i schodami
-  { const [cx2, cy2] = ENTRANCES[0].at; let n = 0; for (let i = 0; i < 40 && n < 7; i++) { const a = hash2(seed + 91, i, 3) * 6.28, r = 4.6 + 2.4 * hash2(seed + 92, i, 5), x = cx2 + Math.cos(a) * r, y = cy2 + Math.sin(a) * r, k = idx(Math.floor(x), Math.floor(y));
-      if (!inb(Math.floor(x), Math.floor(y)) || lvl[k] !== CRYPT_L || ramp[k] || cellKind[k] === KIND.road || blocked[k] || objects.some((o) => Math.hypot(o.x - x, o.y - y) < 1.4)) continue; put('grave', x, y, { prop: true }); blocked[k] = Math.max(blocked[k], 2); n++; } }
   // studnia przy placu i kawałek płotu przy wozie (zajmują kafle, więc ścieżki je omijają)
   { const solid = (kk, dx, dy, extra = {}) => { put(kk, vx + dx, vy + dy, { prop: true, ...extra }); blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))] = Math.max(blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))], 2); };
     solid('well', 0.4, -7.6); for (let i = 0; i < 4; i++) solid('fence', 6.2 + i * 0.95, 7.6, { dir: 'x' }); for (let i = 1; i < 3; i++) solid('fence', 10.0, 7.6 + i * 0.95, { dir: 'y' }); }
