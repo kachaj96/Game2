@@ -62,7 +62,11 @@ export function generateWorld(seed = 1) {
     cellRegion[idx(x, y)] = regionOf(px, py);
   }
   // wygładzenie: pojedyncze kafle odstające od sąsiadów wracają do ich poziomu (bez szumu na tarasach)
-  for (let pass = 0; pass < 2; pass++) { const copy = lvl.slice(); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const c = copy[idx(x, y)], ns = [copy[idx(x + 1, y)], copy[idx(x - 1, y)], copy[idx(x, y + 1)], copy[idx(x, y - 1)]]; const same = ns.filter((v) => v === c).length; if (same === 0) { const m = ns.sort((a, b) => a - b); lvl[idx(x, y)] = m[1]; } } }
+  // oraz wąskie wcięcia i wypustki (kafel, którego dwaj przeciwległi sąsiedzi mają ten sam, inny poziom, albo 5 z 8 sąsiadów), żeby krawędzie tarasów były czytelne
+  for (let pass = 0; pass < 4; pass++) { const copy = lvl.slice(); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const c = copy[idx(x, y)], g = (i, j) => copy[idx(x + i, y + j)]; let to = c;
+    if (g(1, 0) === g(-1, 0) && g(1, 0) !== c) to = g(1, 0); else if (g(0, 1) === g(0, -1) && g(0, 1) !== c) to = g(0, 1);
+    else { const cnt = {}; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (i || j) cnt[g(i, j)] = (cnt[g(i, j)] || 0) + 1; for (const v in cnt) if (+v !== c && cnt[v] >= 5) to = +v; }
+    lvl[idx(x, y)] = to; } }
   // 2. rodzaj gruntu: woda (morze, rzeka), przepaść, bród
   const water = new Uint8Array(N * N);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
@@ -89,10 +93,18 @@ export function generateWorld(seed = 1) {
     const c = chain[i], nx = chain[Math.min(chain.length - 1, i + 1)], dx = Math.sign(nx.x - c.x), dy = Math.sign(nx.y - c.y), px2 = -dy, py2 = dx, up = nx.l > c.l && (dx || dy);
     for (const o of [-1, 0, 1]) { const x = c.x + (px2 || 0) * o, y = c.y + (py2 || 0) * o; if (!inb(x, y) || water[idx(x, y)]) continue; lvl[idx(x, y)] = c.l; ramp[idx(x, y)] = up ? (dx === 1 ? 1 : dx === -1 ? 2 : dy === 1 ? 3 : 4) : 0; cellKind[idx(x, y)] = KIND.road; }
   }
+  // teren po bokach ścieżki dostaje jej poziom (pas 2 kafli): ścieżka jest półką wciętą w zbocze, a nie wąskim rowem w płaskowyżu
+  { const best = new Float32Array(N * N).fill(99); for (const c of chain) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = c.x + dx, y = c.y + dy; if (!inb(x, y)) continue; const k = idx(x, y), d = Math.hypot(dx, dy); if (cellKind[k] === KIND.road || water[k] || cellKind[k] === KIND.chasm || d >= best[k]) continue; best[k] = d; lvl[k] = c.l; } }
   // platforma przed kryptą
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x + 0.5 - cx0, y + 0.5 - cy0) < 7.5) { lvl[idx(x, y)] = CRYPT_L; ramp[idx(x, y)] = 0; if (cellKind[idx(x, y)] !== KIND.road) cellKind[idx(x, y)] = KIND.dry; }
   // dodatkowe schody w paru miejscach tarasów wzgórza (kafel o jeden niższy od sąsiada, bez wody i bez ścieżki)
   { const DIR = [[1, 0, 1], [-1, 0, 2], [0, 1, 3], [0, -1, 4]]; for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (cellRegion[k] !== 2 || ramp[k] || cellKind[k] === KIND.road) continue; for (const [dx, dy, code] of DIR) { const u = idx(x + dx, y + dy); if (lvl[u] === lvl[k] + 1 && !ramp[u] && hash2(seed + 55, x * 5 + code, y) < 0.09) { ramp[k] = code; break; } } } }
+  // końcowe czyszczenie krawędzi po drogach i schodach: wąskie wcięcia i wypustki poza drogami i sąsiedztwem schodów znikają
+  { const fixed = new Uint8Array(N * N); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (ramp[k] || cellKind[k] === KIND.road || cellKind[k] === KIND.plaza) for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) fixed[idx(x + i, y + j)] = 1; }
+    for (let pass = 0; pass < 3; pass++) { const copy = lvl.slice(); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (fixed[k] || water[k] || cellKind[k] === KIND.chasm) continue; const c = copy[k], g = (i, j) => copy[idx(x + i, y + j)]; let to = c;
+      if (g(1, 0) === g(-1, 0) && g(1, 0) !== c) to = g(1, 0); else if (g(0, 1) === g(0, -1) && g(0, 1) !== c) to = g(0, 1);
+      else { const cnt = {}; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (i || j) cnt[g(i, j)] = (cnt[g(i, j)] || 0) + 1; for (const v in cnt) if (+v !== c && cnt[v] >= 5) to = +v; }
+      lvl[k] = to; } } }
   // 4. drogi, plac, piasek, klasyfikacja końcowa
   paint(ROAD_E, 1.7, KIND.road); paint(ROAD_W, 1.7, KIND.road); paint(PATH_UP, 1.6, KIND.road);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x + 0.5 - vx, y + 0.5 - vy) < 6.5 && !water[idx(x, y)]) cellKind[idx(x, y)] = KIND.plaza;
