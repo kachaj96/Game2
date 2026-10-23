@@ -1,6 +1,6 @@
 # Plan: świat, eksploracja i poziomy (do akceptacji)
 
-Status: **czeka na akceptację**. Nic z tego nie jest jeszcze zbudowane. Powstał po prośbie: maksymalny poziom, zalecany poziom lochu, osadzenie lochu w eksploracji, lokacja startowa z lochem nr 1, świat z nierównościami, chodzenie swobodne z kamerą za bohaterem.
+Status: **zatwierdzony** (poza tematem maksymalnego poziomu, patrz niżej). Zbudowany prototyp świata: `www/swiat.html` (chodzenie, kamera, wysokości, Kraina Kopca, wejścia do lochów), mapa `www/mapa.html`. Powstał po prośbie: maksymalny poziom, zalecany poziom lochu, osadzenie lochu w eksploracji, lokacja startowa z lochem nr 1, świat z nierównościami, chodzenie swobodne z kamerą za bohaterem.
 
 ## Czy rozumiem koncept
 Tak. Dofus-like, ale bez map-ekranów:
@@ -32,6 +32,15 @@ Dotychczasowe założenie "wrogowie skalują się z bohaterem" w czystej postaci
 | Pogrzebana Arena | 28 | 25 do 30 | wszystkie rodziny, bossowie | zapieczętowana brama na dnie lochu 1, otwiera się później |
 
 Wartości do strojenia symulacją po zbudowaniu lochów (ta sama metoda co w planie przeciwników).
+
+### Obawa: gracz za szybko dobije do limitu i zostanie bez aren i krypt
+Słuszna obawa i dlatego **liczba lochów nie może zależeć od poziomu**. Proponuję cztery zabezpieczenia, które działają razem:
+1. **Wolna krzywa XP.** Poziom 15 ma wymagać kilkunastu godzin, poziom 30 kilkudziesięciu. Dokładne liczby ustala symulacja (czas jednego przejścia lochu około 15 minut, XP rośnie wolniej niż potrzeba na kolejny poziom), a nie zgadywanie.
+2. **Rangi lochów zamiast kolejnych lochów na każdy poziom.** Każdy loch ma trzy rangi: zwykła, wzmocniona (pasmo wyżej, inne składy wrogów i bossa, nowe czary wrogów) i legendarna (modyfikatory walki, np. mniej PA, wrogowie leczą się z grobów). Jedna krypta daje więc trzy razy więcej gry, także po osiągnięciu limitu poziomu.
+3. **Postęp po limicie.** Po poziomie 30 idą **poziomy mistrzowskie**: każdy daje 1 punkt cechy, kosztuje tyle XP co kilka zwykłych poziomów i ma własny limit (np. 100). Do tego ekwipunek, rzemiosło i profesje, czyli to, co w Dofusie trzyma ludzi po limicie.
+4. **Dostęp do treści przez świat, nie tylko przez poziom.** Kolejne regiony otwierają się zadaniem (np. odbudowa mostu na Starym Trakcie), więc poziom nie jest jedynym kluczem.
+
+Na dziś wystarczy sam **limit treści 15** i krzywa XP do zaprojektowania przy pierwszych lochach. Rangi i poziomy mistrzowskie wchodzą, gdy loch 1 będzie grywalny od początku do końca.
 
 ## 2. Świat
 

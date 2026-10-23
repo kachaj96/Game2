@@ -8,17 +8,17 @@ import { hash2 } from '../world/noise.js';
 import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import * as NA from './nature.js';
-import { lampPost, bench, barrel, crate, cart, sack } from './props.js';
+import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
 
 export const MAXZ = 12;
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 40 });
 // kolory gruntu: [odcień, nasycenie, jasność] na rodzaj
-const BASE = [[98, 0.5, 0.5], [88, 0.55, 0.56], [128, 0.34, 0.32], [62, 0.4, 0.46], [32, 0.08, 0.44], [38, 0.42, 0.62], [40, 0.1, 0.55], [48, 0.45, 0.68], [205, 0.5, 0.42], [30, 0.3, 0.3]];
+const BASE = [[98, 0.5, 0.5], [88, 0.55, 0.56], [128, 0.34, 0.32], [62, 0.4, 0.46], [32, 0.08, 0.44], [38, 0.42, 0.62], [40, 0.1, 0.55], [48, 0.45, 0.68], [205, 0.5, 0.42], [30, 0.3, 0.3], [20, 0.12, 0.07]];
 
 const NATURE = { oak: NA.oak, pine: NA.pine, birch: NA.birch, dead: NA.deadTree, bush: NA.bush, rock: NA.rock, flowers: NA.flowers, mushrooms: NA.mushrooms, stump: NA.stump };
-const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1), bench: (g, x, y) => bench(g, x, y, 1), barrel: (g, x, y, s) => barrel(g, x, y, 1, s), crate: (g, x, y, s) => crate(g, x, y, 1, s), cart: (g, x, y, s) => cart(g, x, y, 1, s), sack: (g, x, y) => sack(g, x, y, 1) };
+const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1), bench: (g, x, y) => bench(g, x, y, 1), barrel: (g, x, y, s) => barrel(g, x, y, 1, s), crate: (g, x, y, s) => crate(g, x, y, 1, s), cart: (g, x, y, s) => cart(g, x, y, 1, s), sack: (g, x, y) => sack(g, x, y, 1), logs: (g, x, y) => logs(g, x, y, 1) };
 // rozmiar obrazka i punkt zaczepienia (podstawa obiektu) w jednostkach świata
-const SPR = { default: [150, 170, 75, 140], oak: [150, 170, 75, 140], pine: [130, 170, 65, 150], birch: [120, 170, 60, 150], dead: [120, 160, 60, 135], rock: [90, 70, 45, 52], bush: [90, 70, 45, 52], flowers: [70, 50, 35, 38], mushrooms: [70, 50, 35, 38], stump: [60, 50, 30, 40], lamp: [60, 130, 30, 118], bench: [90, 60, 45, 48], barrel: [60, 60, 30, 50], crate: [60, 60, 30, 50], cart: [140, 100, 70, 80], sack: [60, 50, 30, 42], krypta: [300, 240, 150, 180], jama: [330, 330, 165, 290], budynek: [420, 460, 210, 380] };
+const SPR = { default: [150, 170, 75, 140], oak: [150, 170, 75, 140], pine: [130, 170, 65, 150], birch: [120, 170, 60, 150], dead: [120, 160, 60, 135], rock: [90, 70, 45, 52], bush: [90, 70, 45, 52], flowers: [70, 50, 35, 38], mushrooms: [70, 50, 35, 38], stump: [60, 50, 30, 40], lamp: [60, 130, 30, 118], bench: [90, 60, 45, 48], barrel: [60, 60, 30, 50], crate: [60, 60, 30, 50], cart: [140, 100, 70, 80], sack: [60, 50, 30, 42], logs: [90, 60, 45, 48], krypta: [300, 240, 150, 180], jama: [330, 330, 165, 290], budynek: [420, 460, 210, 380] };
 
 export class WorldView {
   constructor(world, deps = {}) {

@@ -13,7 +13,7 @@ const C = N / 2;
 export const at = (e, s) => [C + (s + e) / 2, C + (s - e) / 2];
 
 export const VILLAGE = at(0, 34), HILL = at(0, -42), FOREST = at(98, 14);
-const HILL_R = 30, FOREST_R = 44, VILLAGE_R = 17;
+const HILL_R = 38, FOREST_R = 44, VILLAGE_R = 17;
 // drogi jako łamane (punkty w siatce) i ich szerokość; ścieżka na wzgórze ma profil wysokości
 const PATH_UP = [at(0, 24), at(-9, 8), at(8, -4), at(-8, -16), at(2, -25)];
 const ROAD_E = [at(0, 30), at(22, 22), at(42, 14), at(70, 12), at(92, 14)];
@@ -38,15 +38,18 @@ function polyDist(px, py, pts) {
 
 export function generateWorld(seed = 1) {
   const W1 = N + 1, H = new Float32Array(W1 * W1), cellKind = new Uint8Array(N * N), cellRegion = new Uint8Array(N * N);
-  const KIND = { grass: 0, meadow: 1, moss: 2, dry: 3, rock: 4, road: 5, plaza: 6, sand: 7, water: 8, mud: 9 };
+  const KIND = { grass: 0, meadow: 1, moss: 2, dry: 3, rock: 4, road: 5, plaza: 6, sand: 7, water: 8, mud: 9, chasm: 10 };
   const hi = (x, y) => y * W1 + x;
   const [vx, vy] = VILLAGE, [hx, hy] = HILL, [fx, fy] = FOREST;
   const pathLen = (() => { let l = 0; for (let i = 0; i < PATH_UP.length - 1; i++) l += Math.hypot(PATH_UP[i + 1][0] - PATH_UP[i][0], PATH_UP[i + 1][1] - PATH_UP[i][1]); return l; })();
   const [cx0, cy0] = ENTRANCES[0].at, CRYPT_H = 3.6;
+  // odległość z zaburzeniem: wzgórze i las mają nieregularny obrys, nie koło
+  const wob = (x, y, sd) => 0.78 + 0.44 * fbm(seed + sd, x / 22, y / 22, 3);
+  const dHill = (x, y) => Math.hypot(x - hx, y - hy) * wob(x, y, 40) / (1 + 0.25 * Math.sin((x - y) / 18)), dForest = (x, y) => Math.hypot(x - fx, y - fy) * wob(x, y, 50);
   // wysokość wierzchołka siatki
   const heightAtVertex = (x, y) => {
     let h = (fbm(seed, x / 30, y / 30, 4) - 0.5) * 1.5 + (fbm(seed + 9, x / 9, y / 9, 3) - 0.5) * 0.35;
-    const dv = Math.hypot(x - vx, y - vy), dh = Math.hypot(x - hx, y - hy), df = Math.hypot(x - fx, y - fy);
+    const dv = Math.hypot(x - vx, y - vy), dh = dHill(x, y), df = dForest(x, y);
     // wioska i okolica: płasko
     h *= smoothstep(VILLAGE_R + 10, VILLAGE_R - 2, dv) < 0.001 ? 1 : 1 - 0.92 * smoothstep(VILLAGE_R + 12, VILLAGE_R - 2, dv);
     // Cmentarne Wzgórze: kopiec z tarasami; ostrość stopni zależy od kierunku (gdzieniegdzie klif, gdzieniegdzie łagodny stok)
@@ -80,8 +83,8 @@ export function generateWorld(seed = 1) {
   const blocked = new Uint8Array(N * N), steep = new Uint8Array(N * N);
   const regionOf = (x, y) => {
     if (Math.hypot(x - vx, y - vy) < VILLAGE_R + 3) return 1;
-    if (Math.hypot(x - hx, y - hy) < HILL_R) return 2;
-    if (Math.hypot(x - fx, y - fy) < FOREST_R) return 3;
+    if (dHill(x, y) < HILL_R) return 2;
+    if (dForest(x, y) < FOREST_R) return 3;
     if (Math.abs((x - y) - RAVINE_E) < 28 && (x - y) < RAVINE_E + 28) return 4;
     return 0;
   };
@@ -94,10 +97,16 @@ export function generateWorld(seed = 1) {
     else kind = n > 0.6 ? KIND.meadow : KIND.grass;
     if (mx - mn > CLIFF * 0.75 || mean > 5.2) kind = KIND.rock;
     if (mx - mn > CLIFF) steep[k] = 1;
-    if (mn < WATER - 0.1) kind = KIND.water;
-    else if (mean < WATER + 0.1 && mean >= WATER - 0.05) kind = KIND.sand;
+    if (mn < WATER - 0.1) kind = Math.abs((x + 0.5 - y - 0.5) - RAVINE_E) < 6.5 ? KIND.chasm : KIND.water;
+    else if (mean < WATER + 0.1 && mean >= WATER - 0.05 && Math.abs((x - y) - RAVINE_E) > 7) kind = KIND.sand;
     cellKind[k] = kind;
     if (steep[k] || mn < DEEP || Math.min(x, y, N - 1 - x, N - 1 - y) < 2) blocked[k] = 1;
+  }
+  // piasek tylko na brzegu wody; samotne niziny wracają do trawy
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+    const k = y * N + x; if (cellKind[k] !== KIND.sand) continue;
+    let wet = false; for (let j = -1; j <= 1 && !wet; j++) for (let i = -1; i <= 1; i++) if (cellKind[(y + j) * N + x + i] === KIND.water) { wet = true; break; }
+    if (!wet) cellKind[k] = cellRegion[k] === 3 ? KIND.moss : KIND.grass;
   }
   // drogi i plac nadpisują grunt
   const paint = (pts, wd, kind) => { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const [d] = polyDist(x + 0.5, y + 0.5, pts); const k = y * N + x; if (d < wd && cellKind[k] !== KIND.water && cellKind[k] !== KIND.rock) cellKind[k] = kind; } };
@@ -138,6 +147,8 @@ export function generateWorld(seed = 1) {
     else if (r < tree + 0.088) { put('rock', px, py, { block: true }); blocked[k] = Math.max(blocked[k], 2); }
     else if (r < tree + 0.095 && reg !== 3) put('stump', px, py);
   }
+  // zawalony most nad przepaścią: belki i skrzynie przy krawędzi drogi zachodniej
+  { const [ex, ey] = ROAD_W[3]; for (const [dx, dy, kk] of [[3.2, -1.6, 'logs'], [2.2, 1.9, 'logs'], [4.2, 0.4, 'crate'], [1.6, -2.8, 'barrel']]) put(kk, ex + dx, ey + dy, { prop: true }); }
   const vprops = [['lamp', -3.4, -3.6], ['lamp', 3.6, -3.4], ['lamp', -3.6, 3.8], ['lamp', 3.8, 3.6], ['bench', -5.6, 1.4], ['bench', 6.2, 1.6], ['barrel', -6.6, -6.4], ['crate', -7.8, -6.6], ['barrel', 6.8, -6.2], ['cart', 2.4, 9.8], ['sack', -1.6, 9.6]];
   for (const [kk, dx, dy] of vprops) put(kk, vx + dx, vy + dy, { prop: true });
   objects.sort((a, b) => (a.x + a.y) - (b.x + b.y));

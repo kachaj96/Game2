@@ -1,0 +1,22 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mapa Krainy Kopca</title>
+<style>body{margin:0;background:#12100d;color:#e6dcc8;font:14px system-ui,sans-serif}canvas{display:block;max-width:100%;height:auto}h1{font-size:16px;margin:10px 14px}</style></head><body>
+<h1>Kraina Kopca: mapa świata (romb jak w grze, północ u góry)</h1><canvas id="c" width="1500" height="800"></canvas>
+<script type="module">
+import {generateWorld,N,at,VILLAGE,HILL,FOREST} from '../src/world/kraina.js';
+import {heightAt} from '../src/world/nav.js';
+const w=generateWorld(1),cv=document.getElementById('c'),g=cv.getContext('2d'),k=3.7,cx=750,cy=70;
+const B=[[98,.5,.5],[88,.55,.56],[128,.34,.32],[62,.4,.46],[32,.08,.44],[38,.42,.62],[40,.1,.55],[48,.45,.68],[205,.5,.42],[30,.3,.3],[20,.12,.07]];
+g.fillStyle='#12100d';g.fillRect(0,0,1500,800);
+g.save();g.setTransform(k,k/2,-k,k/2,cx,cy);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const b=B[w.cellKind[y*N+x]]||B[0],h=heightAt(w,x+.5,y+.5),l=Math.max(.08,Math.min(.85,b[2]+h*.028)),s=Math.min(1,b[1]);g.fillStyle=`hsl(${b[0]},${s*100}%,${l*100}%)`;g.fillRect(x,y,1.1,1.1)}
+g.restore();
+const P=(x,y)=>[cx+(x-y)*k,cy+(x+y)*k/2];
+const line=(pts,col,wd)=>{g.strokeStyle=col;g.lineWidth=wd;g.beginPath();pts.forEach((p,i)=>{const q=P(...p);i?g.lineTo(...q):g.moveTo(...q)});g.stroke()};
+line(w.roads.up,'rgba(255,240,200,.8)',2);line(w.roads.east,'rgba(255,240,200,.8)',2);line(w.roads.west,'rgba(255,240,200,.8)',2);
+g.font='bold 15px system-ui';g.textAlign='center';
+const label=(t,x,y,dy=0)=>{const [px,py]=P(x,y);g.lineWidth=4;g.strokeStyle='#000';g.strokeText(t,px,py+dy);g.fillStyle='#fff3d0';g.fillText(t,px,py+dy)};
+label('Kopiec (wioska)',...VILLAGE,-6);label('Cmentarne Wzgórze',...HILL,-4);label('Las Robali',...FOREST,-4);label('Stary Trakt',...w.roads.west[2],-10);label('Przepaść',...at(-88,0),0);label('rzeka',...at(48,-60),0);
+for(const e of w.entrances){const [px,py]=P(...e.at);g.fillStyle='#ffd24a';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.arc(px,py,6,0,7);g.fill();g.stroke();label(e.name,e.at[0],e.at[1],-12)}
+const [sx,sy]=P(...w.start);g.fillStyle='#ff4a3a';g.beginPath();g.arc(sx,sy,5,0,7);g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();
+label('start',w.start[0],w.start[1],18);
+</script></body></html>
