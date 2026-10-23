@@ -58,6 +58,9 @@ if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 // malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
+let beamT=null;function beamTex(){if(beamT)return beamT;const c=document.createElement('canvas');c.width=64;c.height=256;const q=c.getContext('2d');
+  let gr=q.createLinearGradient(0,0,64,0);gr.addColorStop(0,'rgba(255,236,170,0)');gr.addColorStop(0.5,'rgba(255,236,170,0.2)');gr.addColorStop(1,'rgba(255,236,170,0)');q.fillStyle=gr;q.fillRect(0,0,64,256);
+  q.globalCompositeOperation='destination-in';gr=q.createLinearGradient(0,0,0,256);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(0.25,'rgba(0,0,0,1)');gr.addColorStop(0.7,'rgba(0,0,0,.8)');gr.addColorStop(1,'rgba(0,0,0,0)');q.fillStyle=gr;q.fillRect(0,0,64,256);return beamT=c}
 function drawLight(tt,s){
   const w=cv.width,h=cv.height,forest=world.cellRegion[Math.floor(hero.y)*N+Math.floor(hero.x)]===3,I=forest?1:0.45;
   g.save();g.globalCompositeOperation='lighter';
@@ -67,8 +70,7 @@ function drawLight(tt,s){
     const r=Math.abs(Math.sin(i*127.1+j*311.7)*43758.5453)%1;if(r<(forest?0.35:0.8))continue;
     const bx=(i+r)*sp,by=(j+((r*7)%1))*sp,bw=(34+r*70),len=520,sway=0.75+0.25*Math.sin(tt*0.5+r*20),a=(0.11+0.1*((r*13)%1))*I*sway;
     const X=cv.width/2+(bx-cam.x)*s,Y=cv.height/2+(by-cam.y)*s,k=s,dxs=0.62*len*k,dys=0.34*len*k;
-    const gr=g.createLinearGradient(X-bw*k,Y,X+bw*k,Y);gr.addColorStop(0,'rgba(255,236,170,0)');gr.addColorStop(0.5,`rgba(255,236,170,${a})`);gr.addColorStop(1,'rgba(255,236,170,0)');
-    g.fillStyle=gr;g.beginPath();g.moveTo(X-bw*k,Y);g.lineTo(X+bw*k,Y);g.lineTo(X+bw*k+dxs,Y+dys);g.lineTo(X-bw*k+dxs,Y+dys);g.closePath();g.fill();
+    const T=beamTex(),a0=bw*k*2/T.width;g.globalAlpha=Math.min(1,a/0.2);g.transform(a0,0,dxs/T.height,dys/T.height,X-bw*k,Y);g.drawImage(T,0,0);g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;
   }
   g.restore()}
 let vig=null;function drawVig(){if(!vig||vig.width!==cv.width||vig.height!==cv.height){vig=document.createElement('canvas');vig.width=cv.width;vig.height=cv.height;applyMood(vig.getContext('2d'),vig.width,vig.height,'dzien')}g.drawImage(vig,0,0)}
