@@ -65,7 +65,7 @@ const open = async (q = '') => {
   await tapAt(e[0], e[1]); assert.match(await page.locator('#hint').textContent(), /Zawalona krypta/);
   await tapAt(e[0], e[1]); await idle(); await page.waitForSelector('#card', { state: 'visible', timeout: 5000 });
   const card = await page.locator('#card').textContent(); assert.match(card, /Podziemne Korytarze/); assert.match(card, /Zalecany poziom 3/); assert.match(card, /pasmo 2 do 6/); assert.match(card, /Twój poziom: 1/); assert.match(card, /Poniżej pasma/);
-  const href = await page.locator('#enter').getAttribute('href'); assert.match(href, /walka\.html\?dungeon=podziemne_korytarze&theme=kopacze/);
+  const href = await page.locator('#enter').getAttribute('href'); assert.match(href, /walka\.html\?dungeon=korytarze&theme=kopacze/);
   await page.screenshot({ path: path.join(ROOT, 'docs/podglad/swiat-krypta.png') });
   await page.locator('#stay').tap(); assert.equal(await page.evaluate(() => window.__swiat.card), 'none');
   await ctx.close();
@@ -79,7 +79,7 @@ const open = async (q = '') => {
   assert.equal(await page.locator('#reg').textContent(), 'Las Robali');
   const e = await page.evaluate(() => window.__swiat.world.entrances[1].at);
   await tapAt(e[0], e[1]); await tapAt(e[0], e[1]); await idle(); await page.waitForSelector('#card', { state: 'visible', timeout: 5000 });
-  const card = await page.locator('#card').textContent(); assert.match(card, /Gniazdo/); assert.match(card, /Zalecany poziom 8/); assert.match(card, /Twój poziom: 8/); assert.match(card, /mieści się w paśmie/);
+  const card = await page.locator('#card').textContent(); assert.match(card, /Gniazdo/); assert.match(card, /owady i pajęczaki/); assert.match(card, /Zalecany poziom 8/); assert.match(card, /Twój poziom: 8/); assert.match(card, /mieści się w paśmie/); assert.match(card, /jeszcze zamknięty/); assert.equal(await page.locator('#enter').count(), 0, 'zamknięty loch nie ma przycisku Wejdź');
   await page.screenshot({ path: path.join(ROOT, 'docs/podglad/swiat-las.png') });
   await ctx.close();
 }

@@ -23,7 +23,7 @@ const FORDS = [at(42, 14)];
 const FOREST_PATH = [at(92, 14), at(96, 19), at(98, 24), at(100, 26)];
 const RAVINE_E = -88;                      // przepaść na zachodzie (stała wartość x - y)
 export const ENTRANCES = [
-  { id: 'krypta', dungeon: 'podziemne_korytarze', kind: 'krypta', at: at(2, -26), name: 'Zawalona krypta' },
+  { id: 'krypta', dungeon: 'korytarze', kind: 'krypta', at: at(2, -26), name: 'Zawalona krypta' },
   { id: 'jama', dungeon: 'gniazdo', kind: 'jama', at: at(100, 26), name: 'Jama pod korzeniami' },
 ];
 

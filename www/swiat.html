@@ -46,7 +46,8 @@ import {applyMood} from '../src/art/mood.js';
 import {loadCharacter} from '../src/game/save.js';
 installFrames();
 const $=id=>document.getElementById(id),Q=new URLSearchParams(location.search);
-const FALLBACK={podziemne_korytarze:{name:'Podziemne Korytarze',family:'Kopacze',rec:3,band:[2,6],theme:'kopacze',maxCompanions:2},gniazdo:{name:'Gniazdo',family:'owady i pajęczaki',rec:8,band:[6,10],theme:'pajaki',maxCompanions:2}};
+const FALLBACK={korytarze:{name:'Podziemne Korytarze',family:'kopacze',rec:3,band:[2,6],theme:'kopacze',maxCompanions:2,available:true},gniazdo:{name:'Gniazdo',family:'pajaki',rec:8,band:[6,10],theme:'pajaki',maxCompanions:2,available:false}};
+const FAM={kopacze:'Kopacze',pajaki:'owady i pajęczaki',wszystkie:'wszystkie rodziny'};
 let DUN=FALLBACK;try{const m=await import('../src/game/dungeons.js'),D=m.DUNGEONS;if(D){DUN=Array.isArray(D)?Object.fromEntries(D.map(d=>[d.id,d])):D;for(const k of Object.keys(FALLBACK))if(!DUN[k])DUN[k]=FALLBACK[k]}}catch(e){}
 const world=generateWorld(Number(Q.get('seed'))||1),wv=new WorldView(world),cv=$('c'),g=cv.getContext('2d');
 const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;$('lvl').textContent='poziom '+LEVEL;
@@ -97,7 +98,7 @@ function arrive(){const p=pending;pending=null;if(!p)return;if(p.kind==='ent')op
 function openEntrance(i){
   const e=world.entrances[i],d=DUN[e.dungeon]||{name:e.name,family:'',rec:1,band:[1,5],theme:'arena'},[lo,hi]=d.band||[1,5];
   const cmp=LEVEL<lo?['w','Poniżej pasma lochu: wrogowie będą silniejsi od ciebie. Zabierz kompana albo wróć później.']:LEVEL>hi?['','Powyżej pasma: wrogowie będą słabsi, nagrody mniejsze.']:['','Twój poziom mieści się w paśmie lochu.'];
-  const c=$('card');c.innerHTML=`<h2>${d.name}</h2><p>${e.name}${d.family?`, mieszkają tu: ${d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p><div class="row"><button id="stay">Zostań</button><a class="go" id="enter" href="walka.html?dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a></div>`;
+  const c=$('card');c.innerHTML=`<h2>${d.name}</h2><p>${e.name}${d.family?`, mieszkają tu: ${FAM[d.family]||d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p>${d.available===false?'<p class="w">Ten loch jest jeszcze zamknięty. Wejście otworzy się w kolejnej wersji.</p>':''}<div class="row"><button id="stay">${d.available===false?'Wróć':'Zostań'}</button>${d.available===false?'':`<a class="go" id="enter" href="walka.html?dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a>`}</div>`;
   c.style.display='block';$('stay').onclick=()=>{c.style.display='none'};
 }
 function npcSay(n){const b=$('bubble');b.innerHTML=`<b>${n.name}</b>${n.line}`;b.style.display='block';bubbleT=6}
