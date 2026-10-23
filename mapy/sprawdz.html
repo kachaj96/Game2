@@ -1,0 +1,51 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Sprawdzanie PNG</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#0a0908;color:#f1e7d3;font:14px system-ui,sans-serif}
+body{padding:16px;max-width:1100px;margin:0 auto}
+h1{font-size:18px;margin:0 0 4px}p.s{color:#9a8f7c;margin:0 0 14px;line-height:1.4}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;background:#18140f;border:1px solid #3a3126;padding:10px;margin-bottom:12px}
+label{display:flex;flex-direction:column;font-size:11px;color:#e8a860;text-transform:uppercase;letter-spacing:.08em;gap:3px}
+select,input{font:inherit;color:#f1e7d3;background:#1c1814;border:1px solid #3a3126;padding:6px;min-height:34px;width:90px}select{width:150px}
+#drop{border:2px dashed #5a4a34;padding:26px;text-align:center;color:#c9bca3;cursor:pointer;margin-bottom:14px}#drop.over{border-color:#ffb070;background:#221b12}
+.card{display:grid;grid-template-columns:240px 1fr;gap:14px;background:#14110d;border:1px solid #3a3126;padding:10px;margin-bottom:12px}
+.th{background:repeating-conic-gradient(#2a251e 0% 25%,#1a1713 0% 50%) 0 0/16px 16px;display:flex;align-items:center;justify-content:center;min-height:160px}
+.th img{max-width:100%;max-height:240px;image-rendering:auto}
+h3{margin:0 0 6px;font-size:15px}.v{display:inline-block;padding:1px 8px;font-weight:700;margin-left:8px}.v.ok{background:#245a30}.v.fail{background:#7a2018}.v.warn{background:#7a5a18}
+ul{list-style:none;margin:0;padding:0}li{padding:3px 0 3px 22px;position:relative;line-height:1.35}li:before{position:absolute;left:0;font-weight:700}
+li.ok:before{content:'✓';color:#5ad07a}li.warn:before{content:'!';color:#f0b840}li.fail:before{content:'✗';color:#ff7060}
+#err{display:none;background:#5a1a14;border:1px solid #ff7050;padding:10px;margin-bottom:12px}
+@media(max-width:700px){.card{grid-template-columns:1fr}}
+</style></head><body>
+<h1>Sprawdzanie PNG pod specyfikację map</h1>
+<p class="s">Przeciągnij pliki PNG (albo kliknij ramkę). Wszystko liczy się w Twojej przeglądarce, nic nie jest wysyłane. Zasady: <code>mapy/SPEC.md</code>, sekcje 8 i 10.</p>
+<div id="err"></div>
+<div class="bar">
+ <label>Rodzaj<select id="kind"><option value="bryla">Bryła (chata, studnia, skrzynia)</option><option value="okragly">Okrągły (drzewo, lampa)</option><option value="podloze">Podłoże (cała mapa)</option></select></label>
+ <label>Odcisk szer.<input id="w" type="number" min="1" value="1"></label>
+ <label>Odcisk głęb.<input id="d" type="number" min="1" value="1"></label>
+ <label>Wysokość (j)<input id="hj" type="number" min="0" placeholder="np. 64"></label>
+</div>
+<div id="drop">Upuść tu PNG-i albo kliknij, by wybrać</div><input type="file" id="f" accept="image/png,image/*" multiple style="display:none">
+<div id="out"></div>
+<script src="src/pngcheck.js"></script>
+<script>
+if(!window.PngCheck){var e=document.getElementById('err');e.style.display='block';e.textContent='Nie załadował się skrypt src/pngcheck.js. Sprawdź, czy strona leży obok katalogu src.'}
+var $=function(i){return document.getElementById(i)},out=$('out');
+var opts=function(){var h=parseFloat($('hj').value);return{kind:$('kind').value,w:Math.max(1,+$('w').value||1),d:Math.max(1,+$('d').value||1),hj:h>0?h:undefined}};
+function show(name,url,r){var c=document.createElement('div');c.className='card';
+ var worst=r.checks.some(function(x){return x.level==='fail'})?'fail':r.checks.some(function(x){return x.level==='warn'})?'warn':'ok';
+ c.innerHTML='<div class="th"><img src="'+url+'" alt=""></div><div><h3></h3><ul></ul></div>';
+ c.querySelector('h3').innerHTML='<span></span><span class="v '+worst+'">'+(worst==='ok'?'OK':worst==='warn'?'UWAGI':'BŁĄD')+'</span>';c.querySelector('h3 span').textContent=name;
+ var ul=c.querySelector('ul');r.checks.forEach(function(x){var li=document.createElement('li');li.className=x.level;li.textContent=x.msg;ul.appendChild(li)});out.prepend(c)}
+function handle(file){var url=URL.createObjectURL(file),im=new Image();
+ im.onload=function(){var cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;var g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);
+  var d=g.getImageData(0,0,cv.width,cv.height);show(file.name,url,PngCheck.analyze(d.data,cv.width,cv.height,opts()))};
+ im.onerror=function(){show(file.name,url,{checks:[{level:'fail',msg:'Nie da się wczytać pliku jako obrazu.'}]})};im.src=url}
+function many(fs){Array.prototype.forEach.call(fs,function(f){handle(f)})}
+$('drop').onclick=function(){$('f').click()};$('f').onchange=function(e){many(e.target.files);e.target.value=''};
+['dragover','dragenter'].forEach(function(t){$('drop').addEventListener(t,function(e){e.preventDefault();$('drop').classList.add('over')})});
+['dragleave','drop'].forEach(function(t){$('drop').addEventListener(t,function(e){e.preventDefault();$('drop').classList.remove('over')})});
+$('drop').addEventListener('drop',function(e){many(e.dataTransfer.files)});
+document.addEventListener('dragover',function(e){e.preventDefault()});document.addEventListener('drop',function(e){e.preventDefault()});
+</script></body></html>

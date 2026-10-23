@@ -78,6 +78,8 @@ Solid flat magenta background #FF00FF, crisp edges, 8px margin, centered.
 4. Krawędź czysta po usunięciu tła, bez kolorowych obwódek.
 5. Światło z lewej góry, spójne z resztą biblioteki.
 
+Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciągasz PNG, wybierasz rodzaj, odcisk i wysokość). Liczy punkty 1 do 4 oraz alfę, margines, rozmiar, cień, obwódkę, a dla podłoża winietę, ostrość i rozdzielczość. Światło (5) tylko orientacyjnie. Kod: `mapy/src/pngcheck.js`, testy `tests/unit/pngcheck.test.mjs`.
+
 ## 11. Otwarte
 - Czy bohater i NPC też przechodzą na PNG, czy zostają z generatora (domyślnie: zostają).
 - Wielkość mapy: proponuję 48 x 48 kafli na mapę, ze strefą przejścia na krawędziach (?).
