@@ -82,3 +82,7 @@ test('krawędź: ostra z antyaliasingiem przechodzi, szeroki gradient jest rozmy
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let s = 0, n = 0; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; s += src[(yy * W + xx) * 4 + 3]; n++; } a[(y * W + x) * 4 + 3] = s / n; }
   assert.equal(lv(run(im, { kind: 'bryla' }), 'krawedz'), 'warn');
 });
+
+test('okrągły obiekt: szeroka korona nie psuje proporcji', () => {
+  const im = box({ w: 3, d: 3, hj: 64 }); assert.equal(lv(run(im, { kind: 'okragly', w: 1, d: 1, hj: 64 }), 'proporcje'), 'ok');
+});

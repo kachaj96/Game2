@@ -90,7 +90,8 @@
     // a bezwzględny rozmiar zamieniamy na współczynnik skalowania do wpisania w bibliotece ---
     if (hj) {
       const expH = hj * S + (w + d) * (TH / 2) * S, expW = (w + d) * (TW / 2) * S, q = (bh / bw) / (expH / expW), k = expH / bh;
-      add('proporcje', q > 0.85 && q < 1.15 ? 'ok' : q > 0.7 && q < 1.3 ? 'warn' : 'fail',
+      if (kind === 'okragly') add('proporcje', 'ok', `Szerokość po skalowaniu: ${(bw * k / (TW * S)).toFixed(1)} kafla (korona i szeroka podstawa wystają poza odcisk, więc proporcji nie oceniam).`);
+      else add('proporcje', q > 0.85 && q < 1.15 ? 'ok' : q > 0.7 && q < 1.3 ? 'warn' : 'fail',
         `Proporcje wysokość do szerokości: ${Math.round(q * 100)}% wzoru` + (q > 1.15 ? ' (obiekt za wysoki lub za wąski).' : q < 0.85 ? ' (obiekt za niski lub za szeroki).' : '.'));
       add('skalowanie', 'ok', `Żeby wejść w skalę tabeli, skaluj plik do ${Math.round(k * 100)}% (po skalowaniu ${Math.round(bw * k)}x${Math.round(bh * k)} px).`);
       stats.scale = k;
