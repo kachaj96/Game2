@@ -11,6 +11,7 @@ import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
+import { ASSETS, loadAssets, drawAsset, assetDim } from './assets.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs, well, fence } from './props.js';
 
 export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2, LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
@@ -26,7 +27,7 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 export class WorldView {
   constructor(world, deps = {}) {
     this.w = world; this.grid = makeGrid(); this.sprLv = new Map(); this.chunkLv = new Map(); this.lvCur = 0; this.lvPrev = 0; this.sprBudget = 99; this.shadeCache = new Map(); this.quality = { shadowRes: SHS, decals: true }; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this.lamps = this.collectLights();
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.imgs = loadAssets(this.doc, () => { this._lamps = null; }); this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this._lamps = null;
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -252,18 +253,22 @@ export class WorldView {
   }
   objectDrawer(o) {
     const sd = o.seed % 7 + 1;
+    if (o.k === 'oak' && this.imgs.dab) { const flip = sd % 2 === 1, sc = 0.88 + 0.12 * (sd % 3); return [`img:dab:${flip ? 1 : 0}:${sd % 3}`, assetDim('dab', sc), (gg, ax, ay) => drawAsset(gg, this.imgs.dab, 'dab', ax, ay, { flip, sc })]; }
+    if (o.k === 'barrel' && this.imgs.beczka) return ['img:beczka', assetDim('beczka'), (gg, ax, ay) => drawAsset(gg, this.imgs.beczka, 'beczka', ax, ay)];
     if (TREE[o.k]) { const spec = genTree(sd, o.k, o.biome || 'summer'); return [`${o.k}:${sd}:${o.biome || ''}`, SPR[o.k], (gg, ax, ay) => drawTree(gg, ax, ay, spec)]; }
     if (SMALL[o.k]) { const sc = o.sc || 1; return [`${o.k}:${sd}:${o.biome || ''}:${Math.round(sc * 4)}`, SPR[o.k], (gg, ax, ay) => SMALL[o.k](gg, ax, ay, sc, sd, o)]; }
     if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
     return null;
   }
+  get lamps() { return this._lamps || (this._lamps = this.collectLights()); }
   // źródła światła w świecie (lampy, pochodnie przy wejściach) w pikselach świata: używane w nocy i do migotania
   collectLights() {
     const out = [], w = this.w;
     for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y); out.push({ x: p[0], y: p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
     // wejścia: światło wychodzi z pochodni (płomienie na słupach przy portyku krypty) albo z dziupli jamy, a nie z całej bryły
     w.entrances.forEach((e, i) => { const p = this.pos(e.at[0], e.at[1]), sc = this.entSpecs[i].scale || 1;
-      if (e.kind === 'krypta') for (const sd of [-1, 1]) { const X = 0.894 * ((sd * 73) - 96), Y = 0.447 * ((sd * 73) + 96) - 82; out.push({ x: p[0] + X * sc, y: p[1] + Y * sc, r: 95, a: 0.95, ph: i + sd * 3.1 }); }
+      const A = ASSETS.krypta; if (e.kind === 'krypta' && this.imgs.krypta) for (const [fx, fy] of A.lights) out.push({ x: p[0] + (fx - 0.5) * A.w, y: p[1] + fy * A.h - (A.h - A.foot), r: 95, a: 0.95, ph: i + fx * 7 });
+      else if (e.kind === 'krypta') for (const sd of [-1, 1]) { const X = 0.894 * ((sd * 73) - 96), Y = 0.447 * ((sd * 73) + 96) - 82; out.push({ x: p[0] + X * sc, y: p[1] + Y * sc, r: 95, a: 0.95, ph: i + sd * 3.1 }); }
       else out.push({ x: p[0], y: p[1] - 18 * sc, r: 70, a: 0.7, ph: i }); });
     return out;
   }
@@ -332,6 +337,8 @@ export class WorldView {
   drawWithOcclusion(g, occ, scale, drawFn) {
     drawFn(); if (occ && occ.length) for (const k of occ) this.redrawTile(g, k, scale);
   }
+  // rysunek wejścia: gotowy obraz (krypta), gdy się wczytał, inaczej generator
+  entDraw(i) { const e = this.w.entrances[i]; if (e.kind === 'krypta' && this.imgs.krypta) return [`ei:${i}`, assetDim('krypta'), (gg, ax, ay) => drawAsset(gg, this.imgs.krypta, 'krypta', ax, ay)]; return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i])]; }
   // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom). Najpierw cały teren (niezależna warstwa), potem wszystkie
   // przedmioty i postacie od tyłu do przodu; wyższy teren zasłania tylko te przedmioty, które faktycznie leżą za nim.
   draw(g, cam, view, zoom, dpr, t, entities = []) {
@@ -363,8 +370,8 @@ export class WorldView {
       else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), [sx, sy] = this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z);
         g.globalAlpha = this.fadeAlpha(b, `b:${b.s.seed}`, [sx - SPR.budynek[2], sy - SPR.budynek[3], SPR.budynek[0], SPR.budynek[1]], it.d - 1.2, player); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale)); g.globalAlpha = 1;
         if (this.quality.smoke) this.drawSmoke(g, b, sx, sy, t); }
-      else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1]));
-        g.globalAlpha = this.fadeAlpha(e, `e:${i}`, [sx - SPR[e.kind][2], sy - SPR[e.kind][3], SPR[e.kind][0], SPR[e.kind][1]], it.d - 1.5 - 1.2, player); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale)); g.globalAlpha = 1; }
+      else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]), ed = this.entDraw(i); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1]));
+        g.globalAlpha = this.fadeAlpha(e, ed[0], [sx - ed[1][2], sy - ed[1][3], ed[1][0], ed[1][1]], it.d - 1.5 - 1.2, player); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, ed[0], ed[1], ed[2], sx, sy, scale)); g.globalAlpha = 1; }
       else { const e = it.e, occ = this.occluderTiles(e.x, e.y, heightAt(w, e.x, e.y)); this.drawWithOcclusion(g, occ, scale, () => e.draw(g, ...this.pos(e.x, e.y))); }
     }
   }
