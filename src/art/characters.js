@@ -82,17 +82,17 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   const fm = !!sp.female && sp.role !== 'child', hw = hw0 * (fm ? 0.96 : 1.02), shw = shw0 * (fm ? 0.8 : 1.07), waistX = fm ? hw * 0.74 : hw + 0.6, hipX = fm ? hw + 1.4 : hw;
   const TOR = [[-hipX, -12], [hipX, -12], [waistX, -19], [shw, -27], [-shw, -27], [-waistX, -19]];
   const O_ = sp.outfit, base = O_.base, bDark = shade(base, -0.1), bLite = shade(base, 0.07);
-  const fshift = back ? 0 : 1.2;
+  const side = o.side || 0, vert = o.vert || 0, fshift = back ? 0 : 1.2 + 2.2 * side;   // side: widok z boku (E/W), vert: ruch wprost do widza lub od niego (S/N)
   const glowAt = (gx, gy, r, col, a) => { const rgb = col[0] === '#' ? hexRgb(col) : col, gr = g.createRadialGradient(gx, gy, 0, gx, gy, r); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(gx - r, gy - r, 2 * r, 2 * r); };
   g.save(); g.translate(x, y);
   if (o.ring) { g.save(); g.scale(1, 0.5); g.beginPath(); g.arc(0, 4, 22 * sp.sc, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = o.ring; g.stroke(); g.fillStyle = o.ring.replace('rgb', 'rgba').replace(')', ',.22)'); g.fill(); g.restore(); }
   if (o.mirror) g.scale(-1, 1);
-  g.scale(sp.sc, sp.sc);
+  g.scale(sp.sc * (1 - 0.2 * side), sp.sc);
   blob(2, 1, 13, 4.6, '#000', 0.28);
   // --- pozycje nóg ---
   const swing = mvs === 'heavy' ? 0.85 : mvs === 'sneak' ? 1.15 : 1, dirS = back ? -1 : 1;
   const legSt = mvs === 'float' ? (ph) => ({ dx: 0, dy: 0, lift: 3.5 + Math.sin(ph * 2) * 0.6 })
-    : (ph) => ({ dx: Math.sin(ph) * 3.2 * swing * dirS, dy: Math.sin(ph) * 0.9 * dirS, lift: Math.max(0, Math.cos(ph)) * 2.6 * (mvs === 'heavy' ? 1.3 : 1) });
+    : (ph) => ({ dx: Math.sin(ph) * 3.2 * swing * dirS * (1 + 0.8 * side - 0.78 * vert), dy: Math.sin(ph) * (0.9 * dirS + 2.6 * vert * (back ? -1 : 1)), lift: Math.max(0, Math.cos(ph)) * 2.6 * (mvs === 'heavy' ? 1.3 : 1) });
   const rest = { dx: 0, dy: 0, lift: mvs === 'float' ? 3.5 : 0 };
   const L1 = walking ? legSt(th) : rest, L2 = walking ? legSt(th + Math.PI) : rest;
   const dressy = O_.kind === 'dress' || O_.kind === 'robe';
@@ -261,4 +261,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   if (sp.cloak && !back) poly([[-shw - 1.2, -27], [-3, -26.6], [-shw + 2.5, -20], [-shw - 1.8, -19]], shade(sp.cloak, 0.04), 1.4);
   g.restore(); g.restore(); g.restore();
 }
+// 8 kierunków (na ekranie): przekątne to widok z przodu lub z tyłu, E i W z boku (przód z przesunięciem rysów i węższą sylwetką), S i N wprost do widza i od niego
+export const DIRS8 = { E: { view: 'front', mirror: false, side: 1 }, SE: { view: 'front', mirror: false }, S: { view: 'front', mirror: false, vert: 1 }, SW: { view: 'front', mirror: true }, W: { view: 'front', mirror: true, side: 1 }, NW: { view: 'back', mirror: true }, N: { view: 'back', mirror: false, vert: 1 }, NE: { view: 'back', mirror: false } };
+export const dir8 = (dx, dy) => { const a = Math.atan2(dx + dy, dx - dy) * 180 / Math.PI; return ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'][((Math.round(a / 45) % 8) + 8) % 8]; };
 export const DIRS = { SE: { view: 'front', mirror: false }, SW: { view: 'front', mirror: true }, NE: { view: 'back', mirror: false }, NW: { view: 'back', mirror: true } };

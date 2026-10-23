@@ -5,7 +5,7 @@ import { N } from './kraina.js';
 import { heightAt } from './nav.js';
 import { hash2 } from './noise.js';
 
-export const SUN = { dx: 0.97, dy: 0.24, k: 0.8 };   // kierunek cienia w siatce (jednostkowy) i długość cienia na poziom wysokości
+export const SUN = { dx: 0.97, dy: 0.24, k: 0.5 };   // kierunek cienia w siatce (jednostkowy) i długość cienia na poziom wysokości
 const LEN = Math.hypot(SUN.dx, SUN.dy), DX = SUN.dx / LEN, DY = SUN.dy / LEN;
 
 // opis przeszkód: korona (walec lub stożek) + pień, rozmiary w kaflach i poziomach

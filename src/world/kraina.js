@@ -98,7 +98,10 @@ export function generateWorld(seed = 1) {
   // platforma przed kryptą
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x + 0.5 - cx0, y + 0.5 - cy0) < 7.5) { lvl[idx(x, y)] = CRYPT_L; ramp[idx(x, y)] = 0; if (cellKind[idx(x, y)] !== KIND.road) cellKind[idx(x, y)] = KIND.dry; }
   // dodatkowe schody w paru miejscach tarasów wzgórza (kafel o jeden niższy od sąsiada, bez wody i bez ścieżki)
-  { const DIR = [[1, 0, 1], [-1, 0, 2], [0, 1, 3], [0, -1, 4]]; for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (cellRegion[k] !== 2 || ramp[k] || cellKind[k] === KIND.road) continue; for (const [dx, dy, code] of DIR) { const u = idx(x + dx, y + dy); if (lvl[u] === lvl[k] + 1 && !ramp[u] && hash2(seed + 55, x * 5 + code, y) < 0.09) { ramp[k] = code; break; } } } }
+// dodatkowe schody tylko tam, gdzie mają sens: schodzą od tarasu w stronę widza (ściana z widocznymi stopniami), oba końce to suchy ląd, a po bokach jest ten sam poziom (ściana po obu stronach)
+  { const DIR = [[-1, 0, 2], [0, -1, 4]], dry = (q) => cellKind[q] !== KIND.water && cellKind[q] !== KIND.chasm && cellKind[q] !== KIND.shallow && cellKind[q] !== KIND.sand;
+    for (let y = 2; y < N - 2; y++) for (let x = 2; x < N - 2; x++) { const k = idx(x, y); if (cellRegion[k] !== 2 || ramp[k] || cellKind[k] === KIND.road || !dry(k)) continue;
+      for (const [dx, dy, code] of DIR) { const hi = idx(x + dx, y + dy), lo = idx(x - dx, y - dy), side = [idx(x + dy, y + dx), idx(x - dy, y - dx)]; if (lvl[hi] === lvl[k] + 1 && lvl[lo] === lvl[k] && !ramp[hi] && !ramp[lo] && dry(hi) && dry(lo) && side.every((q) => lvl[q] === lvl[k] + 1 || lvl[q] === lvl[k]) && hash2(seed + 55, x * 5 + code, y) < 0.18) { ramp[k] = code; break; } } } }
   // końcowe czyszczenie krawędzi po drogach i schodach: wąskie wcięcia i wypustki poza drogami i sąsiedztwem schodów znikają
   { const fixed = new Uint8Array(N * N); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (ramp[k] || cellKind[k] === KIND.road || cellKind[k] === KIND.plaza) for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) fixed[idx(x + i, y + j)] = 1; }
     for (let pass = 0; pass < 3; pass++) { const copy = lvl.slice(); for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const k = idx(x, y); if (fixed[k] || water[k] || cellKind[k] === KIND.chasm) continue; const c = copy[k], g = (i, j) => copy[idx(x + i, y + j)]; let to = c;
@@ -161,6 +164,13 @@ export function generateWorld(seed = 1) {
   // studnia przy placu i kawałek płotu przy wozie (zajmują kafle, więc ścieżki je omijają)
   { const solid = (kk, dx, dy, extra = {}) => { put(kk, vx + dx, vy + dy, { prop: true, ...extra }); blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))] = Math.max(blocked[idx(Math.floor(vx + dx), Math.floor(vy + dy))], 2); };
     solid('well', 0.4, -7.6); for (let i = 0; i < 4; i++) solid('fence', 6.2 + i * 0.95, 7.6, { dir: 'x' }); for (let i = 1; i < 3; i++) solid('fence', 10.0, 7.6 + i * 0.95, { dir: 'y' }); }
+  // warstwy otoczenia: najpierw drzewa, potem to, co rośnie nisko. Krzewy, kwiaty, kamienie, pniaki i grzyby nie stoją pod pniem ani pod koroną drzewa
+  { const TREEK = new Set(['oak', 'pine', 'birch', 'dead', 'swamp']), LOW = new Set(['bush', 'flowers', 'mushrooms', 'stump', 'rock']), cell = new Map();
+    for (const o of objects) if (TREEK.has(o.k)) { const key = Math.floor(o.y / 2) * 200 + Math.floor(o.x / 2); (cell.get(key) || cell.set(key, []).get(key)).push(o); }
+    const R = { oak: 1.5, swamp: 1.7, pine: 1.1, birch: 1.2, dead: 0.8 };
+    for (let i = objects.length - 1; i >= 0; i--) { const o = objects[i]; if (!LOW.has(o.k) || o.prop) continue; let hit = false;
+      for (let cy = Math.floor(o.y / 2) - 1; cy <= Math.floor(o.y / 2) + 1 && !hit; cy++) for (let cx = Math.floor(o.x / 2) - 1; cx <= Math.floor(o.x / 2) + 1 && !hit; cx++) for (const t of cell.get(cy * 200 + cx) || []) if (Math.hypot(t.x - o.x, (t.y - o.y)) < R[t.k] + (o.k === 'rock' ? 0.5 : 0)) { hit = true; break; }
+      if (hit) { objects.splice(i, 1); const k = Math.floor(o.y) * N + Math.floor(o.x); if (blocked[k] === 2 && !objects.some((q) => q.block && Math.floor(q.y) * N + Math.floor(q.x) === k)) blocked[k] = 0; } } }
   objects.sort((a, b) => (a.x + a.y) - (b.x + b.y));
   const byTile = new Map();
   for (const o of objects) { const key = Math.floor(o.y) * N + Math.floor(o.x); (byTile.get(key) || byTile.set(key, []).get(key)).push(o); }

@@ -55,8 +55,6 @@ export function drawTree(g, x, y, sp) {
   const r = rng(sp.seed * 131 + 7), P = PAL[sp.biome].map((c) => hsl(c[0] + r.range(-5, 5), c[1], c[2]));
   g.save();
   shadow(g, x, y, sp.species === 'pine' ? 54 : sp.species === 'dead' ? 34 : 74);
-  // kępy liści i korzenie przy pniu: drzewo wyrasta z ziemi
-  { const rr = rng(sp.seed * 17 + 3), n = sp.species === 'dead' ? 1 : 2; for (let i = 0; i < n; i++) { const sd = i ? 1 : -1; leafClump(g, x + sd * (sp.trunkW * 0.5 + 8 + rr() * 6), y + 2 + rr() * 3, 0.55 + rr() * 0.3, rr, rr() < 0.4); } }
   if (sp.species === 'oak' || sp.species === 'swamp') {
     const th = sp.trunkH, cy = y - th - sp.crownH * 0.45, sw = sp.species === 'swamp';
     trunk(g, x, y, sp.trunkW, th, sp.lean, sw ? shade(sp.bark, -0.06) : sp.bark);

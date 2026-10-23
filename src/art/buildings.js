@@ -340,7 +340,8 @@ export function drawBuilding(g, X, Y, s) {
     poly([[cx, cy + 6], [cx + 5.5, cy + 3], [cx + 5.5, cy - 18], [cx, cy - 15]], shade(stn, 0.05), 1.6);
     poly([[cx - 6.5, cy - 18], [cx, cy - 21.5], [cx + 6.5, cy - 18], [cx, cy - 14.5]], shade(stn, -0.14), 1.6);
     poly([[cx - 3, cy - 18], [cx, cy - 19.5], [cx + 3, cy - 18], [cx, cy - 16.5]], '#2a1a12', 0);
-    if (s.smoke) for (let i = 0; i < 4; i++) blob(cx + 3 + i * 4, cy - 26 - i * 10, 5 + i * 2, 4 + i * 1.5, '#ffffff', 0.5 - i * 0.1);
+    s._chim = [cx, cy - 22];   // punkt wylotu komina (do animowanego dymu w świecie)
+    if (s.smoke && !s.noSmoke) for (let i = 0; i < 4; i++) blob(cx + 3 + i * 4, cy - 26 - i * 10, 5 + i * 2, 4 + i * 1.5, '#ffffff', 0.5 - i * 0.1);
   }
   // flaga: płat materiału w płaszczyźnie, w której wieje wiatr
   if (s.flag && apex) { const Lp = plane('L', apex[0], apex[1] - 22); ln([[apex[0], apex[1]], [apex[0], apex[1] - 22]], 2, OUT); ln([[apex[0], apex[1]], [apex[0], apex[1] - 22]], 1, '#6a4a2a'); poly([Lp(0, 0), Lp(15, 3), Lp(10, -1), Lp(16, -5), Lp(0, -8)], r.pick(['#c8382a', '#2a6aa8', '#d89a1a']), 1.3); }

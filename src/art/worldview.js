@@ -13,7 +13,7 @@ import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs, well, fence } from './props.js';
 
-export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2;
+export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2, LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
 
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
@@ -25,8 +25,8 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 
 export class WorldView {
   constructor(world, deps = {}) {
-    this.w = world; this.grid = makeGrid(); this.sprites = new Map(); this.sprScale = 0; this.chunks = new Map(); this.chunkScale = 0; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world);
+    this.w = world; this.grid = makeGrid(); this.sprLv = new Map(); this.chunkLv = new Map(); this.lvCur = 0; this.lvPrev = 0; this.sprBudget = 99; this.shadeCache = new Map(); this.quality = { shadowRes: SHS, decals: true }; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this.lamps = this.collectLights();
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -50,7 +50,7 @@ export class WorldView {
     if (!g && this.doc) { canvas = this.doc.createElement('canvas'); canvas.width = Math.ceil((X1 - X0) * scale); canvas.height = Math.ceil((Y1 - Y0) * scale); g = canvas.getContext('2d'); }
     if (!g) return null;
     g.save(); g.scale(scale, scale); g.translate(-X0, -Y0);
-    this.sg = this.shadeGrid(x0, y0);
+    { const ck = cy * 1000 + cx + ':' + this.quality.shadowRes; this.sg = this.shadeCache.get(ck) || this.shadeGrid(x0, y0); this.shadeCache.set(ck, this.sg); }
     const tiles = []; for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) tiles.push([tx, ty]); tiles.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
     for (const [tx, ty] of tiles) this.drawTile(g, tx, ty);
     g.restore(); this.baked++;
@@ -58,7 +58,7 @@ export class WorldView {
   }
   // mapa cieni bloku: próbki 4 x 4 na kafel (z ramką 1), liczone raz przy pieczeniu; cień rzucają teren, drzewa, budynki, a pod koronami jest półcień
   shadeGrid(x0, y0) {
-    const S = SHS, B = SHB, n = CS * S + 2 * B, arr = new Float32Array(n * n), w = this.w;
+    const S = this.quality.shadowRes, B = SHB, n = CS * S + 2 * B, arr = new Float32Array(n * n), w = this.w;
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
       const px = x0 + (i - B + 0.5) / S, py = y0 + (j - B + 0.5) / S; if (px < 0 || py < 0 || px >= N || py >= N) continue;
       const kind = w.cellKind[Math.floor(py) * N + Math.floor(px)]; if (kind === w.KIND.water || kind === w.KIND.chasm) continue;
@@ -69,7 +69,7 @@ export class WorldView {
     const K = [1, 2, 3, 2, 1], tmp = new Float32Array(n * n), bl = new Float32Array(n * n);
     for (let j = 0; j < n; j++) for (let i = 2; i < n - 2; i++) { let v = 0; for (let d = -2; d <= 2; d++) v += arr[j * n + i + d] * K[d + 2]; tmp[j * n + i] = v / 9; }
     for (let j = 2; j < n - 2; j++) for (let i = 0; i < n; i++) { let v = 0; for (let d = -2; d <= 2; d++) v += tmp[(j + d) * n + i] * K[d + 2]; bl[j * n + i] = v / 9; }
-    return { x0, y0, n, arr, bl };
+    return { x0, y0, n, arr, bl, S };
   }
   // detale gruntu: kocie łby na placu, kamienie i koleiny na drogach, kwiaty, koniczyna, paprocie, kamyki i źdźbła na brzegach ścieżek
   drawDecals(g, tx, ty, z0, kind, ts, TINT) {
@@ -83,6 +83,12 @@ export class WorldView {
       if (hi) { path(-0.1); g.strokeStyle = dk([Math.min(255, col[0] + 38), Math.min(255, col[1] + 36), Math.min(255, col[2] + 30)]); g.lineWidth = 0.9; g.stroke(); }
     };
     const near = (dx, dy) => { const nx = tx + dx, ny = ty + dy; return nx < 0 || ny < 0 || nx >= N || ny >= N ? -1 : w.cellKind[ny * N + nx]; };
+    if (kind === K.shallow || kind === K.water) {
+      // kamyki na dnie widoczne przez wodę: w brodzie gęściej, w głębokiej wodzie tylko przy brzegu
+      let shore = kind === K.shallow; if (!shore) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nk = near(dx, dy); if (nk >= 0 && nk !== K.water && nk !== K.shallow && nk !== K.chasm) shore = true; }
+      if (shore && this.quality.decals) { g.save(); g.globalAlpha = kind === K.shallow ? 0.42 : 0.28; const n = kind === K.shallow ? 3 : 2; for (let q = 0; q < n; q++) stone(0.12 + 0.76 * h(300 + q), 0.12 + 0.76 * h(310 + q), 0.05 + 0.06 * h(320 + q), [132 + 30 * h(330 + q), 150 + 24 * h(330 + q), 150 + 24 * h(330 + q)], false, 340 + q); g.restore(); }
+      return;
+    }
     if (kind === K.plaza) {
       // kocie łby: zaprawa jest już w tle, na niej 3 x 3 kamienie o różnych odcieniach
       for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { const sd = i * 3 + j, u = (i + 0.5 + (h(sd, 1) - 0.5) * 0.3) / 3, v = (j + 0.5 + (h(sd, 2) - 0.5) * 0.3) / 3, t = h(sd, 3), c = [150 + 46 * t + 10 * h(sd, 4), 142 + 42 * t, 124 + 36 * t - 8 * h(sd, 5)]; stone(u, v, 0.15 + 0.035 * h(sd, 6), c, true, 50 + sd); }
@@ -97,6 +103,7 @@ export class WorldView {
       for (const [dx, dy, ed] of [[1, 0, 1], [-1, 0, 0], [0, 1, 1], [0, -1, 0]]) { const nk = near(dx, dy); if (nk < 0 || nk > K.moss) continue; g.lineCap = 'round'; g.lineWidth = 1.5; for (let q = 0; q < 4; q++) { const t = 0.1 + 0.8 * h(100 + q + (dx ? 0 : 10)), p = dx ? P(ed, t) : P(t, ed), bh = 4 + 4 * h(110 + q); g.strokeStyle = q % 2 ? '#5a9a3a' : '#8ac04a'; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + (h(120 + q) - 0.5) * 5, p[1] - bh); g.stroke(); } }
       return;
     }
+    if (!this.quality.decals) return;
     if (kind <= K.moss || kind === K.dry) {
       const moss = kind === K.moss;
       // kępki liści (koniczyna i paproć) w dwóch odcieniach, żeby trawa nie była jednolitym dywanem
@@ -114,7 +121,7 @@ export class WorldView {
   drawTile(g, tx, ty) {
     const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
     if (w.ramp[k]) return this.drawRamp(g, tx, ty, z);
-    const e = 0.7, SUBN = SUB - 2, R = SHS / SUBN, sg = this.sg, sn = sg.n, six = (tx - sg.x0) * SHS + SHB, siy = (ty - sg.y0) * SHS + SHB, TINT = [22, 12, 52]; let tileShade = 0;
+    const e = 0.7, SUBN = SUB - 2, R = Math.max(1, Math.round(this.sg.S / SUBN)), sg = this.sg, sn = sg.n, six = (tx - sg.x0) * sg.S + SHB, siy = (ty - sg.y0) * sg.S + SHB, TINT = [22, 12, 52]; let tileShade = 0;
     const mix = (col, sh) => (sh > 0.01 ? rgbStr([col[0] + (TINT[0] - col[0]) * sh, col[1] + (TINT[1] - col[1]) * sh, col[2] + (TINT[2] - col[2]) * sh]) : rgbStr(col));
     const quad = (u0, v0, u1, v1, zz) => { const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz); g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill(); };
     for (let j = 0; j < SUBN; j++) for (let i = 0; i < SUBN; i++) {
@@ -216,18 +223,27 @@ export class WorldView {
     g.fillStyle = gcol; g.beginPath(); g.moveTo(A[0], A[1] - 1); for (let i = 0; i <= 12; i++) { const p = at(i / 12); g.lineTo(p[0], p[1] + 3 + 4 * hash2(seed + 21, i, 4)); } for (let i = 12; i >= 0; i--) { const p = at(i / 12); g.lineTo(p[0], p[1] - 2); } g.closePath(); g.fill();
     g.strokeStyle = topKind === w.KIND.moss ? '#4a7a3a' : '#9ac85a'; g.lineWidth = 1.5; g.lineCap = 'round'; g.beginPath(); for (let i = 0; i < 16; i++) { const p = at(i / 15 * 0.98 + 0.01), hh = 4 + 5 * hash2(seed + 22, i, 5); g.moveTo(p[0], p[1]); g.lineTo(p[0] + (hash2(seed + 23, i, 6) - 0.5) * 4, p[1] - hh); } g.stroke();
   }
+  // Skala pieczenia jest kwantowana do kilku poziomów, więc przybliżanie i oddalanie nie wyrzuca całego cache: stare obrazy rysują się przeskalowane,
+  // dopóki w tle (po kilka na klatkę) nie dopiekają się nowe. Trzymamy bieżący i poprzedni poziom.
+  level(scale) { let best = LEVELS[0]; for (const l of LEVELS) if (Math.abs(Math.log(l / scale)) < Math.abs(Math.log(best / scale))) best = l; return best; }
+  levelMap(store, lvl) {
+    if (this.lvCur !== lvl) { this.lvPrev = this.lvCur; this.lvCur = lvl; for (const k of [...store.keys()]) if (k !== lvl && k !== this.lvPrev) store.delete(k); }
+    let m = store.get(lvl); if (!m) store.set(lvl, m = new Map()); return m;
+  }
   chunk(cx, cy, scale, budget) {
-    if (Math.abs(scale - this.chunkScale) > this.chunkScale * 0.08) { this.chunks.clear(); this.chunkScale = scale; }
-    const key = cy * 1000 + cx; let c = this.chunks.get(key);
-    if (!c && budget.n > 0) { budget.n--; c = this.bakeChunk(cx, cy, scale); if (c) this.chunks.set(key, c); }
+    const lvl = this.level(scale), m = this.levelMap(this.chunkLv, lvl), key = cy * 1000 + cx; let c = m.get(key);
+    if (!c && budget.n > 0) { budget.n--; c = this.bakeChunk(cx, cy, lvl); if (c) m.set(key, c); }
+    if (!c && this.lvPrev) { const pm = this.chunkLv.get(this.lvPrev); if (pm) c = pm.get(key); }
     return c;
   }
-  // obrazek obiektu: rysowany raz w skali ekranu i potem tylko kopiowany
+  // obrazek obiektu: rysowany raz w skali poziomu i potem tylko kopiowany
   sprite(key, [sw, sh, ax, ay], draw, scale) {
     if (!this.doc) return null;
-    if (Math.abs(scale - this.sprScale) > this.sprScale * 0.08) { this.sprites.clear(); this.sprScale = scale; }
-    let c = this.sprites.get(key);
-    if (!c) { c = this.doc.createElement('canvas'); c.width = Math.ceil(sw * this.sprScale); c.height = Math.ceil(sh * this.sprScale); const g = c.getContext('2d'); g.scale(this.sprScale, this.sprScale); draw(g, ax, ay); this.sprites.set(key, c); }
+    const lvl = this.level(scale), m = this.levelMap(this.sprLv, lvl); let c = m.get(key);
+    if (!c) {
+      if (this.sprBudget <= 0 && this.lvPrev) { const pm = this.sprLv.get(this.lvPrev); if (pm && pm.get(key)) return pm.get(key); }
+      this.sprBudget--; c = this.doc.createElement('canvas'); c.width = Math.ceil(sw * lvl); c.height = Math.ceil(sh * lvl); const g = c.getContext('2d'); g.scale(lvl, lvl); draw(g, ax, ay); m.set(key, c);
+    }
     return c;
   }
   drawSprite(g, key, dim, draw, x, y, scale) {
@@ -241,6 +257,54 @@ export class WorldView {
     if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
     return null;
   }
+  // źródła światła w świecie (lampy, pochodnie przy wejściach) w pikselach świata: używane w nocy i do migotania
+  collectLights() {
+    const out = [], w = this.w;
+    for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y); out.push({ x: p[0], y: p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
+    for (const e of w.entrances) { const p = this.pos(e.at[0], e.at[1]); out.push({ x: p[0], y: p[1] - (e.kind === 'krypta' ? 40 : 30), r: e.kind === 'krypta' ? 260 : 190, a: 0.85, ph: e.at[0] }); }
+    return out;
+  }
+  // jakość: przy zmianie czyścimy cache (bloki, obrazki, mapy cieni), bo zależą od rozdzielczości cieni i dekoracji
+  setQuality(q) {
+    const same = this.quality.shadowRes === q.shadowRes && this.quality.decals === q.decals; this.quality = { ...this.quality, ...q };
+    if (!same) { this.masks.clear(); this.chunkLv.clear(); this.sprLv.clear(); this.shadeCache.clear(); this.lvCur = 0; this.lvPrev = 0; }
+  }
+  // animowana woda: przesuwające się refleksy i zmarszczki na kaflach wody i brodu (rysowane na wierzchu terenu, pod obiektami)
+  drawWater(g, gx0, gx1, gy0, gy1, t) {
+    const mode = this.quality.water; if (mode === 'static') return; const w = this.w, K = w.KIND, full = mode === 'full';
+    g.save(); g.lineCap = 'round';
+    for (let ty = gy0; ty <= gy1; ty++) for (let tx = gx0; tx <= gx1; tx++) {
+      const kind = w.cellKind[ty * N + tx]; if (kind !== K.water && kind !== K.shallow) continue;
+      const hh = hash2(11, tx, ty), shallow = kind === K.shallow, n = full ? (shallow ? 3 : 2) : (hh < 0.5 ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const ph = (t * (shallow ? 0.32 : 0.18) + hash2(21 + i, tx, ty)) % 1, u = (hash2(31 + i, tx, ty) * 0.6 + 0.2 + ph * 0.5) % 1, v = (hash2(41 + i, tx, ty) * 0.6 + 0.2 + ph * 0.25) % 1, a = Math.sin(ph * Math.PI), p = this.proj(tx + u, ty + v, 0);
+        g.strokeStyle = `rgba(255,255,255,${(0.1 + 0.34 * a).toFixed(3)})`; g.lineWidth = 1.2 + a; g.beginPath(); g.ellipse(p[0], p[1], 5 + 5 * a, 2 + 2 * a, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      }
+      if (full && hash2(51, tx, ty) < 0.22) { const s = Math.sin(t * 2.2 + hh * 40), p = this.proj(tx + 0.5, ty + 0.5, 0); if (s > 0.6) { g.fillStyle = `rgba(255,255,255,${((s - 0.6) * 1.4).toFixed(3)})`; g.fillRect(p[0] - 1, p[1] - 1, 2.4, 2.4); } }
+    }
+    g.restore();
+  }
+  // dym z komina: kilka puszków unoszących się i rozrastających, znoszonych lekko wiatrem
+  drawSmoke(g, b, sx, sy, t) {
+    const c = b.s._chim; if (!c || !b.s.smoke) return; const x = sx + c[0] * b.k, y = sy + c[1] * b.k, sd = b.s.seed * 0.37;
+    for (let i = 0; i < 6; i++) {
+      const ph = (t * 0.28 + i / 6 + sd) % 1, px = x + ph * 22 + Math.sin(t * 0.9 + i * 1.7 + sd) * (2 + ph * 4), py = y - ph * 86, r = 3.5 + ph * 11, a = Math.min(1, ph * 7) * (1 - ph) * 0.5;
+      g.fillStyle = `rgba(236,236,242,${a.toFixed(3)})`; g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill();
+    }
+  }
+  // maska krycia sprite'a (1/8 rozdzielczości, liczona raz): pozwala sprawdzić, czy w danym punkcie obiekt naprawdę coś zasłania
+  coverAt(key, rect, px, py) {
+    const [rx, ry, rw, rh] = rect; if (px < rx || px >= rx + rw || py < ry || py >= ry + rh) return false;
+    let m = this.masks.get(key);
+    if (!m) { const c = (this.sprLv.get(this.lvCur) || new Map()).get(key); if (!c || !this.doc) return false; const w = Math.max(1, Math.ceil(c.width / 8)), h = Math.max(1, Math.ceil(c.height / 8)), q = this.doc.createElement('canvas'); q.width = w; q.height = h; const qg = q.getContext('2d', { willReadFrequently: true }); qg.drawImage(c, 0, 0, w, h); m = { w, h, d: qg.getImageData(0, 0, w, h).data }; this.masks.set(key, m); }
+    const x = Math.min(m.w - 1, Math.floor((px - rx) / rw * m.w)), y = Math.min(m.h - 1, Math.floor((py - ry) / rh * m.h)); return m.d[(y * m.w + x) * 4 + 3] > 70;
+  }
+  // przezroczystość przedmiotu stojącego przed graczem: gdy jego sylwetka naprawdę zasłania gracza (stopy, tors lub głowę), obiekt płynnie blednie
+  fadeAlpha(o, key, rect, d, player) {
+    let target = 1;
+    if (player && d > player.d) for (const dy of [0, -16, -32]) if (this.coverAt(key, rect, player.sx, player.sy + dy)) { target = 0.3; break; }
+    const cur = o._fa === undefined ? 1 : o._fa; o._fa = cur + (target - cur) * 0.2; return o._fa;
+  }
   // kafle wyższe od gruntu przedmiotu i leżące przed nim (większa głębokość) w zasięgu jego obrazu: tylko one mogą go naprawdę zasłonić
   occluderTiles(x, y, z) {
     const out = [], d0 = x + y, e0 = x - y, w = this.w, fx = Math.floor(x), fy = Math.floor(y);
@@ -253,7 +317,7 @@ export class WorldView {
   }
   // dorysowuje z gotowych bloków terenu powierzchnię i ściany kafla k (zasłania przedmiot leżący za nim)
   redrawTile(g, k, scale) {
-    const w = this.w, tx = k % N, ty = (k - tx) / N, ch = this.chunks.get(Math.floor(ty / CS) * 1000 + Math.floor(tx / CS)); if (!ch || !ch.canvas) return;
+    const w = this.w, tx = k % N, ty = (k - tx) / N, ch = ((this.chunkLv.get(this.lvCur) || new Map()).get(Math.floor(ty / CS) * 1000 + Math.floor(tx / CS))) || ((this.chunkLv.get(this.lvPrev) || new Map()).get(Math.floor(ty / CS) * 1000 + Math.floor(tx / CS))); if (!ch || !ch.canvas) return;
     const z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), polys = [[P(0, 0, z[0]), P(1, 0, z[1]), P(1, 1, z[2]), P(0, 1, z[3])]];
     for (const [dx, dy] of [[1, 0], [0, 1]]) { const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue; const nz = this.cornersZ(nx, ny), ta = dx ? z[1] : z[3], tb = z[2], na = nz[0], nb = dx ? nz[3] : nz[1]; if (ta - na < 0.15 && tb - nb < 0.15) continue; const A = dx ? P(1, 0, ta) : P(0, 1, ta), B = P(1, 1, tb); polys.push([A, B, [B[0], B[1] + Math.max(0, tb - nb) * HZ], [A[0], A[1] + Math.max(0, ta - na) * HZ]]); }
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const pl of polys) for (const p of pl) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
@@ -275,7 +339,8 @@ export class WorldView {
     const ents = new Map(); for (const e of entities) { const k = Math.floor(e.y) * N + Math.floor(e.x); (ents.get(k) || ents.set(k, []).get(k)).push(e); }
     const list = []; for (let cy = Math.floor(gy0 / CS); cy <= Math.floor(gy1 / CS); cy++) for (let cx = Math.floor(gx0 / CS); cx <= Math.floor(gx1 / CS); cx++) list.push([cx, cy]);
     list.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
-    const budget = { n: this.baked < 1 ? 999 : 4 }, items = [];
+    this.t = t; const pl = entities.find((e) => e.player), player = pl ? { d: pl.x + pl.y + 0.0005, sx: this.pos(pl.x, pl.y)[0], sy: this.pos(pl.x, pl.y)[1] } : null;
+    this.sprBudget = this.baked < 1 ? 999 : 14; const budget = { n: this.baked < 1 ? 999 : 3 }, items = [];
     for (const [cx, cy] of list) {
       const ch = this.chunk(cx, cy, scale, budget);
       if (ch && ch.canvas && !(ch.X0 > R + 100 || ch.X0 + ch.w < L - 100 || ch.Y0 > B + 340 || ch.Y0 + ch.h < T - 40)) g.drawImage(ch.canvas, ch.X0, ch.Y0, ch.w, ch.h);
@@ -287,11 +352,16 @@ export class WorldView {
         const es = ents.get(k); if (es) for (const e of es) items.push({ d: e.x + e.y + 0.001, e });
       }
     }
+    this.drawWater(g, gx0, gx1, gy0, gy1, t);
     items.sort((a, b) => a.d - b.d);
     for (const it of items) {
-      if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (!dr) continue; if (o._occ === undefined) o._occ = this.occluderTiles(o.x, o.y, heightAt(w, o.x, o.y)); this.drawWithOcclusion(g, o._occ, scale, () => this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale)); }
-      else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), [sx, sy] = this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale)); }
-      else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1])); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale)); }
+      if (it.o) { const o = it.o, [sx, sy] = this.pos(o.x, o.y); if (sx < L - 160 || sx > R + 160 || sy < T - 40 || sy > B + 340) continue; const dr = this.objectDrawer(o); if (!dr) continue; if (o._occ === undefined) o._occ = this.occluderTiles(o.x, o.y, heightAt(w, o.x, o.y));
+        const fa = TREE[o.k] ? this.fadeAlpha(o, dr[0], [sx - dr[1][2], sy - dr[1][3], dr[1][0], dr[1][1]], it.d, player) : 1; g.globalAlpha = fa; this.drawWithOcclusion(g, o._occ, scale, () => this.drawSprite(g, dr[0], dr[1], dr[2], sx, sy, scale)); g.globalAlpha = 1; }
+      else if (it.b) { const b = it.b, z = heightAt(w, b.sx - 0.5, b.sy - 0.5), [sx, sy] = this.proj(b.sx, b.sy, z); if (b._occ === undefined) b._occ = this.occluderTiles(b.sx, b.sy, z);
+        g.globalAlpha = this.fadeAlpha(b, `b:${b.s.seed}`, [sx - SPR.budynek[2], sy - SPR.budynek[3], SPR.budynek[0], SPR.budynek[1]], it.d - 1.2, player); this.drawWithOcclusion(g, b._occ, scale, () => this.drawSprite(g, `b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, sx, sy, scale)); g.globalAlpha = 1;
+        if (this.quality.smoke) this.drawSmoke(g, b, sx, sy, t); }
+      else if (it.en !== undefined) { const i = it.en, e = w.entrances[i], [sx, sy] = this.pos(e.at[0], e.at[1]); if (e._occ === undefined) e._occ = this.occluderTiles(e.at[0], e.at[1], heightAt(w, e.at[0], e.at[1]));
+        g.globalAlpha = this.fadeAlpha(e, `e:${i}`, [sx - SPR[e.kind][2], sy - SPR[e.kind][3], SPR[e.kind][0], SPR[e.kind][1]], it.d - 1.5 - 1.2, player); this.drawWithOcclusion(g, e._occ, scale, () => this.drawSprite(g, `e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i]), sx, sy, scale)); g.globalAlpha = 1; }
       else { const e = it.e, occ = this.occluderTiles(e.x, e.y, heightAt(w, e.x, e.y)); this.drawWithOcclusion(g, occ, scale, () => e.draw(g, ...this.pos(e.x, e.y))); }
     }
   }

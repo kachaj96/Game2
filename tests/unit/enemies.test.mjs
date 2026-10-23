@@ -190,3 +190,12 @@ test('AI: przeciwnik obchodzi ścianę w poprzek planszy zamiast stać w miejscu
   }
   const e = unitById(s, 'e'); assert.ok(moved >= 2, 'rusza się w kolejnych turach'); assert.ok(e.x >= 4 || e.y >= 6, `obszedł ścianę (${e.x},${e.y})`);
 });
+
+test('Błoto wroga: odbiera 1 PM dopiero w następnej turze celu, PA zostają pełne, a kolejna tura bez trafienia znów daje komplet PM', () => {
+  const kind = Object.entries(ENEMIES).find(([, e]) => e.spells.includes('bloto'))[0];
+  let s = mk([hero(3, 4, { initiative: 1 }), { ...E(kind, 'e', 4, 4), initiative: 99 }]);
+  assert.equal(currentUnit(s).id, 'e'); const r = applyCommand(s, { type: 'cast', unit: 'e', spell: 'bloto', to: { x: 3, y: 4 } }); assert.ok(r.ok, r.error); s = r.state;
+  assert.equal(unitById(s, 'h').slow, 1, 'cel jest spowolniony'); s = end(s).state; assert.equal(currentUnit(s).id, 'h');
+  const h = unitById(s, 'h'); assert.equal(h.pm, h.maxPm - 1, 'jeden PM mniej w swojej turze'); assert.equal(h.pa, h.maxPa, 'PA bez zmian'); assert.equal(h.slow, 0, 'efekt zużyty');
+  s = end(s).state; s = end(s).state; assert.equal(unitById(s, 'h').pm, unitById(s, 'h').maxPm, 'następna tura bez spowolnienia');
+});
