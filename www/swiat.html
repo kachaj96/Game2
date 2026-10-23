@@ -35,7 +35,7 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 <canvas id="c"></canvas>
 <div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small><i id="xpb"><b></b></i></div>
 <div id="menu"><a class="pill" id="mchar" href="postac.html?back=swiat.html">Postać</a><button class="pill" id="mmenu" type="button">Menu</button></div>
-<div id="pause"><div class="pill" id="pbox"><h2>Menu</h2><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Minimapa</span><div class="seg" id="om"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div><div id="fps" class="pill"></div>
+<div id="pause"><div class="pill" id="pbox"><h2>Menu</h2><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div><div id="fps" class="pill"></div>
 <div id="toast" class="pill"></div>
 <div id="mini"><canvas id="mm" width="240" height="240"></canvas></div>
 <button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
@@ -49,7 +49,7 @@ import {generateWorld,N,REGIONS,HZ} from '../src/world/kraina.js';
 import {heightAt,findPath,newWalker,setPath,stepWalker,freeAt} from '../src/world/nav.js';
 import {WorldView} from '../src/art/worldview.js';
 import {genCharacter,drawCharacter,DIRS,DIRS8,dir8} from '../src/art/characters.js';
-import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES,MINIMAPS,MINIMAP_NAMES} from '../src/game/settings.js';
+import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES} from '../src/game/settings.js';
 import {darkness,drawNight} from '../src/art/daylight.js';
 import {heroSpec} from '../src/art/classes.js';
 import {applyMood} from '../src/art/mood.js';
@@ -67,7 +67,7 @@ const hero=newWalker(...world.start);let face='SE';
 const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9],studnia:(()=>{const o=world.objects.find(q=>q.k==='well');return o?[o.x-1.5,o.y+2.5]:world.start})(),plot:(()=>{const o=world.objects.find(q=>q.k==='fence');return o?[o.x-2,o.y+2]:world.start})()};
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
-const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');if(Q.get('minimap')&&MINIMAPS.includes(Q.get('minimap')))SET.minimap=Q.get('minimap');
+const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');
 wv.setQuality(QUALITY[SET.quality]);const night=document.createElement('canvas');
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 // malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
@@ -99,10 +99,7 @@ const base=document.createElement('canvas');base.width=base.height=N;
   const hsl2=(h,s,l)=>{const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[f(0),f(8),f(4)].map(v=>Math.round(v*255))};
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const kind=world.cellKind[y*N+x],b=B[kind],h=heightAt(world,x+.5,y+.5),rgb=hsl2(b[0],b[1],Math.max(.1,Math.min(.8,b[2]+h*.03)));const i=(y*N+x)*4;im.data[i]=rgb[0];im.data[i+1]=rgb[1];im.data[i+2]=rgb[2];im.data[i+3]=255}
   m.putImageData(im,0,0)}
-const MMST={
-  a:{name:'Pergamin',tint:['multiply','rgb(250,232,190)'],wash:'rgba(150,100,40,.1)',bg:'#d8c08a',dot:'#ffd24a',dotLine:'#3a2410',me:'#b4281c'},
-  b:{name:'Kryształ',tint:['multiply','rgb(150,190,235)'],wash:'rgba(10,20,60,.22)',bg:'#0b1226',dot:'#ffe38a',dotLine:'#0b1226',me:'#7ff0ff'},
-  c:{name:'Kompas',tint:['multiply','rgb(205,218,190)'],wash:'rgba(40,30,20,.14)',bg:'#2a2622',dot:'#ffb84a',dotLine:'#1a1410',me:'#ff5a3a'}};
+const MMST={a:{name:'Pergamin',tint:['multiply','rgb(250,232,190)'],wash:'rgba(150,100,40,.1)',bg:'#d8c08a',dot:'#ffd24a',dotLine:'#3a2410',me:'#b4281c'}};
 let mmBig=null,mmFrame=null,mmKey='';
 function buildMM(key){
   const st=MMST[key]||MMST.a,W=N*PXT*2,H=N*PXT,c=document.createElement('canvas');c.width=W;c.height=H;const q=c.getContext('2d');
@@ -117,16 +114,9 @@ function buildMM(key){
     ring(MC-4,9,'#15110f');const mg=g2.createLinearGradient(0,0,MS,MS);mg.addColorStop(0,'#f0d27a');mg.addColorStop(0.5,'#b08a3a');mg.addColorStop(1,'#7a5a22');ring(MC-4,6,mg);ring(MC-9,1.2,'rgba(255,240,190,.6)');ring(MC-0.8,1.5,'#15110f');
     for(let i=0;i<4;i++){g2.save();g2.translate(MC,MC);g2.rotate(i*Math.PI/2);g2.fillStyle=i?'#e8d29a':'#c43a2a';g2.strokeStyle='#15110f';g2.lineWidth=1.5;g2.beginPath();g2.moveTo(0,-MC+4);g2.lineTo(8,-MC+20);g2.lineTo(-8,-MC+20);g2.closePath();g2.fill();g2.stroke();g2.restore()}
     g2.fillStyle='#15110f';g2.font='700 15px Georgia,serif';g2.textAlign='center';g2.fillText('N',MC,MC-MC+36)}
-  else if(key==='b'){const vg=g2.createRadialGradient(MC,MC,MC*0.4,MC,MC,MC);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(0.85,'rgba(5,10,30,.5)');vg.addColorStop(1,'rgba(5,10,30,.85)');g2.fillStyle=vg;g2.beginPath();g2.arc(MC,MC,MC-2,0,7);g2.fill();
-    ring(MC-3,6,'#0a0e1c');const sg=g2.createLinearGradient(0,0,MS,MS);sg.addColorStop(0,'#e8f0ff');sg.addColorStop(0.5,'#7a8aa8');sg.addColorStop(1,'#3a4660');ring(MC-3,3.4,sg);ring(MC-8,1,'rgba(160,230,255,.5)');
-    const hl=g2.createLinearGradient(MC*0.4,0,MC*1.2,MC);hl.addColorStop(0,'rgba(255,255,255,.28)');hl.addColorStop(1,'rgba(255,255,255,0)');g2.fillStyle=hl;g2.beginPath();g2.ellipse(MC*0.8,MC*0.55,MC*0.62,MC*0.3,-0.5,0,7);g2.fill();
-    g2.fillStyle='#bfe9ff';g2.font='700 13px system-ui';g2.textAlign='center';g2.fillText('N',MC,26)}
-  else{ring(MC-3,8,'#14100e');const bg2=g2.createLinearGradient(0,0,MS,MS);bg2.addColorStop(0,'#c89a5a');bg2.addColorStop(1,'#6a4a28');ring(MC-3,5,bg2);
-    for(let i=0;i<72;i++){const a=i*Math.PI/36,long=i%6===0,r0=MC-9,r1=r0-(long?9:4);g2.beginPath();g2.moveTo(MC+Math.sin(a)*r0,MC-Math.cos(a)*r0);g2.lineTo(MC+Math.sin(a)*r1,MC-Math.cos(a)*r1);g2.lineWidth=long?1.6:0.8;g2.strokeStyle=long?'#f0d8a0':'rgba(240,216,160,.6)';g2.stroke()}
-    g2.fillStyle='#f0d8a0';g2.font='700 14px Georgia,serif';g2.textAlign='center';g2.textBaseline='middle';for(const [t,a] of [['N',0],['E',90],['S',180],['W',270]]){const r=MC-30,aa=a*Math.PI/180;g2.fillText(t,MC+Math.sin(aa)*r,MC-Math.cos(aa)*r)}}
   mmFrame=f;mmKey=key}
 function mini(){
-  if(mmKey!==SET.minimap)buildMM(SET.minimap);const st=MMST[SET.minimap]||MMST.a;
+  if(!mmFrame)buildMM('a');const st=MMST.a;
   mmc.clearRect(0,0,MS,MS);mmc.save();mmc.beginPath();mmc.arc(MC,MC,MC-4,0,7);mmc.clip();
   const hx=N*PXT+(hero.x-hero.y)*PXT,hy=(hero.x+hero.y)*PXT/2;mmc.drawImage(mmBig,MC-hx,MC-hy);
   for(const e of world.entrances){const ex=N*PXT+(e.at[0]-e.at[1])*PXT-hx+MC,ey=(e.at[0]+e.at[1])*PXT/2-hy+MC,dx=ex-MC,dy=ey-MC,d=Math.hypot(dx,dy),lim=MC-18,k=d>lim?lim/d:1,px=MC+dx*k,py=MC+dy*k;
@@ -140,7 +130,6 @@ function buildOpts(){
   const seg=(id,items,cur,fn)=>{const el=$(id);el.innerHTML='';for(const [k,name] of items){const b=document.createElement('button');b.type='button';b.textContent=name;b.className=k===cur?'on':'';b.onclick=()=>{fn(k);buildOpts()};el.append(b)}};
   seg('oq',QUALITY_IDS.map(k=>[k,QUALITY[k].name]),SET.quality,k=>{SET.quality=k;saveSettings(SET);wv.setQuality(QUALITY[k]);resize()});
   seg('ot',TIME_MODES.map(k=>[k,TIME_NAMES[k]]),SET.time,k=>{SET.time=k;saveSettings(SET)});
-  seg('om',MINIMAPS.map(k=>[k,MINIMAP_NAMES[k]]),SET.minimap,k=>{SET.minimap=k;saveSettings(SET)});
   seg('of',[[false,'Wył.'],[true,'Wł.']],SET.fps,k=>{SET.fps=k;saveSettings(SET)});
 }
 let paused=false;const setPause=v=>{paused=v;$('pause').classList.toggle('on',v);if(v)buildOpts()};

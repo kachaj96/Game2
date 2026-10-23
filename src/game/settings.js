@@ -8,11 +8,9 @@ export const QUALITY = {
   high: { name: 'Wysoka', dprMax: 2, shadowRes: 12, decals: true, beams: true, water: 'full', smoke: true, shadowSprites: true },
 };
 export const TIME_NAMES = { cycle: 'Zmienna', day: 'Zawsze dzień', night: 'Zawsze noc' };
-export const MINIMAPS = ['a', 'b', 'c'];
-export const MINIMAP_NAMES = { a: 'Pergamin', b: 'Kryształ', c: 'Kompas' };
-export const DEFAULTS = { quality: 'medium', time: 'cycle', fps: false, minimap: 'a' };
+export const DEFAULTS = { quality: 'medium', time: 'cycle', fps: false };
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
-export function validSettings(s) { return !!s && typeof s === 'object' && QUALITY_IDS.includes(s.quality) && TIME_MODES.includes(s.time) && typeof s.fps === 'boolean' && (s.minimap === undefined || MINIMAPS.includes(s.minimap)); }
+export function validSettings(s) { return !!s && typeof s === 'object' && QUALITY_IDS.includes(s.quality) && TIME_MODES.includes(s.time) && typeof s.fps === 'boolean'; }
 export function loadSettings(storage = store()) {
   if (!storage) return { ...DEFAULTS };
   try { const s = JSON.parse(storage.getItem(SETTINGS_KEY)); return validSettings(s) ? { ...DEFAULTS, ...s } : { ...DEFAULTS }; } catch { return { ...DEFAULTS }; }

@@ -8,8 +8,7 @@ const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.
 
 test('ustawienia: domyślne, zapis i odczyt, uszkodzone dane wracają do domyślnych', () => {
   const st = mem(); assert.deepEqual(loadSettings(st), DEFAULTS);
-  assert.ok(saveSettings({ quality: 'low', time: 'night', fps: true }, st)); assert.deepEqual(loadSettings(st), { quality: 'low', time: 'night', fps: true, minimap: 'a' });
-  assert.ok(saveSettings({ quality: 'low', time: 'day', fps: false, minimap: 'c' }, st)); assert.equal(loadSettings(st).minimap, 'c'); assert.equal(saveSettings({ ...DEFAULTS, minimap: 'z' }, st), false);
+  assert.ok(saveSettings({ quality: 'low', time: 'night', fps: true }, st)); assert.deepEqual(loadSettings(st), { quality: 'low', time: 'night', fps: true });
   st.setItem(SETTINGS_KEY, '{"quality":"ultra"}'); assert.deepEqual(loadSettings(st), DEFAULTS); st.setItem(SETTINGS_KEY, 'zle'); assert.deepEqual(loadSettings(st), DEFAULTS);
   assert.equal(saveSettings({ quality: 'x', time: 'day', fps: false }, st), false); assert.equal(saveSettings(DEFAULTS, null), false); assert.equal(validSettings(DEFAULTS), true);
 });
