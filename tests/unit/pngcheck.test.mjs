@@ -71,3 +71,7 @@ test('podłoże: winieta i rozmycie', () => {
   const r = run(im, { kind: 'podloze' }); assert.equal(lv(r, 'winieta'), 'warn'); assert.equal(lv(r, 'rozmiar2'), 'warn');
   const flat = run(img(400, 300, [120, 140, 90, 255]), { kind: 'podloze' }); assert.equal(lv(flat, 'ostrosc'), 'warn'); assert.equal(lv(flat, 'winieta'), 'ok');
 });
+
+test('podłoże może mieć więcej niż 1024 px', () => {
+  const r = run(img(1536, 1024, [120, 140, 90, 255]), { kind: 'podloze' }); assert.equal(lv(r, 'rozmiar'), undefined); assert.equal(lv(r, 'rozmiar2'), 'ok');
+});

@@ -14,8 +14,8 @@
     const checks = [], add = (id, level, msg) => checks.push({ id, level, msg });
     const N = W * H, A = (i) => rgba[i * 4 + 3];
 
-    if (Math.max(W, H) > MAXSIDE) add('rozmiar', 'fail', `Za duży plik: ${W}x${H}, dłuższy bok ma mieć najwyżej ${MAXSIDE} px.`);
-    else add('rozmiar', 'ok', `Rozmiar ${W}x${H} px.`);
+    if (kind !== 'podloze' && Math.max(W, H) > MAXSIDE) add('rozmiar', 'fail', `Za duży plik: ${W}x${H}, dłuższy bok ma mieć najwyżej ${MAXSIDE} px.`);
+    else if (kind !== 'podloze') add('rozmiar', 'ok', `Rozmiar ${W}x${H} px.`);
 
     // --- przezroczystość ---
     let transparent = 0, opaqueAll = true;
