@@ -131,4 +131,25 @@ export function crack(g, x, y, sc = 1, seed = 1) {
   const pts = [[px, py]]; for (let i = 0; i < 6; i++) { px += r.range(3, 6) * sc; py += r.range(-2.2, 2.2) * sc * 0.6; pts.push([px, py]); if (r() < 0.4) ln([[px, py], [px + r.range(-4, 4) * sc, py + r.range(2, 5) * sc * 0.5]], 0.9, 'rgba(0,0,0,.55)'); }
   ln(pts, 1.6, 'rgba(0,0,0,.6)'); ln(pts.map(([a, b]) => [a + 0.6, b + 0.8]), 0.7, 'rgba(255,255,255,.12)');
 }
-export const PROPS = { bloodSplat, bones, crack, ashCloud, grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };
+// ślady lochów: kopce ziemi (Kopacze), pajęczyny i kokony (Gniazdo)
+export function mound(g, x, y, sc = 1, seed = 1) {
+  const { blob, ln } = kit(g), r = rng(seed * 41 + 9);
+  blob(x + 2, y + 1, 13 * sc, 4.6 * sc, '#000', 0.3);
+  for (let i = 0; i < 3; i++) blob(x + r.range(-6, 6) * sc, y - i * 2.2 * sc, (11 - i * 3) * sc, (4.4 - i * 0.9) * sc, i % 2 ? '#6a5236' : '#54402a', 1);
+  blob(x - 3 * sc, y - 4 * sc, 5 * sc, 1.6 * sc, '#8a7050', 0.55);
+  for (let i = 0; i < 5; i++) blob(x + r.range(-14, 14) * sc, y + r.range(-2, 4) * sc, r.range(0.8, 1.8) * sc, r.range(0.5, 1) * sc, '#3a2a1a', 0.8);
+  ln([[x + 8 * sc, y + 1], [x + 15 * sc, y + 3]], 1.2, 'rgba(0,0,0,.4)');
+}
+export function web(g, x, y, sc = 1, seed = 1) {
+  const { ln } = kit(g), r = rng(seed * 43 + 11), n = r.int(5, 7), R = r.range(13, 20) * sc, a0 = r.range(0, 6.28), col = 'rgba(226,226,240,.5)';
+  for (let i = 0; i < n; i++) { const a = a0 + (i / n) * 6.28; ln([[x, y], [x + Math.cos(a) * R, y + Math.sin(a) * R * 0.5]], 0.9, col); }
+  for (const k of [0.35, 0.65, 1]) { const pts = []; for (let i = 0; i <= n; i++) { const a = a0 + (i / n) * 6.28, rr = R * k * (i % 2 ? 0.88 : 1); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.5]); } ln(pts, 0.8, col); }
+}
+export function eggs(g, x, y, sc = 1, seed = 1) {
+  const { blob, ell } = kit(g), r = rng(seed * 47 + 13);
+  blob(x, y + 1, 12 * sc, 4 * sc, '#000', 0.3);
+  for (let i = 0; i < r.int(4, 7); i++) { const ex = x + r.range(-9, 9) * sc, ey = y + r.range(-3, 2) * sc, s = r.range(2.6, 4.2) * sc; ell(ex, ey - s, s, s * 1.2, '#cfcbbf', 1.4); blob(ex - s * 0.3, ey - s * 1.4, s * 0.35, s * 0.4, '#fff', 0.5); blob(ex, ey - s * 0.4, s * 0.8, s * 0.5, 'rgba(60,50,80,.3)', 1); }
+  for (let i = 0; i < 6; i++) blob(x + r.range(-13, 13) * sc, y + r.range(-4, 3) * sc, r.range(3, 6) * sc, 0.7 * sc, 'rgba(220,220,235,.35)', 1);
+}
+export const DECALS = { bloodSplat, bones, crack, mound, web, eggs };
+export const PROPS = { mound, web, eggs, bloodSplat, bones, crack, ashCloud, grave, barrel, crate, logs, pot, bench, haybale, sack, lampPost, cart };

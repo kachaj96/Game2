@@ -132,14 +132,16 @@ export function pond(g, cx, cy, rx, ry, seed) {
 export const TREES = { oak, pine, birch, deadTree };
 
 // Teren: rozmyte plamy, kępki trawy, kwiatki i kamyki. Bez widocznych kafli, siatkę dokłada tryb walki.
+// podłoże lochów: odcień, nasycenie i jasność gruntu oraz kolor suchych kępek
+export const DUNGEON = { arena: { hue: 36, sat: 0.3, l: 0.3, tuft: 60 }, kopacze: { hue: 24, sat: 0.36, l: 0.28, tuft: 34 }, pajaki: { hue: 272, sat: 0.18, l: 0.2, tuft: 150 } };
 export function ground(g, W, H, seed, opt = {}) {
   const r = rng(seed * 59 + 1), { lg, blob } = kit(g), b = opt.biome || 'summer';
-  const hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 36 }[b], dark = b === 'dark';
-  g.fillStyle = lg(0, 0, 0, H, hsl(hue, dark ? 0.3 : 0.55, dark ? 0.3 : 0.56), hsl(hue, dark ? 0.28 : 0.52, dark ? 0.2 : 0.46)); g.fillRect(0, 0, W, H);
-  for (let i = 0; i < W * H / 9000; i++) blob(r() * W, r() * H, r.range(30, 90), r.range(12, 34), r() < 0.5 ? hsl(hue + 8, 0.6, dark ? 0.42 : 0.66) : hsl(hue - 6, 0.5, dark ? 0.2 : 0.38), 0.2);
+  const D = DUNGEON[b], hue = D ? D.hue : { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 130 }[b], dark = b === 'dark' || !!D;
+  g.fillStyle = lg(0, 0, 0, H, hsl(hue, D ? D.sat : 0.55, D ? D.l : dark ? 0.34 : 0.56), hsl(hue, D ? D.sat * 0.93 : 0.52, D ? D.l * 0.68 : dark ? 0.26 : 0.46)); g.fillRect(0, 0, W, H);
+  for (let i = 0; i < W * H / 9000; i++) blob(r() * W, r() * H, r.range(30, 90), r.range(12, 34), r() < 0.5 ? hsl(hue + 8, D ? D.sat * 1.3 : 0.6, dark ? 0.42 : 0.66) : hsl(hue - 6, D ? D.sat : 0.5, dark ? 0.2 : 0.38), 0.2);
 }
 export function tufts(g, W, H, seed, n, avoid, opt = {}) {
-  const r = rng(seed * 61 + 7), { ln } = kit(g), b = opt.biome || 'summer', hue = { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 60 }[b];
+  const r = rng(seed * 61 + 7), { ln } = kit(g), b = opt.biome || 'summer', hue = (DUNGEON[b] ? DUNGEON[b].tuft : { summer: 98, lush: 118, autumn: 62, spring: 88, dark: 130 }[b]);
   for (let i = 0; i < n; i++) { const x = r() * W, y = r() * H; if (avoid && avoid(x, y)) continue; const c = r() < 0.5 ? hsl(hue, 0.5, 0.34) : hsl(hue + 8, 0.6, 0.7), s = r.range(0.8, 1.3); for (const dx of [-3, 0, 3]) ln([[x + dx * s, y], [x + dx * s * 1.6 + (r() - 0.5) * 3, y - 7 * s * r.range(0.7, 1.3)]], 1.4, c); }
 }
 

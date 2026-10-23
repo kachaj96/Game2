@@ -6,6 +6,8 @@ export const MOODS = {
   noc: { tint: 'rgb(118,130,190)', vig: 0.66 },
   // surowo: wyblakłe kolory, brudne ciepłe cienie, ciężka winieta i ziarno
   gritLekki: { tint: 'rgb(214,202,192)', vig: 0.42, desat: 0.4, grain: 0.18 },
+  ziemia: { tint: 'rgb(214,186,156)', vig: 0.62, desat: 0.36, grain: 0.2 },
+  gniazdo: { tint: 'rgb(168,176,206)', vig: 0.78, desat: 0.55, grain: 0.24 },
   grit: { tint: 'rgb(196,184,176)', vig: 0.72, desat: 0.5, grain: 0.22 },
 };
 export function applyMood(g, w, h, name = 'noc') {

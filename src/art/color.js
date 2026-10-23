@@ -6,8 +6,8 @@ export function toHsl(hex) {
   if (d) { S = L > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); H = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H *= 60; }
   return [H, S, L];
 }
-// Surowość: wszystkie kolory generowane przez hsl() są przygaszone i przyciemnione (bliżej Diablo niż bajki). 1 = bez zmian.
-export const GRIT = { sat: 0.66, light: 0.88 };
+// Surowość motywu: kolory z hsl() są przygaszane i ciemnione zależnie od motywu (src/art/theme.js). 1 = świat, bez zmian.
+export const GRIT = { sat: 1, light: 1 };
 export const hsl = (h, s, l) => hslRaw(h, s * GRIT.sat, l * GRIT.light);
 export function hslRaw(h, s, l) {
   h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));

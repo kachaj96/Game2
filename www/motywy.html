@@ -1,0 +1,36 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Motywy oprawy</title>
+<style>body{margin:0;background:#0d0b0a;color:#d8cdb4;font:14px system-ui,sans-serif}h1{font-size:16px;margin:10px 14px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 8px 8px}canvas{width:100%;height:auto;display:block}</style></head><body>
+<h1>Motywy oprawy: świat jest jasny, każdy loch ma własny wygląd</h1>
+<div class="g" id="g"></div>
+<script type="module">
+import {IsoGrid} from '../src/grid.js';
+import * as N from '../src/art/nature.js';
+import {drawFlagstones,drawGridLines} from '../src/art/gridview.js';
+import {DECALS} from '../src/art/props.js';
+import {THEMES,THEME_IDS,applyTheme} from '../src/art/theme.js';
+import {applyMood} from '../src/art/mood.js';
+import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
+import {heroSpec} from '../src/art/classes.js';
+import {genKopacz,drawKopacz} from '../src/art/creatures.js';
+import {genBuilding,drawBuilding} from '../src/art/buildings.js';
+const W=740,H=420;
+for(const id of THEME_IDS){
+  const T=applyTheme(id),cv=document.createElement('canvas');cv.width=W;cv.height=H;document.getElementById('g').append(cv);const g=cv.getContext('2d');
+  N.ground(g,W,H,7,{biome:T.biome});N.tufts(g,W,H,7,Math.round(500*T.tufts),null,{biome:T.biome});
+  const grid=new IsoGrid(5,5,{x:W/2,y:96});
+  if(id!=='swiat'){drawFlagstones(g,grid,7,T.stone);drawGridLines(g,grid,'rgba(220,200,170,.16)')}
+  else drawGridLines(g,grid,'rgba(255,255,255,.2)');
+  for(let y=0;y<5;y++)for(let x=0;x<5;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&T.decals.length)DECALS[T.decals[h%T.decals.length]](g,c[0]+(h===0?4:0),c[1]+1,.95,x*7+y*3+h)}
+  const items=[],hero=heroSpec('zalobnik',{face:1,colors:['#2a2438','#e07a3a','#ff9a4a']});
+  const put=(gx,gy,f)=>items.push({d:gx+gy,f:()=>{const c=grid.center(gx,gy);f(c[0],c[1])}});
+  put(1,3,(x,y)=>drawCharacter(g,x,y-2,{...hero,sc:hero.sc*1.25},{...DIRS.SE,ring:'rgb(60,120,255)'}));
+  if(id==='swiat'){put(3,1,(x,y)=>drawCharacter(g,x,y-2,{...genCharacter(5,'villager'),sc:1.25},{...DIRS.SW}));put(4,4,(x,y)=>N.oak(g,x,y+6,3,{}));put(0,0,(x,y)=>drawBuilding(g,x,y+10,genBuilding(4,'cottage')))}
+  else if(id==='arena'){put(3,1,(x,y)=>drawCharacter(g,x,y-2,{...genCharacter(9,'warrior'),sc:1.25},{...DIRS.SW,ring:'rgb(255,70,70)'}))}
+  else if(id==='kopacze'){put(3,1,(x,y)=>drawKopacz(g,x,y-2,genKopacz(2,'kopacz'),{...DIRS.SW,ring:'rgb(255,70,70)'}));put(3,3,(x,y)=>drawKopacz(g,x,y-2,genKopacz(4,'pancerny'),{...DIRS.SW,ring:'rgb(255,70,70)'}))}
+  else put(3,2,(x,y)=>drawKopacz(g,x,y-2,genKopacz(6,'szperacz'),{...DIRS.SW,ring:'rgb(255,70,70)'}));
+  items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());
+  applyMood(g,W,H,T.mood);
+  g.fillStyle='rgba(0,0,0,.6)';g.fillRect(8,8,250,26);g.fillStyle='#f0e6d0';g.font='bold 15px system-ui';g.fillText(T.name+' ('+id+')',16,26);
+}
+applyTheme('swiat');
+</script></body></html>

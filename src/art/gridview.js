@@ -22,11 +22,11 @@ export function drawBlocked(g, grid, x, y) {
 
 // Kafle jak płyty z kamienia: każdy w innym odcieniu, ze ściętymi krawędziami, plamami brudu i drobnymi odpryskami.
 import { rng } from './rng.js';
-export function drawFlagstones(g, grid, seed = 1) {
+export function drawFlagstones(g, grid, seed = 1, stone = { hue: [24, 40], sat: [8, 16], l: [20, 30] }) {
   const { poly, ln } = kit(g);
   for (let y = 0; y < grid.rows; y++) for (let x = 0; x < grid.cols; x++) {
-    const r = rng(seed * 131 + x * 17 + y * 29), [t, rt, b, l] = grid.corners(x, y), L = r.range(0.2, 0.3);
-    const col = `hsl(${r.range(24, 40)},${r.range(8, 16)}%,${L * 100}%)`;
+    const r = rng(seed * 131 + x * 17 + y * 29), [t, rt, b, l] = grid.corners(x, y), L = r.range(stone.l[0], stone.l[1]) / 100;
+    const col = `hsl(${r.range(...stone.hue)},${r.range(...stone.sat)}%,${L * 100}%)`;
     poly([t, rt, b, l], col, 0);
     g.save(); g.beginPath(); [t, rt, b, l].forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.clip();
     const cx = (t[0] + b[0]) / 2, cy = (t[1] + b[1]) / 2;

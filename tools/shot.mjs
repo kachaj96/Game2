@@ -5,7 +5,7 @@ import { startServer } from './serve.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOTS = [
-  ['wioska', 1500, 800], ['zblizenie', 1500, 900], ['klasy', 1500, 980], ['ikony', 1500, 1130], ['siatka', 1000, 700, async (page) => { const c = await page.evaluate(() => window.__grid.center(5, 6)); const box = await page.locator('canvas').boundingBox(); await page.mouse.move(box.x + c[0], box.y + c[1]); }], ['budynki', 1500, 860], ['postacie', 1500, 620], ['postacie-zblizenie', 1500, 560], ['przyroda', 1500, 520], ['przeciwnicy', 1500, 790],
+  ['wioska', 1500, 800], ['zblizenie', 1500, 900], ['klasy', 1500, 980], ['ikony', 1500, 1130], ['siatka', 1000, 700, async (page) => { const c = await page.evaluate(() => window.__grid.center(5, 6)); const box = await page.locator('canvas').boundingBox(); await page.mouse.move(box.x + c[0], box.y + c[1]); }], ['budynki', 1500, 860], ['postacie', 1500, 620], ['postacie-zblizenie', 1500, 560], ['przyroda', 1500, 520], ['przeciwnicy', 1500, 790], ['motywy', 1500, 900],
 ];
 
 let chromium;

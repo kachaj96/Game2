@@ -56,6 +56,8 @@ import {drawCharacter,DIRS} from '../src/art/characters.js';
 import {CLASSES,ORIGINS,TRAITS,MAX_TRAITS,startStats} from '../src/game/classdata.js';
 import {glow,applyMood} from '../src/art/mood.js';
 import {installFrames,drawLock} from '../src/art/ui.js';
+import {applyTheme} from '../src/art/theme.js';
+applyTheme('arena');
 import {newCharacter} from '../src/game/progression.js';
 import {saveCharacter} from '../src/game/save.js';
 installFrames();

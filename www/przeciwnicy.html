@@ -5,9 +5,11 @@
 <script type="module">
 import { genKopacz, drawKopacz, KOPACZE, DIRS } from '../src/art/creatures.js';
 import { applyMood } from '../src/art/mood.js';
+import { applyTheme } from '../src/art/theme.js';
+const TH = applyTheme('kopacze');
 import { ground, tufts } from '../src/art/nature.js';
 const cv = document.getElementById('c'), g = cv.getContext('2d');
-ground(g, 1500, 760, 5); tufts(g, 1500, 760, 5, 200);
+ground(g, 1500, 760, 5, { biome: TH.biome }); tufts(g, 1500, 760, 5, 60, null, { biome: TH.biome });
 g.fillStyle = 'rgba(14,10,6,.55)'; g.fillRect(0, 0, 1500, 760);
 g.fillStyle = '#d8cdb4'; g.font = '13px system-ui';
 KOPACZE.forEach((kind, row) => {
@@ -17,5 +19,5 @@ KOPACZE.forEach((kind, row) => {
   for (const [j, d] of Object.values(DIRS).entries()) drawKopacz(g, 960 + j * 70, y, s, d);
   [0.1, 0.35, 0.6, 0.85].forEach((t, j) => drawKopacz(g, 1260 + j * 62, y, s, { view: 'front', t }));
 });
-applyMood(g, 1500, 760, 'zmierzch');
+applyMood(g, 1500, 760, TH.mood);
 </script></body></html>

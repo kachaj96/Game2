@@ -26,6 +26,7 @@ Hybryda w fazach: stały bohater i świat do eksploracji, Pogrzebana arena jako 
 - Budynek musi mieć kontakt z gruntem: wydeptana ziemia pod podstawą, cień, ciemniejszy pas przy murze, kępki trawy.
 
 ## Styl graficzny
+- **Motywy** (`src/art/theme.js`): świat i eksploracja zostają jasne i barwne (`swiat`, bez przygaszenia), a **każdy loch ma własny motyw** dobrany do swoich wrogów (przygaszenie kolorów, nastrój światła, podłoże, kamienne płyty, ślady na ziemi). Na start: `arena`, `kopacze`, `pajaki`. Nowy loch = nowy wpis w `THEMES` (plus wpis w Księdze). Strona porównawcza: `www/motywy.html`. Strony świata nie wywołują `applyTheme`, walka wybiera motyw przez `?theme=`.
 - Równy ciemnobrązowy kontur (`OUT` z `src/art/kit.js`), nasycone kolory, gradienty zamiast płaskich wypełnień, światło z lewej góry (lewa ściana ciemniejsza, prawa jaśniejsza).
 - Rzut izometryczny 2:1, kafel `TW=72`, `TH=36` (`src/grid.js`). Punkt (X,Y) budynku to jego przedni dolny róg.
 - Postacie mają 4 kierunki: SE i NE rysowane wprost, SW i NW to lustro. Chód to parametr `t` od 0 do 1.

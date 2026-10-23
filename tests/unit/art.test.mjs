@@ -8,6 +8,9 @@ import { drawPlate, drawLock, drawOrb } from '../../src/art/ui.js';
 import { drawFlagstones } from '../../src/art/gridview.js';
 import { IsoGrid } from '../../src/grid.js';
 import { bloodSplat, bones, crack } from '../../src/art/props.js';
+import { THEMES, THEME_IDS, applyTheme } from '../../src/art/theme.js';
+import { GRIT, hsl } from '../../src/art/color.js';
+import { DECALS } from '../../src/art/props.js';
 import * as N from '../../src/art/nature.js';
 import { PROPS } from '../../src/art/props.js';
 import { applyMood, glow, MOODS } from '../../src/art/mood.js';
@@ -117,4 +120,27 @@ test('kule zasobów, kamienne płyty i ślady na ziemi rysują się bez błędó
 test('płyty podłogi są zróżnicowane: dwa kafle z różnych miejsc nie wyglądają tak samo', () => {
   const rec = (x, y) => { const out = []; const g = new Proxy({}, { get: (t, p) => (p in t ? t[p] : p === 'createLinearGradient' || p === 'createRadialGradient' ? () => ({ addColorStop() {} }) : (...a) => { out.push(`${String(p)}:${a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',')}`); }), set: (t, p, v) => { out.push(`${String(p)}=${v}`); t[p] = v; return true; } }); drawFlagstones(g, { cols: 1, rows: 1, corners: () => [[0, 0], [36, 18], [0, 36], [-36, 18]] , ox: x, oy: y }, x * 10 + y); return out.join('|'); };
   assert.notEqual(rec(1, 1), rec(2, 5));
+});
+
+test('motywy: świat bez przygaszenia, każdy loch inny, ma podłoże, nastrój i ślady, a kolory generatorów zmieniają się z motywem', () => {
+  assert.ok(THEMES.swiat.grit.sat === 1 && THEMES.swiat.grit.light === 1, 'świat zostaje barwny');
+  assert.ok(THEME_IDS.length >= 4);
+  for (const id of THEME_IDS) {
+    const t = THEMES[id]; assert.ok(t.name && MOODS[t.mood], `${id}: nastrój istnieje`);
+    assert.ok(t.stone.hue.length === 2 && t.stone.l[0] < t.stone.l[1], `${id}: zakres płyt`);
+    for (const d of t.decals) assert.ok(DECALS[d], `${id}: znany ślad ${d}`);
+    if (id !== 'swiat') { assert.ok(t.decals.length >= 3, `${id}: lochy mają ślady na ziemi`); assert.ok(t.grit.sat < 1 && t.grit.light < 1); assert.ok(t.tufts < 1, `${id}: mniej trawy niż w świecie`); }
+    const g = mockCtx(); N.ground(g, 200, 120, 3, { biome: t.biome }); N.tufts(g, 200, 120, 3, 20, null, { biome: t.biome }); clean(g, `grunt ${id}`);
+  }
+  assert.equal(new Set(THEME_IDS.map((id) => THEMES[id].biome)).size, THEME_IDS.length, 'każdy motyw ma własne podłoże');
+  assert.equal(new Set(THEME_IDS.map((id) => THEMES[id].mood)).size, THEME_IDS.length, 'każdy motyw ma własne światło');
+  applyTheme('swiat'); const bright = hsl(100, 0.6, 0.5);
+  for (const id of THEME_IDS.filter((x) => x !== 'swiat')) { applyTheme(id); assert.notEqual(hsl(100, 0.6, 0.5), bright, `${id} przygasza kolory`); }
+  applyTheme('swiat'); assert.equal(hsl(100, 0.6, 0.5), bright); assert.deepEqual({ ...GRIT }, { sat: 1, light: 1 });
+  applyTheme('nie_ma'); assert.equal(GRIT.sat, 1, 'nieznany motyw wraca do świata');
+});
+
+test('ślady lochów: kopce, pajęczyny i kokony rysują się bez błędów i różnią między ziarnami', () => {
+  const rec = (fn, seed) => { const out = []; const g = new Proxy({}, { get: (t, p) => (p in t ? t[p] : p === 'createLinearGradient' || p === 'createRadialGradient' ? () => ({ addColorStop() {} }) : (...a) => { out.push(`${String(p)}:${a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',')}`); }), set: (t, p, v) => { t[p] = v; return true; } }); fn(g, 50, 50, 1, seed); return out.join('|'); };
+  for (const fn of [DECALS.mound, DECALS.web, DECALS.eggs]) { const sigs = new Set(); for (let s = 1; s <= 10; s++) { const g = mockCtx(); fn(g, 50, 50, 1, s); assert.ok(g.__state.calls > 5); clean(g, fn.name); sigs.add(rec(fn, s)); } assert.ok(sigs.size >= 9, `${fn.name}: wariant zależy od ziarna`); }
 });
