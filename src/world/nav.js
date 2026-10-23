@@ -1,18 +1,43 @@
-// Poruszanie się po świecie: wysokość w punkcie, kolizje, ścieżki A* i chód. Czysta logika, bez rysowania.
-import { N, WATER } from './kraina.js';
+// Poruszanie się po świecie: wysokość w punkcie, krawędzie i klify, kolizje, ścieżki A* i chód. Czysta logika, bez rysowania.
+// Teren to platformy (poziomy całkowite) i pochylnie. Przejście między sąsiednimi kaflami jest możliwe tylko, gdy wysokości na wspólnej krawędzi się zgadzają,
+// więc ściana skalna jest nie do przejścia, a pochylnia (schody) działa jak przejście.
+import { N } from './kraina.js';
 import { clamp } from './noise.js';
 
 export const R_HERO = 0.3, SPEED = 3.5;
-const W1 = N + 1;
+// wysokość kafla (tx,ty) w jego punkcie lokalnym (fx,fy) z 0..1: kafel płaski ma stały poziom, pochylnia rośnie wzdłuż swojego kierunku
+export function tileZ(w, tx, ty, fx, fy) {
+  const k = ty * N + tx, L = w.lvl[k], r = w.ramp[k];
+  return r === 0 ? L : L + (r === 1 ? fx : r === 2 ? 1 - fx : r === 3 ? fy : 1 - fy);
+}
 export function heightAt(w, x, y) {
-  const cx = clamp(x, 0, N - 1e-6), cy = clamp(y, 0, N - 1e-6), ix = Math.floor(cx), iy = Math.floor(cy), fx = cx - ix, fy = cy - iy, H = w.heights;
-  const a = H[iy * W1 + ix], b = H[iy * W1 + ix + 1], c = H[(iy + 1) * W1 + ix], d = H[(iy + 1) * W1 + ix + 1];
-  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  const cx = clamp(x, 0, N - 1e-6), cy = clamp(y, 0, N - 1e-6), tx = Math.floor(cx), ty = Math.floor(cy);
+  return tileZ(w, tx, ty, cx - tx, cy - ty);
 }
 export const tileBlocked = (w, tx, ty) => tx < 0 || ty < 0 || tx >= N || ty >= N || w.blocked[ty * N + tx] !== 0;
-export const inWater = (w, x, y) => heightAt(w, x, y) < WATER;
-// czy okrąg o promieniu r w punkcie (x,y) nie wchodzi na zablokowane kafle (sprawdzamy narożniki kwadratu)
-export const freeAt = (w, x, y, r = R_HERO) => !(tileBlocked(w, Math.floor(x - r), Math.floor(y - r)) || tileBlocked(w, Math.floor(x + r), Math.floor(y - r)) || tileBlocked(w, Math.floor(x - r), Math.floor(y + r)) || tileBlocked(w, Math.floor(x + r), Math.floor(y + r)));
+export const inWater = (w, x, y) => { const tx = Math.floor(x), ty = Math.floor(y); return tx >= 0 && ty >= 0 && tx < N && ty < N && w.cellKind[ty * N + tx] === w.KIND.shallow; };
+const EDGE = [[1, 0.5], [0, 0.5], [0.5, 1], [0.5, 0]];   // 0:+x 1:-x 2:+y 3:-y
+const DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+// czy z kafla a można wejść na sąsiedni kafel b (stykające się bokami)
+export function canStep(w, ax, ay, bx, by) {
+  if (tileBlocked(w, ax, ay) || tileBlocked(w, bx, by)) return false;
+  const d = DIR.findIndex(([dx, dy]) => ax + dx === bx && ay + dy === by); if (d < 0) return false;
+  const za = tileZ(w, ax, ay, EDGE[d][0], EDGE[d][1]), o = d ^ 1, zb = tileZ(w, bx, by, EDGE[o][0], EDGE[o][1]);
+  return Math.abs(za - zb) < 0.2;
+}
+// połączenie kafla z kaflem w narożniku (po przekątnej przez jednego z dwóch sąsiadów)
+const connected = (w, ax, ay, bx, by) => {
+  if (ax === bx && ay === by) return true;
+  if (Math.abs(ax - bx) + Math.abs(ay - by) === 1) return canStep(w, ax, ay, bx, by);
+  if (Math.abs(ax - bx) === 1 && Math.abs(ay - by) === 1) return (canStep(w, ax, ay, bx, ay) && canStep(w, bx, ay, bx, by)) || (canStep(w, ax, ay, ax, by) && canStep(w, ax, by, bx, by));
+  return false;
+};
+// czy okrąg o promieniu r w punkcie (x,y) mieści się: środek na wolnym kaflu, a każdy kafel pod okręgiem jest z nim połączony przejściem
+export function freeAt(w, x, y, r = R_HERO) {
+  const cx = Math.floor(x), cy = Math.floor(y); if (tileBlocked(w, cx, cy)) return false;
+  for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) { const kx = Math.floor(x + ox), ky = Math.floor(y + oy); if ((kx !== cx || ky !== cy) && !connected(w, cx, cy, kx, ky)) return false; }
+  return true;
+}
 // ruch z poślizgiem po ścianach: najpierw cały wektor, potem osobno osie
 export function moveWithCollision(w, x, y, dx, dy, r = R_HERO) {
   if (freeAt(w, x + dx, y + dy, r)) return [x + dx, y + dy];
@@ -31,25 +56,26 @@ class Heap {
   pop() { const a = this.a, top = a[0], last = a.pop(); if (a.length) { a[0] = last; let i = 0; for (;;) { let l = 2 * i + 1, r = l + 1, m = i; if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return top; }
   get size() { return this.a.length; }
 }
-const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-// ścieżka po kaflach, koszt rośnie z podjazdem; wynik wygładzony do odcinków prostych
+const D8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+// ścieżka po kaflach, ruch tylko przez dozwolone przejścia (bez klifów); wynik wygładzony do odcinków prostych
 export function findPath(w, from, to, maxNodes = 90000) {
   const sx = Math.floor(from[0]), sy = Math.floor(from[1]);
   let goal = to; if (tileBlocked(w, Math.floor(to[0]), Math.floor(to[1]))) { goal = nearestFree(w, to[0], to[1]); if (!goal) return null; }
   const gx = Math.floor(goal[0]), gy = Math.floor(goal[1]);
   if (tileBlocked(w, sx, sy)) return null;
   const g = new Float32Array(N * N).fill(1e9), prev = new Int32Array(N * N).fill(-1), done = new Uint8Array(N * N), heap = new Heap(), idx = (x, y) => y * N + x;
-  const hz = (x, y) => heightAt(w, x + 0.5, y + 0.5), oct = (dx, dy) => { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.max(ax, ay) + 0.4142 * Math.min(ax, ay); };
+  const oct = (dx, dy) => { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.max(ax, ay) + 0.4142 * Math.min(ax, ay); };
   g[idx(sx, sy)] = 0; heap.push(oct(gx - sx, gy - sy), idx(sx, sy));
   let n = 0;
   while (heap.size && n++ < maxNodes) {
     const [, cur] = heap.pop(); if (done[cur]) continue; done[cur] = 1;
     const cx = cur % N, cy = (cur / N) | 0; if (cx === gx && cy === gy) break;
-    for (const [dx, dy] of DIRS) {
+    for (const [dx, dy] of D8) {
       const nx = cx + dx, ny = cy + dy; if (tileBlocked(w, nx, ny)) continue;
-      if (dx && dy && (tileBlocked(w, cx + dx, cy) || tileBlocked(w, cx, cy + dy))) continue;
+      if (dx && dy) { if (!((canStep(w, cx, cy, nx, cy) && canStep(w, nx, cy, nx, ny)) && (canStep(w, cx, cy, cx, ny) && canStep(w, cx, ny, nx, ny)))) continue; }
+      else if (!canStep(w, cx, cy, nx, ny)) continue;
       const ni = idx(nx, ny); if (done[ni]) continue;
-      const dh = hz(nx, ny) - hz(cx, cy), step = (dx && dy ? 1.4142 : 1) * (1 + Math.max(0, dh) * 0.7 + (hz(nx, ny) < WATER ? 0.6 : 0)), ng = g[cur] + step;
+      const step = (dx && dy ? 1.4142 : 1) * (1 + (w.ramp[ni] ? 0.35 : 0) + (w.cellKind[ni] === w.KIND.shallow ? 0.6 : 0)), ng = g[cur] + step;
       if (ng < g[ni]) { g[ni] = ng; prev[ni] = cur; heap.push(ng + oct(gx - nx, gy - ny), ni); }
     }
   }
@@ -61,7 +87,7 @@ export function findPath(w, from, to, maxNodes = 90000) {
 }
 // odcinek jest wolny, gdy okrąg bohatera mieści się na całej jego długości
 export function lineFree(w, a, b, r = R_HERO) {
-  const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(d / 0.2));
+  const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(d / 0.15));
   for (let i = 0; i <= n; i++) { const t = i / n; if (!freeAt(w, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, r)) return false; }
   return true;
 }

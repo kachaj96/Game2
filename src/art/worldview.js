@@ -3,16 +3,17 @@
 // wysokość to przesunięcie w górę o HZ pikseli na poziom.
 import { IsoGrid } from '../grid.js';
 import { N, HZ } from '../world/kraina.js';
-import { heightAt } from '../world/nav.js';
-import { groundColor } from './groundcolor.js';
+import { heightAt, tileZ } from '../world/nav.js';
+import { groundColor, hslRgb, rgbStr } from './groundcolor.js';
+import { hash2 } from '../world/noise.js';
 import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
 
-export const MAXZ = 14, CS = 6, SUB = 8;
-const BAKE = 1.0;   // teren pieczemy w niższej rozdzielczości i rysujemy z wygładzaniem: miękkie, malarskie przejścia
+export const MAXZ = 8, CS = 6, SUB = 8;
+
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
 const TREE = { oak: 1, pine: 1, birch: 1, dead: 1, swamp: 1 };
@@ -31,30 +32,97 @@ export class WorldView {
   // ekran (px świata) punktu siatki na wysokości z
   proj(x, y, z = 0) { const p = this.grid.toScreen(x, y); p[1] -= z * HZ; return p; }
   pos(x, y) { return this.proj(x, y, heightAt(this.w, x, y)); }
-  // punkt ekranu na punkt gruntu: wysokość zależy od położenia, więc iterujemy
+  // punkt ekranu na punkt gruntu: szukamy od najwyższego poziomu w dół pierwszej powierzchni, która leży na linii patrzenia
   unproject(wx, wy) {
-    let z = 0, gx = 0, gy = 0;
-    for (let i = 0; i < 7; i++) { [gx, gy] = this.grid.toGrid(wx, wy + z * HZ); z = heightAt(this.w, gx, gy); }
-    return [gx, gy];
+    let gx = 0, gy = 0;
+    for (let z = 8; z >= -5; z -= 0.125) { [gx, gy] = this.grid.toGrid(wx, wy + z * HZ); if (gx < 0 || gy < 0 || gx >= N || gy >= N) continue; if (heightAt(this.w, gx, gy) >= z - 0.01) return [gx, gy]; }
+    return this.grid.toGrid(wx, wy);
   }
-  // blok terenu: wszystkie kafle bloku jako jeden obraz, każdy kafel dzielony na SUB x SUB pól o ciągłym kolorze
+  // narożniki kafla (z) w kolejności (x,y), (x+1,y), (x+1,y+1), (x,y+1)
+  cornersZ(tx, ty) { const w = this.w; return [tileZ(w, tx, ty, 0, 0), tileZ(w, tx, ty, 1, 0), tileZ(w, tx, ty, 1, 1), tileZ(w, tx, ty, 0, 1)]; }
+  // blok terenu: powierzchnie płaskie i pochylnie, ściany skalne z trawiastą krawędzią, woda; jeden obraz na blok
   bakeChunk(cx, cy, scale, ctx2d) {
-    const w = this.w, x0 = cx * CS, y0 = cy * CS, x1 = Math.min(N, x0 + CS), y1 = Math.min(N, y0 + CS), W1 = N + 1;
-    let zmin = 99, zmax = -99; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const h = w.heights[y * W1 + x]; zmin = Math.min(zmin, h); zmax = Math.max(zmax, h); }
-    const gr = this.grid, X0 = gr.ox + (x0 - y1) * 36 - 6, X1 = gr.ox + (x1 - y0) * 36 + 6, Y0 = gr.oy + (x0 + y0) * 18 - zmax * HZ - 6, Y1 = gr.oy + (x1 + y1) * 18 - zmin * HZ + 6;
+    const w = this.w, x0 = cx * CS, y0 = cy * CS, x1 = Math.min(N, x0 + CS), y1 = Math.min(N, y0 + CS);
+    let zmin = 99, zmax = -99; for (let y = y0; y <= Math.min(N - 1, y1); y++) for (let x = x0; x <= Math.min(N - 1, x1); x++) { const L = w.lvl[y * N + x]; zmin = Math.min(zmin, L); zmax = Math.max(zmax, L + 1); }
+    const gr = this.grid, X0 = gr.ox + (x0 - y1) * 36 - 8, X1 = gr.ox + (x1 - y0) * 36 + 8, Y0 = gr.oy + (x0 + y0) * 18 - zmax * HZ - 10, Y1 = gr.oy + (x1 + y1) * 18 - zmin * HZ + 10;
     let g = ctx2d, canvas = null;
-    if (!g && this.doc) { canvas = this.doc.createElement('canvas'); canvas.width = Math.ceil((X1 - X0) * scale * BAKE); canvas.height = Math.ceil((Y1 - Y0) * scale * BAKE); g = canvas.getContext('2d'); }
+    if (!g && this.doc) { canvas = this.doc.createElement('canvas'); canvas.width = Math.ceil((X1 - X0) * scale); canvas.height = Math.ceil((Y1 - Y0) * scale); g = canvas.getContext('2d'); }
     if (!g) return null;
-    g.save(); g.scale(scale * BAKE, scale * BAKE); g.translate(-X0, -Y0);
-    const e = 0.9;   // lekkie nachodzenie pól, żeby nie było szwów
-    for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) for (let j = 0; j < SUB; j++) for (let i = 0; i < SUB; i++) {
-      const u0 = i / SUB, u1 = (i + 1) / SUB, v0 = j / SUB, v1 = (j + 1) / SUB;
-      const a = this.proj(tx + u0, ty + v0, heightAt(w, tx + u0, ty + v0)), b = this.proj(tx + u1, ty + v0, heightAt(w, tx + u1, ty + v0)), c = this.proj(tx + u1, ty + v1, heightAt(w, tx + u1, ty + v1)), d = this.proj(tx + u0, ty + v1, heightAt(w, tx + u0, ty + v1));
+    g.save(); g.scale(scale, scale); g.translate(-X0, -Y0);
+    const tiles = []; for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) tiles.push([tx, ty]); tiles.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
+    for (const [tx, ty] of tiles) this.drawTile(g, tx, ty);
+    g.restore(); this.baked++;
+    return { canvas, X0, Y0, w: X1 - X0, h: Y1 - Y0 };
+  }
+  drawTile(g, tx, ty) {
+    const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
+    if (w.ramp[k]) return this.drawRamp(g, tx, ty, z);
+    const e = 0.7, SUBN = kind === K.road || kind === K.plaza ? SUB : SUB - 2;
+    for (let j = 0; j < SUBN; j++) for (let i = 0; i < SUBN; i++) {
+      const u0 = i / SUBN, u1 = (i + 1) / SUBN, v0 = j / SUBN, v1 = (j + 1) / SUBN, zz = z[0];
+      const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz);
       g.fillStyle = groundColor(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2);
       g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill();
     }
-    g.restore(); this.baked++;
-    return { canvas, X0, Y0, w: X1 - X0, h: Y1 - Y0 };
+    // trawiaste kępki malarsko pokrywają równe powierzchnie
+    if (kind <= K.moss || kind === K.dry) { const gc = kind === K.moss ? ['#2a4a2a', '#4a7a3a'] : ['#3a7a2a', '#8ab84a']; g.lineWidth = 1.4; g.lineCap = 'round';
+      for (let t = 0; t < 5; t++) { const fx = 0.12 + 0.76 * hash2(21 + t, tx, ty), fy = 0.12 + 0.76 * hash2(31 + t, tx, ty), p = P(fx, fy, z[0]), h = 5 + 4 * hash2(41 + t, tx, ty); g.strokeStyle = t % 2 ? gc[0] : gc[1]; g.beginPath(); g.moveTo(p[0] - 2, p[1]); g.lineTo(p[0] - 3.5, p[1] - h); g.moveTo(p[0], p[1]); g.lineTo(p[0], p[1] - h - 2); g.moveTo(p[0] + 2, p[1]); g.lineTo(p[0] + 3.5, p[1] - h); g.stroke(); } }
+    // ściany skalne po stronie widocznej (+x i +y), tam gdzie sąsiad jest niżej
+    for (const [dx, dy, side] of [[1, 0, 'R'], [0, 1, 'L']]) {
+      const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue;
+      const nz = this.cornersZ(nx, ny);
+      // wspólna krawędź: dla +x narożniki (1,0)-(1,1) kafla i (0,0)-(0,1) sąsiada; dla +y narożniki (0,1)-(1,1) i (0,0)-(1,0)
+      const tA = dx ? z[1] : z[3], tB = dx ? z[2] : z[2], nA = dx ? nz[0] : nz[0], nB = dx ? nz[3] : nz[1];
+      const ta = dx ? z[1] : z[3], tb = z[2], na = dx ? nz[0] : nz[0], nb = dx ? nz[3] : nz[1];
+      if (ta - na < 0.15 && tb - nb < 0.15) continue;
+      const A = dx ? P(1, 0, ta) : P(0, 1, ta), B = P(1, 1, tb);
+      this.drawWall(g, A, B, Math.max(0, (ta - na)) * HZ, Math.max(0, (tb - nb)) * HZ, tx * 131 + ty * 17 + (dx ? 1 : 2), side, k, w.cellKind[ty * N + tx]);
+    }
+  }
+  // pochylnia jako schody: nachylony czworokąt z kamiennymi stopniami
+  drawRamp(g, tx, ty, z) {
+    const w = this.w, k = ty * N + tx, r = w.ramp[k], P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), L = w.lvl[k], STEPS = 6;
+    const at = (t) => (r === 1 ? [[t, 0], [t, 1]] : r === 2 ? [[1 - t, 0], [1 - t, 1]] : r === 3 ? [[0, t], [1, t]] : [[0, 1 - t], [1, 1 - t]]);
+    for (let i = 0; i < STEPS; i++) {
+      const t0 = i / STEPS, t1 = (i + 1) / STEPS, zA = L + (i + 0.5) / STEPS * 1, [a0, b0] = at(t0), [a1, b1] = at(t1), zz0 = L + t0, zz1 = L + t1;
+      const p0 = P(a0[0], a0[1], zz0), p1 = P(b0[0], b0[1], zz0), p2 = P(b1[0], b1[1], zz1), p3 = P(a1[0], a1[1], zz1), light = 0.5 + 0.08 * (i % 2) + (r === 3 || r === 1 ? 0.05 : 0);
+      g.fillStyle = rgbStr(hslRgb(36, 0.22, light)); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.lineTo(p2[0], p2[1]); g.lineTo(p3[0], p3[1]); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(40,28,16,.45)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(p3[0], p3[1]); g.lineTo(p2[0], p2[1]); g.stroke();
+      g.strokeStyle = 'rgba(255,240,200,.25)'; g.beginPath(); g.moveTo(p0[0], p0[1] + 1); g.lineTo(p1[0], p1[1] + 1); g.stroke();
+    }
+    // boczne ściany pochylni
+    for (const [dx, dy, side] of [[1, 0, 'R'], [0, 1, 'L']]) {
+      const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue;
+      const nz = this.cornersZ(nx, ny), ta = dx ? z[1] : z[3], tb = z[2], na = nz[0], nb = dx ? nz[3] : nz[1];
+      if (ta - na < 0.15 && tb - nb < 0.15) continue;
+      this.drawWall(g, dx ? P(1, 0, ta) : P(0, 1, ta), P(1, 1, tb), Math.max(0, ta - na) * HZ, Math.max(0, tb - nb) * HZ, tx * 131 + ty * 17 + (dx ? 1 : 2), side, k, 0);
+    }
+  }
+  // ściana skalna: kolumny o różnym odcieniu, warstwy, pęknięcia, mech, trawiasta krawędź. A i B to górne końce krawędzi, hA i hB wysokości w px.
+  drawWall(g, A, B, hA, hB, seed, side, k, topKind) {
+    const w = this.w, reg = w.cellRegion[k], M = 7, jit = Array.from({ length: M + 1 }, (_, i) => (hash2(seed, i, 7) - 0.5) * 7), at = (t) => [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, hA + (hB - hA) * t];
+    const base = side === 'L' ? [0.54, 0.3] : [0.4, 0.26], hue = reg === 2 ? 36 : 30, sat = base[1] + (reg === 2 ? 0.06 : 0), maxH = Math.max(hA, hB);
+    for (let i = 0; i < M; i++) {
+      const t0 = i / M, t1 = (i + 1) / M, p0 = at(t0), p1 = at(t1), v = (hash2(seed + 3, i, 1) - 0.5) * 0.09;
+      g.fillStyle = rgbStr(hslRgb(hue, sat, base[0] + v)); g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.lineTo(p1[0], p1[1] + p1[2] + jit[i + 1]); g.lineTo(p0[0], p0[1] + p0[2] + jit[i]); g.closePath(); g.fill();
+      // jasna ściana fasety po lewej, ciemna po prawej
+      g.strokeStyle = 'rgba(255,235,190,.16)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(p0[0] + 1, p0[1] + 3); g.lineTo(p0[0] + 1, p0[1] + p0[2] * (0.5 + 0.4 * hash2(seed, i, 2)) + jit[i]); g.stroke();
+      g.strokeStyle = 'rgba(30,18,8,.2)'; g.beginPath(); g.moveTo(p1[0] - 1, p1[1] + 3); g.lineTo(p1[0] - 1, p1[1] + p1[2] + jit[i + 1]); g.stroke();
+    }
+    // warstwy skalne
+    g.lineWidth = 1.1; g.strokeStyle = 'rgba(40,24,10,.3)';
+    for (let q = 1; q * 15 < maxH; q++) { g.beginPath(); for (let i = 0; i <= M; i++) { const p = at(i / M), yy = p[1] + q * 15 + (hash2(seed + 9, i, q) - 0.5) * 5; if (q * 15 > p[2] - 3) continue; i ? g.lineTo(p[0], yy) : g.moveTo(p[0], yy); } g.stroke(); }
+    // cień u podstawy i na górze (zagłębienie pod trawą)
+    const gr = g.createLinearGradient(0, Math.min(A[1], B[1]), 0, Math.min(A[1], B[1]) + maxH + 4); gr.addColorStop(0, 'rgba(0,0,0,.28)'); gr.addColorStop(0.15, 'rgba(0,0,0,0)'); gr.addColorStop(0.7, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(10,6,2,.38)');
+    g.fillStyle = gr; g.beginPath(); const pa = at(0), pb = at(1); g.moveTo(pa[0], pa[1]); g.lineTo(pb[0], pb[1]); g.lineTo(pb[0], pb[1] + pb[2] + 2); g.lineTo(pa[0], pa[1] + pa[2] + 2); g.closePath(); g.fill();
+    // pęknięcia i mech
+    g.strokeStyle = 'rgba(25,14,6,.4)'; g.lineWidth = 1;
+    for (let c = 0; c < 3; c++) { const t = 0.1 + 0.8 * hash2(seed + 11, c, 3), p = at(t), len = 8 + 14 * hash2(seed + 12, c, 4); g.beginPath(); g.moveTo(p[0], p[1] + 6); g.lineTo(p[0] + (hash2(seed + 13, c, 5) - 0.5) * 8, p[1] + 6 + len * 0.5); g.lineTo(p[0] + (hash2(seed + 14, c, 6) - 0.5) * 10, p[1] + 6 + len); g.stroke(); }
+    for (let m = 0; m < 3; m++) if (hash2(seed + 15, m, 8) < 0.55) { const t = hash2(seed + 16, m, 9), p = at(t); g.fillStyle = 'rgba(70,110,40,.45)'; g.beginPath(); g.ellipse(p[0], p[1] + p[2] * (0.25 + 0.4 * hash2(seed + 17, m, 1)), 6 + 8 * hash2(seed + 18, m, 2), 3 + 3 * hash2(seed + 19, m, 3), 0, 0, 7); g.fill(); }
+    // trawiasta krawędź zwisająca nad ścianą i kępki na górze
+    const gcol = topKind === w.KIND.moss ? '#2f5a2c' : '#4a8a30';
+    g.fillStyle = gcol; g.beginPath(); g.moveTo(A[0], A[1] - 1); for (let i = 0; i <= 12; i++) { const p = at(i / 12); g.lineTo(p[0], p[1] + 3 + 4 * hash2(seed + 21, i, 4)); } for (let i = 12; i >= 0; i--) { const p = at(i / 12); g.lineTo(p[0], p[1] - 2); } g.closePath(); g.fill();
+    g.strokeStyle = topKind === w.KIND.moss ? '#4a7a3a' : '#9ac85a'; g.lineWidth = 1.5; g.lineCap = 'round'; g.beginPath(); for (let i = 0; i < 16; i++) { const p = at(i / 15 * 0.98 + 0.01), hh = 4 + 5 * hash2(seed + 22, i, 5); g.moveTo(p[0], p[1]); g.lineTo(p[0] + (hash2(seed + 23, i, 6) - 0.5) * 4, p[1] - hh); } g.stroke();
   }
   chunk(cx, cy, scale, budget) {
     if (Math.abs(scale - this.chunkScale) > this.chunkScale * 0.08) { this.chunks.clear(); this.chunkScale = scale; }

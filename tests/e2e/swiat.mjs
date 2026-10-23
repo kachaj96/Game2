@@ -57,7 +57,7 @@ const open = async (q = '') => {
 // 8. wzgórze i krypta: bohater stoi wyżej niż w wiosce, wejście otwiera kartę lochu z zalecanym poziomem
 {
   const { ctx, page, tapAt, idle } = await open('?at=krypta');
-  const zs = await page.evaluate(() => { const s = window.__swiat; return [s.world.heights[0]].length && { up: s.wv.pos(s.hero.x, s.hero.y)[1], down: s.wv.pos(...s.world.start)[1] }; });
+  const zs = await page.evaluate(() => { const s = window.__swiat; return { up: s.wv.pos(s.hero.x, s.hero.y)[1], down: s.wv.pos(...s.world.start)[1] }; });
   const e = await page.evaluate(() => window.__swiat.world.entrances[0].at);
   assert.equal(await page.locator('#reg').textContent(), 'Cmentarne Wzgórze');
   await tapAt(e[0], e[1]); await idle(); await page.waitForSelector('#card', { state: 'visible', timeout: 5000 });

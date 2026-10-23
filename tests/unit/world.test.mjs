@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { noise2, fbm } from '../../src/world/noise.js';
-import { generateWorld, N, CLIFF, WATER, ENTRANCES } from '../../src/world/kraina.js';
-import { heightAt, tileBlocked, freeAt, moveWithCollision, findPath, pathLength, newWalker, setPath, stepWalker, lineFree } from '../../src/world/nav.js';
+import { generateWorld, N, ENTRANCES } from '../../src/world/kraina.js';
+import { heightAt, canStep, tileBlocked, freeAt, moveWithCollision, findPath, pathLength, newWalker, setPath, stepWalker, lineFree } from '../../src/world/nav.js';
 import { WorldView } from '../../src/art/worldview.js';
 import { genTree, drawTree, SPECIES } from '../../src/art/trees.js';
 import { groundRGB } from '../../src/art/groundcolor.js';
@@ -10,9 +10,10 @@ import { genEntrance, drawEntrance, ENTRANCE_KINDS } from '../../src/art/entranc
 import { mockCtx } from './mockctx.mjs';
 
 const W = generateWorld(1);
-const sig = (w) => { let h = 0; for (let i = 0; i < w.heights.length; i += 37) h = (h * 31 + Math.round(w.heights[i] * 1000)) | 0; return `${h}:${w.objects.length}:${w.buildings.length}`; };
-// płaski świat z rampą do testów ruchu
-const flat = (f = () => 0) => { const heights = new Float32Array((N + 1) * (N + 1)); for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) heights[y * (N + 1) + x] = f(x, y); return { heights, blocked: new Uint8Array(N * N), n: N }; };
+const sig = (w) => { let h = 0; for (let i = 0; i < w.lvl.length; i += 37) h = (h * 31 + w.lvl[i] * 7 + w.ramp[i]) | 0; return `${h}:${w.objects.length}:${w.buildings.length}`; };
+// płaski świat do testów ruchu: f(x,y) daje poziom kafla, g(x,y) kierunek pochylni
+const KIND = { grass: 0, shallow: 9 };
+const flat = (f = () => 0, g = () => 0) => { const lvl = new Int8Array(N * N), ramp = new Uint8Array(N * N); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { lvl[y * N + x] = f(x, y); ramp[y * N + x] = g(x, y); } return { lvl, ramp, blocked: new Uint8Array(N * N), cellKind: new Uint8Array(N * N), KIND, n: N }; };
 
 test('szum: deterministyczny, w zakresie 0..1, gładki', () => {
   for (let i = 0; i < 50; i++) { const v = fbm(3, i * 0.37, i * 0.91); assert.ok(v >= 0 && v <= 1); assert.equal(v, fbm(3, i * 0.37, i * 0.91)); }
@@ -27,32 +28,30 @@ test('świat: ten sam seed daje ten sam świat, inny seed inny, generowanie jest
   assert.equal(W.n, N); assert.ok(W.objects.length > 2500 && W.buildings.length >= 6 && W.npcs.length >= 5);
 });
 
-test('świat: ma nierówności (doliny, wzgórza, rzeka) i klify', () => {
-  let mn = 9, mx = -9, steep = 0, water = 0; for (const v of W.heights) { mn = Math.min(mn, v); mx = Math.max(mx, v); }
-  for (let i = 0; i < N * N; i++) { if (W.steep[i]) steep++; if (W.cellKind[i] === W.KIND.water) water++; }
-  assert.ok(mn < -1.5 && mx > 6, `zakres wysokości ${mn.toFixed(1)} do ${mx.toFixed(1)}`);
-  assert.ok(steep > 300, 'są klify'); assert.ok(water > 1000, 'jest woda');
-  assert.ok(heightAt(W, ...ENTRANCES[0].at) > 3, 'krypta wysoko na wzgórzu'); assert.ok(heightAt(W, ...W.start) < 0.8 && heightAt(W, ...W.start) > -0.5, 'wioska w dolinie');
+test('świat: ma tarasy, pochylnie i wodę, krypta wysoko, wioska w dolinie', () => {
+  const hist = {}; let ramps = 0, water = 0;
+  for (let i = 0; i < N * N; i++) { hist[W.lvl[i]] = (hist[W.lvl[i]] || 0) + 1; if (W.ramp[i]) ramps++; if (W.cellKind[i] === W.KIND.water) water++; }
+  assert.ok(Object.keys(hist).length >= 5, 'kilka poziomów'); assert.ok(ramps > 20, 'są schody'); assert.ok(water > 1000, 'jest woda');
+  assert.ok(heightAt(W, ...ENTRANCES[0].at) >= 2, 'krypta na wzgórzu'); assert.equal(Math.round(heightAt(W, ...W.start)), 0, 'wioska w dolinie');
 });
 
-test('chodzenie: start jest wolny, oba wejścia osiągalne pieszo, trasy w rozsądnej długości i bez stromizn', () => {
+test('chodzenie: start jest wolny, oba wejścia osiągalne pieszo, trasy w rozsądnej długości, każdy krok po dozwolonym przejściu', () => {
   assert.ok(freeAt(W, ...W.start));
   for (const e of W.entrances) {
     assert.ok(freeAt(W, ...e.approach), `${e.id}: podejście wolne`);
     const p = findPath(W, W.start, e.approach); assert.ok(p, `${e.id}: ścieżka istnieje`);
-    const len = pathLength(p); assert.ok(len > 30 && len < 130, `${e.id}: długość ${len.toFixed(0)}`);
-    // żaden odcinek trasy nie jest klifem: przeskok wysokości na kafel poniżej progu
-    for (let i = 1; i < p.length; i++) { const a = p[i - 1], b = p[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 0.5); for (let j = 1; j <= n; j++) { const f0 = (j - 1) / n, f1 = j / n; const dz = Math.abs(heightAt(W, a[0] + (b[0] - a[0]) * f1, a[1] + (b[1] - a[1]) * f1) - heightAt(W, a[0] + (b[0] - a[0]) * f0, a[1] + (b[1] - a[1]) * f0)); assert.ok(dz / (d / n) < CLIFF, `${e.id}: stromo ${dz / (d / n)}`); } }
+    const len = pathLength(p); assert.ok(len > 30 && len < 160, `${e.id}: długość ${len.toFixed(0)}`);
+    for (let i = 1; i < p.length; i++) { const a = p[i - 1], b = p[i], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.25); for (let j = 1; j <= n; j++) { const x0 = a[0] + (b[0] - a[0]) * (j - 1) / n, y0 = a[1] + (b[1] - a[1]) * (j - 1) / n, x1 = a[0] + (b[0] - a[0]) * j / n, y1 = a[1] + (b[1] - a[1]) * j / n; assert.ok(Math.abs(heightAt(W, x1, y1) - heightAt(W, x0, y0)) < 0.6, `${e.id}: skok wysokości`); } }
   }
   for (const n of W.npcs) assert.ok(freeAt(W, ...n.at, 0.2), `${n.id} stoi na wolnym miejscu`);
 });
 
-test('chodzenie: przepaść na zachodzie nie do przejścia, wody głębokiej i klifów nie da się wejść', () => {
+test('chodzenie: przepaść na zachodzie nie do przejścia, ściana skalna blokuje, pochylnia przepuszcza', () => {
   assert.equal(findPath(W, W.start, [30, 130]), null, 'za przepaścią');
-  for (let i = 0; i < N * N; i++) if (W.steep[i]) assert.ok(W.blocked[i], 'klif jest blokadą');
-  // wejście w kafel z woda głęboka jest zablokowane
-  let found = 0; for (let y = 0; y < N && found < 50; y++) for (let x = 0; x < N; x++) { const c = [heightAt(W, x, y), heightAt(W, x + 1, y), heightAt(W, x, y + 1), heightAt(W, x + 1, y + 1)]; if (Math.min(...c) < -1.05) { assert.ok(tileBlocked(W, x, y), 'głęboka woda zablokowana'); found++; } }
-  assert.ok(found > 10);
+  const w = flat((x) => (x >= 50 ? 1 : 0)); assert.ok(!canStep(w, 49, 30, 50, 30), 'ściana o poziom');
+  const r = flat((x) => (x >= 50 ? 1 : 0), (x, y) => (x === 49 && y === 30 ? 1 : 0)); r.lvl[30 * N + 49] = 0;
+  assert.ok(canStep(r, 49, 30, 50, 30), 'schody łączą poziomy'); assert.ok(!canStep(r, 49, 31, 50, 31));
+  assert.ok(findPath(r, [40.5, 30.5], [60.5, 30.5]), 'trasa przez schody'); assert.equal(findPath(w, [40.5, 30.5], [60.5, 30.5]), null, 'bez schodów nie wejdzie');
 });
 
 test('wioska: budynki stoją na wolnym gruncie, nie na drodze i nie na sobie, a ich podstawa blokuje ruch', () => {
@@ -77,10 +76,10 @@ test('ścieżka: omija przeszkodę, nie ścina narożników, wygładza do prosty
 });
 
 test('chód: dociera do celu, pod górę wolniej niż z góry, brodem wolniej', () => {
-  const ramp = flat((x) => x * 0.25), time = (w, a, b) => { const wk = newWalker(...a); setPath(wk, [a, b]); let t = 0; while (wk.moving && t < 60) { stepWalker(w, wk, 0.05); t += 0.05; } return [t, wk]; };
-  const [up] = time(ramp, [20.5, 30.5], [40.5, 30.5]), [down, wk] = time(ramp, [40.5, 30.5], [20.5, 30.5]);
+  const ramp = flat((x) => x - 20, () => 1), time = (w, a, b) => { const wk = newWalker(...a); setPath(wk, [a, b]); let t = 0; while (wk.moving && t < 60) { stepWalker(w, wk, 0.05); t += 0.05; } return [t, wk]; };
+  const [up] = time(ramp, [20.5, 30.5], [35.5, 30.5]), [down, wk] = time(ramp, [35.5, 30.5], [20.5, 30.5]);
   assert.ok(up > down * 1.15, `pod górę ${up.toFixed(2)} s, z góry ${down.toFixed(2)} s`); assert.ok(Math.hypot(wk.x - 20.5, wk.y - 30.5) < 0.3, 'doszedł'); assert.equal(wk.arrived, true);
-  const pond = flat((x) => (x > 30 && x < 40 ? WATER - 0.3 : 0)), [wade] = time(pond, [25.5, 30.5], [45.5, 30.5]), [dry] = time(flat(), [25.5, 30.5], [45.5, 30.5]);
+  const pond = flat(); for (let y = 0; y < N; y++) for (let x = 31; x < 40; x++) pond.cellKind[y * N + x] = KIND.shallow; const [wade] = time(pond, [25.5, 30.5], [45.5, 30.5]), [dry] = time(flat(), [25.5, 30.5], [45.5, 30.5]);
   assert.ok(wade > dry * 1.1, 'brodem wolniej');
   const wk2 = newWalker(40.5, 30.5), wall = flat(); wall.blocked[30 * N + 42] = 1; setPath(wk2, [[40.5, 30.5], [45.5, 30.5]]); for (let i = 0; i < 80; i++) stepWalker(wall, wk2, 0.05); assert.ok(wk2.x < 42.8, 'ściana zatrzymuje chód');
 });
@@ -104,10 +103,10 @@ test('drzewa: deterministyczne, różne gatunki i ziarna, rysują się bez błę
   assert.equal(new Set(Array.from({ length: 40 }, (_, i) => genTree(i + 1).species)).size, SPECIES.length);
 });
 
-test('kolor gruntu: ciągły (sąsiednie punkty niewiele się różnią), skała na stromiznach, mech w lesie, woda w wodzie', () => {
-  let big = 0, n = 400; for (let i = 0; i < n; i++) { const x = 20 + (i % 20) * 7.3, y = 30 + Math.floor(i / 20) * 7.1, a = groundRGB(W, x, y), b = groundRGB(W, x + 0.15, y + 0.15); if (Math.max(...a.map((v, k) => Math.abs(v - b[k]))) > 45) big++; }
-  assert.ok(big / n < 0.06, `ostre skoki koloru tylko na krawędziach: ${big}/${n}`);
+test('kolor gruntu: ciągły, mech w lesie ciemniejszy od łąki, woda niebieska', () => {
+  let big = 0, n = 400; for (let i = 0; i < n; i++) { const x = 20 + (i % 20) * 7.3, y = 30 + Math.floor(i / 20) * 7.1, a = groundRGB(W, x, y), b = groundRGB(W, x + 0.15, y + 0.15); if (Math.max(...a.map((v, k) => Math.abs(v - b[k]))) > 60) big++; }
+  assert.ok(big / n < 0.12, `ostre skoki koloru tylko na krawędziach: ${big}/${n}`);
   const forest = groundRGB(W, ...W.entrances[1].at), meadow = groundRGB(W, W.start[0] - 20, W.start[1] + 20); assert.ok(forest[1] < meadow[1], 'las ciemniejszy od łąki');
-  let wet = null; for (let y = 0; y < 192 && !wet; y += 2) for (let x = 0; x < 192; x += 2) if (heightAt(W, x, y) < -1.2 && Math.abs(x - y + 88) > 24) { wet = [x, y]; break; }
+  let wet = null; for (let y = 0; y < N && !wet; y += 2) for (let x = 0; x < N; x += 2) if (W.cellKind[y * N + x] === W.KIND.water) { wet = [x + 0.5, y + 0.5]; break; }
   const wc = groundRGB(W, ...wet); assert.ok(wc[2] > wc[0], 'woda niebieska');
 });
