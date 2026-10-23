@@ -126,10 +126,12 @@ const FEET=-2;
 const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:'#e8e8e8'};
 
 const bg=document.createElement('canvas');
+// tło areny z gotowego obrazu (www/img/arena-<motyw>.png, rozmiar planszy w pikselach świata razy 2): gdy plik istnieje, zastępuje podłogę z generatora
+let arenaImg=null;{const im=new Image();im.onload=()=>{arenaImg=im;if(typeof renderBg==='function'&&cv.width>2)renderBg()};im.src='img/arena-'+(DG?DG.theme:'arena')+'.png'}
 let moodLayer=null;
 function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');moodLayer=makeMoodLayer(document,cv.width,cv.height,mood);
   N.ground(b,bg.width,bg.height,7,{biome:TH.biome});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400*TH.tufts),null,{biome:TH.biome});
-  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
+  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);if(arenaImg)b.drawImage(arenaImg,0,0,WORLD.w,WORLD.h);else drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
   // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&TH.decals.length)DECALS[TH.decals[h%TH.decals.length]](b,c[0]+(h===0?4:0),c[1]+1,.9,x*7+y*3+h)}
   b.setTransform(1,0,0,1,0,0);applyMoodStatic(b,bg.width,bg.height,mood)}
