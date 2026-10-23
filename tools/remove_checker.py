@@ -38,9 +38,11 @@ def remove(src, tol=18):
                     for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                         ny, nx = y + dy, x + dx
                         if 0 <= ny < H and 0 <= nx < W and ok[ny, nx] and not bg[ny, nx] and not seen[ny, nx]: seen[ny, nx] = True; q.append((ny, nx)); comp.append((ny, nx))
-                if len(comp) >= 40 and m1 != m2:
+                if len(comp) >= 6 and m1 != m2:
                     v = np.array([g[y, x] for y, x in comp]); f1 = np.mean(np.abs(v - m1) <= tol); f2 = np.mean(np.abs(v - m2) <= tol)
-                    if min(f1, f2) >= 0.18:
+                    ys_, xs_ = zip(*comp); y0_, y1_, x0_, x1_ = max(0, min(ys_) - 3), min(H, max(ys_) + 4), max(0, min(xs_) - 3), min(W, max(xs_) + 4)
+                    near_bg = bg[y0_:y1_, x0_:x1_].any()
+                    if (min(f1, f2) >= 0.18 and len(comp) >= 12) or (near_bg and len(comp) <= 600 and max(f1, f2) >= 0.85):
                         for y, x in comp: bg[y, x] = True
     fg = ~bg
     # halo: neutralne jasne piksele tuż przy tle (anty-aliasing szachownicy) usuwamy w 2 przejściach
