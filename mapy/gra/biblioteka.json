@@ -113,9 +113,24 @@
    }
   ]
  },
+ "grounds": {
+  "podloze_droga_01": {
+   "file": "podloze_droga_01.jpg",
+   "w": 1536,
+   "h": 1024,
+   "name": "droga 01"
+  },
+  "podloze_las_zastepcze": {
+   "file": "podloze_las_zastepcze.jpg",
+   "w": 1536,
+   "h": 1024,
+   "name": "las (zastępcze, do podmiany)"
+  }
+ },
  "ground": {
   "file": "podloze_droga_01.jpg",
   "w": 1536,
-  "h": 1024
+  "h": 1024,
+  "name": "droga 01"
  }
 }

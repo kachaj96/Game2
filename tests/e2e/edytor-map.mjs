@@ -40,6 +40,18 @@ await page.locator('#val').click(); const msgs = await page.locator('#res div').
 // wersja robocza i nowa mapa przeżywają odświeżenie
 await page.reload(); await page.waitForFunction(() => window.__edytor); const ids = await page.evaluate(() => Object.keys(window.__edytor.maps)); assert.ok(ids.includes('cmentarz') && ids.includes('pilot') && ids.includes('las'));
 await page.evaluate(() => window.__edytor.openMap('pilot')); d = await D(); assert.ok(d.exits.some((e) => e.to.map === 'las'));
+// podłoże: zmiana z listy, dodanie własnego z pliku, zapis i odświeżenie
+await page.evaluate(() => window.__edytor.openMap('pilot'));
+assert.equal(await page.evaluate(() => window.__edytor.def.ground), 'podloze_droga_01');
+await page.locator('#gsel').selectOption('podloze_las_zastepcze'); assert.equal((await D()).ground, 'podloze_las_zastepcze');
+const png = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 1536; c.height = 1024; const g = c.getContext('2d'); for (let y = 0; y < 1024; y += 16) for (let x = 0; x < 1536; x += 16) { g.fillStyle = `rgb(${(x * 7 + y * 3) % 120 + 40},${(x * 5 + y * 11) % 90 + 70},60)`; g.fillRect(x, y, 16, 16); } return c.toDataURL('image/png').split(',')[1]; });
+await page.locator('#gfile').setInputFiles({ name: 'moje_pole.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+await page.waitForSelector('#dlg', { state: 'visible' }); assert.ok(/Proporcje 3:2/.test(await page.locator('#dta').inputValue()), 'raport sprawdzenia podłoża'); await page.locator('#dok').click();
+await page.locator('#dline').fill('Moje Pole'); await page.locator('#dok').click(); await page.waitForTimeout(300);
+assert.equal((await D()).ground, 'podloze_moje_pole');
+await page.reload(); await page.waitForFunction(() => window.__edytor); await page.waitForTimeout(500);
+assert.ok(await page.evaluate(() => [...document.querySelectorAll('#gsel option')].some((o) => o.value === 'podloze_moje_pole')), 'własne podłoże przetrwało odświeżenie');
+await page.evaluate(() => window.__edytor.openMap('pilot')); await page.locator('#gsel').selectOption('podloze_droga_01');
 // tryb Graj: bohater idzie
 await page.locator('#modes [data-m=play]').click(); assert.ok(await page.evaluate(() => window.__edytor.sc.play));
 await page.screenshot({ path: new URL('../../docs/podglad/edytor-map.png', import.meta.url).pathname });

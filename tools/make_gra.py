@@ -47,8 +47,14 @@ for i in range(6):
     fr = strip.crop((bounds[i], y0, bounds[i + 1], y1)); ar = np.asarray(fr)[..., 3] >= 16; xs = np.where(ar.any(0))[0]; fr = fr.crop((xs[0], 0, xs[-1] + 1, fr.height))
     fx = feet_x(fr) * k; out = save(fr, f'bohater_chod_w{i}', k); frames.append(dict(file=f'bohater_chod_w{i}.png', w=out.width, h=out.height, ax=round(fx, 1)))
 lib['hero']['walk_w'] = frames
-# podłoże jako JPEG (pełny obraz, bez alfy)
-Image.open(os.path.join(B, 'podloze_droga_01.png')).convert('RGB').save(os.path.join(G, 'podloze_droga_01.jpg'), quality=90)
-lib['ground'] = dict(file='podloze_droga_01.jpg', w=1536, h=1024)
+# podłoża: każdy plik biblioteka/podloze_*.png staje się JPEG-iem w gra/; do tego zastępczy ciemniejszy wariant (lustro + ton), żeby mapy się różniły
+import glob
+lib['grounds'] = {}
+for f in sorted(glob.glob(os.path.join(B, 'podloze_*.png'))):
+    gid = os.path.basename(f)[:-4]; im = Image.open(f).convert('RGB'); im.save(os.path.join(G, gid + '.jpg'), quality=90); lib['grounds'][gid] = dict(file=gid + '.jpg', w=im.width, h=im.height, name=gid.replace('podloze_', '').replace('_', ' '))
+base = Image.open(os.path.join(B, 'podloze_droga_01.png')).convert('RGB'); arr = np.asarray(base.transpose(Image.FLIP_LEFT_RIGHT)).astype(float) * np.array([.80, .90, .84])
+alt = Image.fromarray(np.clip(arr, 0, 255).astype('uint8')); alt.save(os.path.join(G, 'podloze_las_zastepcze.jpg'), quality=90)
+lib['grounds']['podloze_las_zastepcze'] = dict(file='podloze_las_zastepcze.jpg', w=alt.width, h=alt.height, name='las (zastępcze, do podmiany)')
+first = next(iter(lib['grounds'])); lib['ground'] = lib['grounds'][first]
 json.dump(lib, open(os.path.join(G, 'biblioteka.json'), 'w'), indent=1, ensure_ascii=False)
 print('OK', {k: (v['w'], v['h']) for k, v in lib['sprites'].items()}, [f['w'] for f in frames])

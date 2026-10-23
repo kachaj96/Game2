@@ -13,11 +13,11 @@ export function resolveExit(maps, to, sprites) {
 
 // Spójność świata: każde przejście ma istniejący, wolny cel; cel nie leży w strefie przejścia (inaczej bohater od razu wracałby),
 // a w mapie docelowej jest przejście z powrotem; każda mapa jest osiągalna ze startowej.
-export function validateWorld(maps, sprites, startId) {
+export function validateWorld(maps, sprites, startId, groundIds) {
   const out = [], add = (level, id, msg) => out.push({ level, map: id, msg });
   const links = new Map();
   for (const [id, def] of Object.entries(maps)) {
-    for (const r of validateMap(def, sprites)) if (r.level !== 'ok') out.push({ ...r, map: id });
+    for (const r of validateMap(def, sprites, groundIds)) if (r.level !== 'ok') out.push({ ...r, map: id });
     (def.exits || []).forEach((e, i) => {
       const t = e.to || {}, res = resolveExit(maps, t, sprites), name = `Mapa "${id}", przejście ${i + 1}`;
       if (res.error) { add('fail', id, `${name}: ${res.error}`); return; }

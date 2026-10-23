@@ -99,3 +99,10 @@ Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciąg
 - Wejście bohatera w kafel strefy przenosi go od razu (zanikanie ekranu), bez przycisku. Po przybyciu strefa jest zablokowana, dopóki bohater z niej nie zejdzie, więc nie ma odbijania tam i z powrotem.
 - Walidacja świata (`src/swiat.js`): cel istnieje i jest wolnym kaflem, cel nie leży w strefie przejścia, mapa docelowa ma przejście z powrotem, każda mapa jest osiągalna z mapy startowej.
 - Edytor: wybór mapy, tworzenie nowej, cel przejścia wybierany z listy lub kliknięciem kafla na mapie docelowej, "Kopiuj świat" kopiuje wszystkie mapy naraz.
+
+## 15. Podłoże każdej mapy (zrobione)
+- Mapa ma pole `ground` z id podłoża z biblioteki (`gra/biblioteka.json`, sekcja `grounds`). Pliki: `biblioteka/podloze_<nazwa>.png`, `tools/make_gra.py` zamienia je na JPEG-i w `gra/`.
+- Każde podłoże jest sprowadzane do prostokąta mapy 1536 x 1024 px (3:2). Inne proporcje działają, ale obraz jest rozciągany (sprawdzarka ostrzega).
+- Wymogi (sprawdzarka, rodzaj Podłoże): bez winiety i rozmycia, najlepiej co najmniej 1024 px po dłuższym boku, bez obiektów (obiekty stawia edytor).
+- Edytor: wybór podłoża mapy z listy oraz "Dodaj podłoże z pliku" (sprawdzenie, nazwa, zapis w przeglądarce). Oryginał wysyłasz mi w czacie, wtedy trafia do biblioteki gry.
+- `podloze_las_zastepcze` to zastępczy wariant (lustro i ciemniejszy ton) do czasu własnego obrazu dla mapy "las".

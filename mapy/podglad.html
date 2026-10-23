@@ -15,7 +15,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:b
 <div id="bar"><button id="bo" class="on">Osadzenie</button><button id="bg">Siatka</button><button id="bc">Kolizje</button><a id="ed" href="edytor.html">Edytor</a></div>
 <div id="msg">Dotknij ziemi, by tam pójść.</div><div id="mname"></div><div id="fade"></div>
 <script type="module">
-import {createScene, loadAssets, spriteDefs} from './src/scena.js';
+import {createScene, loadAssets, spriteDefs, loadDraftGrounds} from './src/scena.js';
 import {resolveExit} from './src/swiat.js';
 addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Strona wymaga serwera (npm start) albo adresu https, nie pliku z dysku.'});
 const $=id=>document.getElementById(id),cv=$('c'),Q=new URLSearchParams(location.search);
@@ -28,7 +28,7 @@ if(Q.get('draft')==='1'){let extra=[];try{extra=JSON.parse(localStorage.getItem(
  for(const id of [...INDEX.maps,...extra]){try{const d=JSON.parse(localStorage.getItem('arena.mapdraft.v3.'+id));if(d&&d.objects)maps[id]=d}catch(_){}}}
 let cur=Q.get('map')&&maps[Q.get('map')]?Q.get('map'):INDEX.start;
 const setEd=()=>{const e=$('ed');if(e)e.href='edytor.html?map='+cur};setEd();
-const A=await loadAssets(LIB,url);
+const A=await loadAssets(LIB,url);if(Q.get('draft')==='1')await loadDraftGrounds(A);
 let msgT=0;const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=0,2400)};
 const label=()=>{$('mname').textContent=maps[cur].name||cur};
 const sc=createScene(cv,LIB,A,maps[cur],{toast});label();
@@ -43,6 +43,6 @@ cv.addEventListener('pointerdown',e=>{if(busy)return;const m=sc.toMap(e.clientX,
 const tg=(b,get,set)=>{$(b).onclick=()=>{set(!get());$(b).classList.toggle('on',get())}};
 tg('bo',()=>sc.osad,v=>sc.osad=v);tg('bg',()=>sc.showGrid,v=>sc.showGrid=v);tg('bc',()=>sc.showCol,v=>sc.showCol=v);
 addEventListener('keydown',e=>{if(e.key==='o')$('bo').click();if(e.key==='g')$('bg').click();if(e.key==='c')$('bc').click()});
-window.__podglad={hero:sc.hero,get M(){return sc.M},get map(){return cur},view:()=>sc.view,go:(cx,cy)=>sc.moveTo(cx,cy),get busy(){return busy}};
+window.__podglad={hero:sc.hero,get M(){return sc.M},get map(){return cur},get ground(){return sc.def.ground},view:()=>sc.view,go:(cx,cy)=>sc.moveTo(cx,cy),get busy(){return busy}};
 const loop=t=>{requestAnimationFrame(loop);sc.draw(t)};requestAnimationFrame(loop);
 </script></body></html>

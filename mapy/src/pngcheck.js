@@ -120,6 +120,7 @@
     let g = 0, n = 0; for (let y = 1; y < H - 1; y += 2) for (let x = 1; x < W - 1; x += 2) { const k = (y * W + x) * 4, l = lum(rgba[k], rgba[k + 1], rgba[k + 2]), r = lum(rgba[k + 4], rgba[k + 5], rgba[k + 6]), dn = lum(rgba[k + W * 4], rgba[k + W * 4 + 1], rgba[k + W * 4 + 2]); g += Math.abs(r - l) + Math.abs(dn - l); n++; }
     const sharp = g / Math.max(1, n);
     add('ostrosc', sharp < 3 ? 'warn' : 'ok', sharp < 3 ? `Obraz wygląda na rozmyty (średni gradient ${sharp.toFixed(1)}). Orientacyjnie, oceń wzrokiem.` : `Ostrość w normie (gradient ${sharp.toFixed(1)}).`);
+    const asp = W / H; add('proporcje', Math.abs(asp - 1.5) <= 0.06 ? 'ok' : 'warn', Math.abs(asp - 1.5) <= 0.06 ? 'Proporcje 3:2, jak prostokąt mapy.' : `Proporcje ${asp.toFixed(2)}:1 zamiast 3:2. Obraz zostanie rozciągnięty do prostokąta mapy 1536 x 1024.`);
     add('rozmiar2', W >= 1024 || H >= 1024 ? 'ok' : 'warn', W >= 1024 || H >= 1024 ? 'Rozdzielczość wystarczająca na powiększenie.' : `Rozdzielczość ${W}x${H} jest niska. Przy zoomie na telefonie obraz będzie miękki.`);
     return result(checks, { W, H });
   }

@@ -3,9 +3,11 @@ import { buildMap } from './mapdata.js';
 import { footprintCells } from './iso.js';
 
 // def: dane mapy; sprites: { id: {footprint:{w,d}, height} } z biblioteki
-export function validateMap(def, sprites) {
+export function validateMap(def, sprites, groundIds) {
   const out = [], add = (level, msg) => out.push({ level, msg });
   let M; try { M = buildMap({ ...def, sprites }); } catch (e) { return [{ level: 'fail', msg: 'Mapa nie buduje się: ' + e.message }]; }
+  if (groundIds && def.ground && !groundIds.includes(def.ground)) add('fail', `Podłoże "${def.ground}" nie istnieje w bibliotece.`);
+  if (groundIds && !def.ground) add('warn', 'Mapa nie ma wybranego podłoża (użyje pierwszego z biblioteki).');
   const key = (x, y) => x + ',' + y, seen = new Map();
   (def.objects || []).forEach((o, i) => {
     const s = sprites[o.sprite]; if (!s) return;

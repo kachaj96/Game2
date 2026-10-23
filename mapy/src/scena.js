@@ -9,17 +9,22 @@ export const MAP_W = 768, MAP_H = 512;   // prostokąt mapy w j (obraz podłoża
 export async function loadAssets(LIB, url) {
   const load = (p) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('brak pliku ' + p)); i.src = url(p); });
   const names = Object.keys(LIB.sprites);
-  const [ground, ...rest] = await Promise.all([load(LIB.ground.file), ...names.map((n) => load(LIB.sprites[n].file)), load(LIB.hero.idle_sw.file), load(LIB.hero.idle_ne.file), ...LIB.hero.walk_w.map((f) => load(f.file))]);
+  const gids = Object.keys(LIB.grounds || { _: 1 }), gl = LIB.grounds || { _: LIB.ground };
+  const [gimgs, rest] = await Promise.all([Promise.all(gids.map((id) => load(gl[id].file))), Promise.all([...names.map((n) => load(LIB.sprites[n].file)), load(LIB.hero.idle_sw.file), load(LIB.hero.idle_ne.file), ...LIB.hero.walk_w.map((f) => load(f.file))])]);
   const IMG = {}; names.forEach((n, i) => { IMG[n] = rest[i]; });
-  return { ground, IMG, IDLE: { sw: rest[names.length], ne: rest[names.length + 1] }, WALK: rest.slice(names.length + 2) };
+  const grounds = {}; gids.forEach((id, i) => { grounds[id] = normGround(gimgs[i]); });
+  return { grounds, addGround: (id, img) => { grounds[id] = normGround(img); }, IMG, IDLE: { sw: rest[names.length], ne: rest[names.length + 1] }, WALK: rest.slice(names.length + 2) };
 }
 
 const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+// każde podłoże sprowadzamy do prostokąta mapy 1536 x 1024 px (skala 2x), niezależnie od rozmiaru pliku
+export const normGround = (img) => { const c = mkCanvas(1536, 1024); c.getContext('2d').drawImage(img, 0, 0, 1536, 1024); return c; };
 export const spriteDefs = (LIB) => Object.fromEntries(Object.entries(LIB.sprites).map(([k, s]) => [k, { footprint: s.footprint, height: s.height }]));
 
 export function createScene(cv, LIB, A, def0, opts = {}) {
-  const g = cv.getContext('2d'), SP = spriteDefs(LIB), GP = pixelsOf(A.ground), baked = mkCanvas(1536, 1024), bg = baked.getContext('2d');
+  const g = cv.getContext('2d'), SP = spriteDefs(LIB), gpCache = new Map(), baked = mkCanvas(1536, 1024), bg = baked.getContext('2d');
   const sc = { exitLock: true, onExit: null, osad: true, showGrid: false, showCol: false, play: true, view: { z: 1, ox: 0, oy: 0 }, dpr: 1, hero: { x: 0, y: 0, path: [], dir: 'SW', t: 0, walk: false }, overlay: null, toast: opts.toast || (() => {}), hideObjects: null };
+  const gid = () => (sc.def.ground && A.grounds[sc.def.ground] ? sc.def.ground : Object.keys(A.grounds)[0]), gnd = () => A.grounds[gid()], gpix = () => { const c = gnd(); if (!gpCache.has(c)) gpCache.set(c, pixelsOf(c)); return gpCache.get(c); };
   let M, iso, SUNK = [], shCache = new Map(), HSH = new Map(), bakeTimer = 0, last = 0;
 
   const sprAlpha = {};   // maski alfa sprite'ów do trafiania w obiekty kliknięciem
@@ -36,7 +41,7 @@ export function createScene(cv, LIB, A, def0, opts = {}) {
   }
   function scheduleBake() { clearTimeout(bakeTimer); bakeTimer = setTimeout(rebake, 140); }
   function rebake() {
-    bg.setTransform(1, 0, 0, 1, 0, 0); bg.globalCompositeOperation = 'source-over'; bg.drawImage(A.ground, 0, 0); SUNK = [];
+    bg.setTransform(1, 0, 0, 1, 0, 0); bg.globalCompositeOperation = 'source-over'; bg.drawImage(gnd(), 0, 0); SUNK = []; const GP = gpix();
     sc.def.objects.forEach((o, i) => {
       const P = objPos(o), fp = P.s.footprint;
       const cx = o.x - fp.w / 2, cy = o.y - fp.d / 2, k = 1.22, z = o.z || 0, pts = [[-fp.w, -fp.d], [0, -fp.d], [0, 0], [-fp.w, 0]].map(([a, b]) => iso.toScreen(cx + (a + fp.w / 2) * k, cy + (b + fp.d / 2) * k, z));
@@ -87,7 +92,7 @@ export function createScene(cv, LIB, A, def0, opts = {}) {
     // przejście na krawędzi: wejście w kafel strefy przenosi od razu; po przybyciu strefa jest zablokowana, dopóki bohater z niej nie zejdzie
     if (sc.play) { const ex = M.exitAt(Math.floor(h.x), Math.floor(h.y)); if (!ex) sc.exitLock = false; else if (!sc.exitLock) { sc.exitLock = true; h.path = []; if (sc.onExit) sc.onExit(ex); } }
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0a0908'; g.fillRect(0, 0, cv.width, cv.height);
-    g.drawImage(sc.osad ? baked : A.ground, sc.view.ox * d, sc.view.oy * d, MAP_W * z * d, MAP_H * z * d);
+    g.drawImage(sc.osad ? baked : gnd(), sc.view.ox * d, sc.view.oy * d, MAP_W * z * d, MAP_H * z * d);
     if (sc.showGrid || sc.showCol) for (const [cx, cy] of iso.cells()) {
       const c = [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]].map(([a, b]) => S2(a, b)), bl = M.blocked(cx, cy), ex = M.exitAt(cx, cy);
       g.beginPath(); c.forEach((p, i) => (i ? g.lineTo(p[0] * d, p[1] * d) : g.moveTo(p[0] * d, p[1] * d))); g.closePath();
@@ -113,4 +118,12 @@ export function createScene(cv, LIB, A, def0, opts = {}) {
   sc.setDef = setDef; sc.scheduleBake = scheduleBake; sc.rebake = rebake; sc.resize = resize; sc.draw = draw; sc.drawImgAt = drawImg;
   setDef(def0);
   return sc;
+}
+
+// podłoża dodane w edytorze (wersje robocze w przeglądarce): JPEG-i w localStorage, lista id pod kluczem __list
+export async function loadDraftGrounds(A, st = globalThis.localStorage) {
+  let ids = []; try { ids = JSON.parse(st.getItem('arena.ground.v3.__list')) || []; } catch (_) { return []; }
+  const ok = [];
+  for (const id of ids) { try { const u = st.getItem('arena.ground.v3.' + id); if (!u) continue; const im = new Image(); await new Promise((res, no) => { im.onload = res; im.onerror = no; im.src = u; }); A.addGround(id, im); ok.push(id); } catch (_) {} }
+  return ok;
 }

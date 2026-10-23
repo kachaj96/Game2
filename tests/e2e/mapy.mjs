@@ -28,7 +28,7 @@ const goEdge = async (cx, cy) => { await page.evaluate(([x, y]) => window.__podg
 const exitCell = await page.evaluate(() => { const M = window.__podglad.M; return M.iso.cells().find(([x, y]) => M.exitAt(x, y) && !M.blocked(x, y)); });
 await goEdge(...exitCell);
 let w = await page.evaluate(() => ({ map: window.__podglad.map, x: window.__podglad.hero.x, y: window.__podglad.hero.y }));
-assert.equal(w.map, 'las'); assert.ok(Math.abs(w.x - 3.5) < 0.1 && Math.abs(w.y - 10.5) < 0.1, 'pojawił się przy zachodniej krawędzi');
+assert.equal(w.map, 'las'); assert.equal(await page.evaluate(() => window.__podglad.ground), 'podloze_las_zastepcze', 'mapa las ma własne podłoże'); assert.ok(Math.abs(w.x - 3.5) < 0.1 && Math.abs(w.y - 10.5) < 0.1, 'pojawił się przy zachodniej krawędzi');
 await page.waitForTimeout(600); assert.equal(await page.evaluate(() => window.__podglad.map), 'las', 'strefa przybycia nie odbija z powrotem');
 const back = await page.evaluate(() => { const M = window.__podglad.M; return M.iso.cells().find(([x, y]) => M.exitAt(x, y) && !M.blocked(x, y)); });
 await goEdge(...back); w = await page.evaluate(() => ({ map: window.__podglad.map })); assert.equal(w.map, 'pilot');

@@ -123,3 +123,10 @@ test('świat: spójny zestaw przechodzi, braki są nazwane', () => {
   const bad = world(); bad.a.exits[0].to.map = 'x'; assert.ok(validateWorld(bad, sp, 'a').some((c) => c.level === 'fail' && /Nie ma mapy/.test(c.msg)));
   const onExit = world(); onExit.a.exits[0].to = { map: 'b', x: 3, y: 12 }; assert.ok(validateWorld(onExit, sp, 'a').some((c) => /strefie przejścia/.test(c.msg)));
 });
+
+test('walidacja: podłoże musi istnieć w bibliotece', () => {
+  const d = def(); d.start = [4.5, 8.5]; d.ground = 'x'; const sp = def().sprites;
+  assert.ok(validateMap(d, sp, ['x']).every((c) => c.level !== 'fail')); assert.ok(validateMap(d, sp, ['y']).some((c) => c.level === 'fail' && /Podłoże/.test(c.msg)));
+  delete d.ground; assert.ok(validateMap(d, sp, ['y']).some((c) => c.level === 'warn' && /podłoża/.test(c.msg)));
+  assert.ok(validateMap(d, sp).every((c) => !/odłoż/.test(c.msg)), 'bez listy podłoży nie sprawdza');
+});

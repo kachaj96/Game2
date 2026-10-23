@@ -25,7 +25,7 @@ small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
 <button id="tog" aria-label="Panel">☰</button>
 <div id="err"></div>
 <div id="panel">
-<h4>Mapa</h4><div class="row"><select id="msel" style="min-height:38px;background:#1c1814;border:1px solid #3a3126"></select><button class="b" id="newmap">Nowa</button></div><h4>Tryb</h4>
+<h4>Mapa</h4><div class="row"><select id="msel" style="min-height:38px;background:#1c1814;border:1px solid #3a3126"></select><button class="b" id="newmap">Nowa</button></div><h4>Podłoże mapy</h4><select id="gsel" style="width:100%;min-height:38px;background:#1c1814;border:1px solid #3a3126"></select><button class="b" id="gadd">Dodaj podłoże z pliku</button><input type="file" id="gfile" accept="image/*" style="display:none"><h4>Tryb</h4>
 <div id="modes"><button class="b" data-m="obj">Obiekty</button><button class="b" data-m="col">Kolizje</button><button class="b" data-m="lvl">Wysokości</button><button class="b" data-m="exit">Przejścia</button><button class="b" data-m="start">Start</button><button class="b" data-m="play">Graj</button></div>
 <div id="sub"></div>
 <small id="help"></small>
@@ -38,8 +38,9 @@ small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
 </div>
 <div id="msg"></div>
 <div id="dlg"><div class="box"><div id="dt" style="margin-bottom:8px"></div><input type="text" id="dline" style="display:none"><textarea id="dta" spellcheck="false"></textarea><input type="file" id="file" accept=".json,application/json" style="display:none"><div style="margin-top:10px"><button class="b" id="dok">OK</button><button class="b" id="dno">Anuluj</button><button class="b" id="dfile" style="display:none">Z pliku</button></div></div></div>
+<script src="src/pngcheck.js"></script>
 <script type="module">
-import {createScene, loadAssets, spriteDefs} from './src/scena.js';
+import {createScene, loadAssets, spriteDefs, loadDraftGrounds} from './src/scena.js';
 import {validateMap} from './src/walidacja.js';
 import {validateWorld} from './src/swiat.js';
 addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Jeśli przyciski nie działają, strona jest prawdopodobnie otwarta z pliku (file://). Otwórz ją przez serwer (npm start) albo adres https.'});
@@ -52,7 +53,7 @@ const FILEMAP=async id=>window.__MAPS?(window.__MAPS[id]?JSON.parse(JSON.stringi
 const maps={};let extra=[],fromDraft=false;try{extra=JSON.parse(localStorage.getItem(DK('__list')))||[]}catch(_){}
 for(const id of [...INDEX.maps,...extra]){let d=null;try{d=JSON.parse(localStorage.getItem(DK(id)))}catch(_){}if(d&&d.objects){maps[id]=d;fromDraft=true}else if(INDEX.maps.includes(id))maps[id]=await FILEMAP(id)}
 let cur=Q.get('map')&&maps[Q.get('map')]?Q.get('map'):INDEX.start,def=maps[cur];
-const A=await loadAssets(LIB,url),SP=spriteDefs(LIB);
+const A=await loadAssets(LIB,url),SP=spriteDefs(LIB);await loadDraftGrounds(A);
 const saveList=()=>{try{localStorage.setItem(DK('__list'),JSON.stringify(Object.keys(maps).filter(i=>!INDEX.maps.includes(i))))}catch(_){}};
 let msgT=0;const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=0,2600)};
 if(fromDraft)toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');
@@ -73,7 +74,18 @@ function stat(){$('stat').textContent=`Mapa „${cur}”. Obiektów: ${def.objec
 sc.resize(PW());addEventListener('resize',()=>sc.resize(PW()));
 // ---- mapy ----
 function fillMaps(){const m=$('msel');m.innerHTML='';for(const id of Object.keys(maps)){const o=document.createElement('option');o.value=id;o.textContent=(maps[id].name||id)+(INDEX.maps.includes(id)?'':' (nowa)');m.append(o)}m.value=cur}
-function openMap(id){if(!maps[id])return;cur=id;def=maps[id];undo=[];redo=[];sel=-1;exSel=-1;sc.setDef(def);fillMaps();ui();stat();history.replaceState(null,'',location.pathname+'?map='+id)}
+const gname=id=>(LIB.grounds&&LIB.grounds[id]&&LIB.grounds[id].name)||id+' (nowe)';
+function fillGrounds(){const g=$('gsel');g.innerHTML='';for(const id of Object.keys(A.grounds)){const o=document.createElement('option');o.value=id;o.textContent=gname(id);g.append(o)}g.value=def.ground&&A.grounds[def.ground]?def.ground:Object.keys(A.grounds)[0]}
+$('gsel').onchange=e=>{push();def.ground=e.target.value;changed(true,false)};
+$('gadd').onclick=()=>$('gfile').click();
+$('gfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const img=new Image(),u=URL.createObjectURL(f);try{await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=u})}catch(_){toast('Nie da się wczytać tego pliku jako obrazu.');return}
+ const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);let rep='';try{const d=cx.getImageData(0,0,c.width,c.height),r=PngCheck.analyze(d.data,c.width,c.height,{kind:'podloze'});rep=r.checks.map(k=>(k.level==='ok'?'✓ ':k.level==='warn'?'! ':'✗ ')+k.msg).join('\n')}catch(_){rep='(nie udało się sprawdzić pliku)'}
+ const go=await dialog('Wynik sprawdzenia podłoża. Dodać je do biblioteki?',{text:rep,area:true,ok:'Dodaj'});if(!go)return;
+ const raw=await dialog('Nazwa podłoża (litery, cyfry, podkreślnik):',{line:true,text:f.name.replace(/\.[^.]+$/,''),ok:'Zapisz'});if(raw===null)return;const id='podloze_'+raw.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/^_+|_+$/g,'').replace(/^podloze_/,'');if(id==='podloze_'){toast('Podaj nazwę.');return}
+ A.addGround(id,img);const st=document.createElement('canvas');st.width=1536;st.height=1024;st.getContext('2d').drawImage(img,0,0,1536,1024);
+ try{localStorage.setItem('arena.ground.v3.'+id,st.toDataURL('image/jpeg',.9));const l=JSON.parse(localStorage.getItem('arena.ground.v3.__list')||'[]');if(!l.includes(id))l.push(id);localStorage.setItem('arena.ground.v3.__list',JSON.stringify(l))}catch(_){toast('Podłoże działa do końca sesji, ale przeglądarka nie zapisała go na stałe (brak miejsca).')}
+ push();def.ground=id;changed(true,false);fillGrounds();toast('Dodano podłoże „'+id+'”. Wyślij mi oryginalny plik w czacie jako '+id+'.png, wtedy trafi do biblioteki gry.')};
+function openMap(id){if(!maps[id])return;cur=id;def=maps[id];undo=[];redo=[];sel=-1;exSel=-1;sc.setDef(def);fillMaps();fillGrounds();ui();stat();history.replaceState(null,'',location.pathname+'?map='+id)}
 $('msel').onchange=e=>openMap(e.target.value);
 $('newmap').onclick=async()=>{const raw=await dialog('Nazwa nowej mapy (litery, cyfry, podkreślnik), np. cmentarz:',{line:true,text:'mapa'+(Object.keys(maps).length+1),ok:'Utwórz'});if(raw===null)return;const id=raw.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/^_+|_+$/g,'');if(!id){toast('Podaj nazwę.');return}if(maps[id]){toast('Mapa o tej nazwie już istnieje.');return}
  maps[id]={version:3,id,name:raw.trim(),size:[768,512],origin:[384,0],objects:[],blocked:[],levels:{},ramps:[],exits:[],start:[10.5,10]};cur=id;def=maps[id];changed(true,false);openMap(id);toast('Utworzono mapę „'+id+'”. Podłoże jest na razie to samo co w pilocie.')};
@@ -153,9 +165,9 @@ $('save').onclick=()=>{try{localStorage.setItem(DK(cur),snap());toast('Zapisano 
 $('cp').onclick=async()=>{const js=JSON.stringify(def);try{await navigator.clipboard.writeText(js);toast('Skopiowano JSON do schowka. Wklej go w czacie.')}catch(_){await dialog('Skopiuj ten JSON (zaznaczony) i wklej w czacie:',{text:js,area:true,ok:'Zamknij'})}};
 $('ld').onclick=async()=>{const t=await dialog('Wklej JSON mapy albo wybierz plik:',{area:true,file:true,ok:'Wczytaj'});if(!t)return;try{const d=JSON.parse(t);if(!d.objects||!d.exits||!d.start)throw 0;push();def=d;sel=-1;exSel=-1;changed(true,false);ui();toast('Wczytano mapę.')}catch(_){toast('To nie jest poprawny plik mapy.')}};
 $('orig').onclick=async()=>{if(!(await dialog('Usunąć wersję roboczą tej mapy i wczytać oryginał z pliku?')))return;try{localStorage.removeItem(DK(cur))}catch(_){}const f=INDEX.maps.includes(cur)?await FILEMAP(cur):null;if(!f){toast('Ta mapa nie ma pliku (jest nowa).');return}push();maps[cur]=def=f;sel=-1;exSel=-1;sc.setDef(def);ui();stat()};
-$('val').onclick=()=>{const r=validateWorld(maps,SP,INDEX.start),el=$('res');el.innerHTML='';for(const c of r){const d=document.createElement('div');d.className=c.level;d.textContent=(c.map?'['+c.map+'] ':'')+c.msg;el.append(d)}};
+$('val').onclick=()=>{const r=validateWorld(maps,SP,INDEX.start,Object.keys(A.grounds)),el=$('res');el.innerHTML='';for(const c of r){const d=document.createElement('div');d.className=c.level;d.textContent=(c.map?'['+c.map+'] ':'')+c.msg;el.append(d)}};
 $('cpw').onclick=async()=>{const js=JSON.stringify({start:INDEX.start,maps});try{await navigator.clipboard.writeText(js);toast('Skopiowano cały świat (wszystkie mapy). Wklej w czacie.')}catch(_){await dialog('Skopiuj ten JSON (zaznaczony) i wklej w czacie:',{text:js,area:true,ok:'Zamknij'})}};
-fillMaps();ui();stat();
+fillMaps();fillGrounds();ui();stat();
 window.__edytor={get def(){return def},get cur(){return cur},get maps(){return maps},openMap,sc,setMode:m=>$('modes').querySelector(`[data-m=${m}]`).click(),view:()=>sc.view,undoLen:()=>undo.length};
 const loop=t=>{requestAnimationFrame(loop);sc.draw(t)};requestAnimationFrame(loop);
 </script></body></html>
