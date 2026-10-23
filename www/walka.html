@@ -40,7 +40,7 @@ button{font-family:inherit}
 #end small{font:600 13px system-ui;opacity:.85;min-height:15px}
 #end:disabled{background:#2a3324;color:#6a7a5a;box-shadow:none}
   :root{--s:54px}
-  #bar{left:auto;right:max(10px,env(safe-area-inset-right));transform:none;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 66px);display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"slots slots" "prev next";gap:6px;padding:8px}
+  #bar{left:auto;right:max(10px,env(safe-area-inset-right));transform:none;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 104px);display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"slots slots" "prev next";gap:6px;padding:8px}
   #slots{grid-area:slots;display:grid;grid-template-columns:repeat(3,var(--s));min-width:0}
   #prev{grid-area:prev;width:auto;height:40px}#next{grid-area:next;width:auto;height:40px}
   #end{width:calc(var(--s) * 3 + 12px + 16px);height:56px}
@@ -52,16 +52,16 @@ button{font-family:inherit}
 </style><link rel="stylesheet" href="ui.css"></head><body><div id="app">
 <canvas id="c"></canvas>
 <div id="top"><div id="hud" class="pill"><span id="who">Walka</span><span id="pts"></span></div><div id="turns" class="pill"></div><div id="msg" class="pill"></div></div>
-<div id="orbs" class="pill"><canvas id="orb-hp" width="144" height="144"></canvas><div id="orbs2"><canvas id="orb-pa" width="80" height="80"></canvas><canvas id="orb-pm" width="80" height="80"></canvas></div></div>
+<div id="orbs" class="pill"><canvas id="orb-hp" width="352" height="68"></canvas><div id="orbs2"><canvas id="orb-pa" width="80" height="80"></canvas><canvas id="orb-pm" width="80" height="80"></canvas></div></div>
 <div id="foe" class="pill"></div>
 <div id="card" class="pill"></div>
 <div id="bar" class="pill"><span id="pgi"></span><button class="pg" id="prev" aria-label="Poprzednia strona">‹</button><div id="slots"></div><button class="pg" id="next" aria-label="Następna strona">›</button></div>
-<div id="endmod"><div id="tmtab"><span id="tm"></span></div><button id="end" class="btn-go"><span id="endt">Koniec tury</span></button></div>
+<div id="endmod"><div id="tmtab"><span id="tm"></span></div><div id="tmbar"><i></i></div><button id="end" class="btn-go"><span id="endt">Koniec tury</span></button></div>
 <div id="rotate">Obróć telefon do poziomu</div>
 <div id="banner"><span id="bt"></span><div id="bx"></div><button id="again">Jeszcze raz</button><a id="sheet" class="bb" href="postac.html" style="display:none">Karta postaci</a><a id="world" class="bb" href="swiat.html" style="display:none">Wróć do świata</a></div></div>
 <script type="module">
 import {IsoGrid} from '../src/grid.js';
-import {installFrames,drawOrb,drawHeart,drawStat} from '../src/art/ui.js';
+import {installFrames,drawOrb,drawLifeBar,drawHex} from '../src/art/ui.js';
 installFrames();
 import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
 import {heroSpec} from '../src/art/classes.js';
@@ -192,7 +192,7 @@ function renderTurns(){
     b.onclick=()=>{if(selSpell)return;inspect=id;preview=null;say(`${u.name||id}: ${u.hp}/${u.maxHp} życia.`);hud()};box.append(b)})}
 function hud(){const u=currentUnit(state),h=me();
   $('who').textContent=`Runda ${state.turn.round}`;$('pts').textContent='';
-  for(const [id,k,v,m] of [['orb-hp','hp',h.hp,h.maxHp],['orb-pa','pa',h.pa,h.maxPa],['orb-pm','pm',h.pm,h.maxPm]]){const c=$(id);(k==='hp'?drawHeart(c.getContext('2d'),c.width,m?v/m:0,v,m):drawStat(c.getContext('2d'),c.width,k,v));c.dataset.v=v;c.dataset.max=m;c.setAttribute('aria-label',`${k==='hp'?'Życie':k.toUpperCase()} ${v} z ${m}`)}
+  for(const [id,k,v,m] of [['orb-hp','hp',h.hp,h.maxHp],['orb-pa','pa',h.pa,h.maxPa],['orb-pm','pm',h.pm,h.maxPm]]){const c=$(id);(k==='hp'?drawLifeBar(c.getContext('2d'),c.width,c.height,m?v/m:0,v,m):drawHex(c.getContext('2d'),c.width,k,v));c.dataset.v=v;c.dataset.max=m;c.setAttribute('aria-label',`${k==='hp'?'Życie':k.toUpperCase()} ${v} z ${m}`)}
   
   $('end').disabled=phase==='place'?false:!mineNow();$('endt').textContent=phase==='place'?'Zaczynamy':'Koniec tury';renderTurns();renderBar();renderCard();renderFoe();resizeSoon()}
 let rs=0,sig='';function resizeSoon(){if(rs)return;rs=setTimeout(()=>{rs=0;const b=$('bar').getBoundingClientRect(),n=Math.round(b.width)+'x'+Math.round(b.height);if(n!==sig){sig=n;resize()}},0)}
@@ -298,7 +298,7 @@ function frame(now){
   const show=phase==='fight'&&TURN_TIME>0&&mineNow();
   if(show){turnLeft-=dt;if(turnLeft<=0){turnLeft=0;say('Czas minął.');endTurn()}}
   const txt=show?Math.ceil(turnLeft)+' s':'';if(txt!==lastTm){lastTm=txt;$('tm').textContent=txt}
-  $('end').style.setProperty('--p',show?Math.round(turnLeft/TURN_TIME*100)+'%':'100%');$('end').classList.toggle('low',show&&turnLeft<=5);
+  $('endmod').style.setProperty('--p',show?Math.round(turnLeft/TURN_TIME*100)+'%':'100%');$('end').style.setProperty('--p',show?Math.round(turnLeft/TURN_TIME*100)+'%':'100%');$('end').classList.toggle('low',show&&turnLeft<=5);
   const cur=currentUnit(state),overlay=[],mine=mineNow();
   if(phase==='place'){const gr=gridOf(state),zc=[];for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(ZONE(x,y)&&!gr.isBlocked(x,y)&&!state.units.some(q=>q.hp>0&&q.team==='wrog'&&q.x===x&&q.y===y))zc.push({x,y});
     fillCells(g,grid,zc,'rgba(90,150,255,.36)');for(const c of zc)drawCellOutline(g,grid,c.x,c.y,'rgba(170,210,255,.75)',1.4);drawCellOutline(g,grid,me().x,me().y,'#ffe066',3)}

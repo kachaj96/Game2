@@ -95,3 +95,21 @@ export function drawStat(g, S, kind, value) {
   g.save(); g.clip(); const hl = g.createLinearGradient(0, 0, 0, c); hl.addColorStop(0, 'rgba(255,255,255,.5)'); hl.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = hl; g.fillRect(0, 0, S, c); g.restore();
   shadowText(g, String(value), c, c * 1.08, S * 0.4);
 }
+
+// ---- styl A "Żelazo i żar": pasek życia w ściętej blasze i sześciokątne PA i PM ----
+export function drawLifeBar(g, W, H, frac, cur, max) {
+  g.clearRect(0, 0, W, H); const f = Math.max(0, Math.min(1, frac)), cut = H * 0.32;
+  const path = (i = 0) => { g.beginPath(); g.moveTo(i + cut, i); g.lineTo(W - i, i); g.lineTo(W - i - cut, H - i); g.lineTo(i, H - i); g.closePath(); };
+  path(0); g.fillStyle = '#0a0806'; g.fill();
+  g.save(); path(3); g.clip(); g.fillStyle = '#1e1812'; g.fillRect(0, 0, W, H);
+  if (f > 0) { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#f0603a'); gr.addColorStop(0.5, '#c42a14'); gr.addColorStop(1, '#6a0e06'); g.fillStyle = gr; g.fillRect(0, 0, W * f, H); g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(0, 3, W * f, 2); }
+  g.restore(); path(1.5); g.lineWidth = 3; g.strokeStyle = '#5a4a34'; g.stroke();
+  shadowText(g, `${cur} / ${max}`, W / 2 + cut * 0.2, H / 2 + 1, H * 0.5);
+}
+export function drawHex(g, S, kind, value) {
+  g.clearRect(0, 0, S, S); const [hi, lo] = kind === 'pa' ? ['#4a86c8', '#1e3a62'] : ['#58a048', '#1e4a1a'], c = S / 2;
+  const hex = (r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 3; g[i ? 'lineTo' : 'moveTo'](c + Math.cos(a) * r, c + Math.sin(a) * r); } g.closePath(); };
+  hex(c * 0.96); g.fillStyle = '#0a0806'; g.fill(); hex(c * 0.84); const gr = g.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, hi); gr.addColorStop(1, lo); g.fillStyle = gr; g.fill();
+  hex(c * 0.9); g.lineWidth = S * 0.05; g.strokeStyle = '#5a4a34'; g.stroke();
+  shadowText(g, String(value), c, c + 1, S * 0.46);
+}
