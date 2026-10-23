@@ -27,7 +27,7 @@ const maps={};for(const id of INDEX.maps)maps[id]=window.__MAPS?window.__MAPS[id
 if(Q.get('draft')==='1'){let extra=[];try{extra=JSON.parse(localStorage.getItem('arena.mapdraft.v3.__list'))||[]}catch(_){}
  for(const id of [...INDEX.maps,...extra]){try{const d=JSON.parse(localStorage.getItem('arena.mapdraft.v3.'+id));if(d&&d.objects)maps[id]=d}catch(_){}}}
 let cur=Q.get('map')&&maps[Q.get('map')]?Q.get('map'):INDEX.start;
-$('ed').href='edytor.html?map='+cur;
+const setEd=()=>{const e=$('ed');if(e)e.href='edytor.html?map='+cur};setEd();
 const A=await loadAssets(LIB,url);
 let msgT=0;const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=0,2400)};
 const label=()=>{$('mname').textContent=maps[cur].name||cur};
@@ -37,7 +37,7 @@ let busy=false;
 sc.onExit=async to=>{if(busy)return;busy=true;const r=resolveExit(maps,to,SP);
  if(r.error){toast(r.error);busy=false;return}
  $('fade').style.opacity=1;await new Promise(ok=>setTimeout(ok,260));
- cur=to.map;sc.enter(r.def,r.pos);label();$('ed').href='edytor.html?map='+cur;
+ cur=to.map;sc.enter(r.def,r.pos);label();setEd();
  await new Promise(ok=>setTimeout(ok,60));$('fade').style.opacity=0;await new Promise(ok=>setTimeout(ok,260));busy=false};
 cv.addEventListener('pointerdown',e=>{if(busy)return;const m=sc.toMap(e.clientX,e.clientY);sc.moveTo(m.cell[0],m.cell[1])});
 const tg=(b,get,set)=>{$(b).onclick=()=>{set(!get());$(b).classList.toggle('on',get())}};
