@@ -11,7 +11,6 @@ import { drawBuilding } from './buildings.js';
 import { drawEntrance, genEntrance } from './entrances.js';
 import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
-import { ASSETS, loadAssets, drawAsset, assetDim } from './assets.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs, well, fence } from './props.js';
 
 export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2, LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
@@ -19,7 +18,6 @@ export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2, LEVELS = [0.5, 0.75, 
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
 // rodzaje obiektów świata rysowane z gotowych obrazów (gdy się wczytały): sc przelicza skalę obiektu na skalę obrazu, vary dodaje drobne różnice rozmiaru
-const IMG_KIND = { oak: { key: 'dab', vary: true }, pine: { key: 'sosna', vary: true }, birch: { key: 'brzoza', vary: true }, dead: { key: 'martwe', vary: true }, rock: { key: 'glaz', sc: (o) => 0.5 + 0.5 * (o.sc || 1) }, bush: { key: 'krzew', sc: (o) => (o.sc || 1) * 1.1 }, crate: { key: 'skrzynia' }, barrel: { key: 'beczka' }, lamp: { key: 'latarnia' }, well: { key: 'studnia' }, stump: { key: 'pniak' }, grave: { key: 'nagrobek' } };
 const TREE = { oak: 1, pine: 1, birch: 1, dead: 1, swamp: 1 };
 const SMALL = { bush: (g, x, y, sc, s, o) => NA.bush(g, x, y, s, { biome: o.biome, sc: sc * 0.62 }), rock: (g, x, y, sc, s) => NA.rock(g, x, y, s, { sc: sc * 1.15 }), flowers: (g, x, y, sc, s) => NA.flowers(g, x, y, s, { sc: 0.8 }), mushrooms: (g, x, y, sc, s) => NA.mushrooms(g, x, y, s, { sc: 1.1 }), stump: (g, x, y, sc, s) => NA.stump(g, x, y, s, { sc: 1.1 }) };
 const PROP = { lamp: (g, x, y) => lampPost(g, x, y, 1.35), bench: (g, x, y) => bench(g, x, y, 1.25), barrel: (g, x, y, s) => barrel(g, x, y, 1.1, s), crate: (g, x, y, s) => crate(g, x, y, 1.1, s), cart: (g, x, y, s) => cart(g, x, y, 1.2, s), sack: (g, x, y) => sack(g, x, y, 1.1), logs: (g, x, y) => logs(g, x, y, 1.2), well: (g, x, y, s) => well(g, x, y, 1.2, s), fence: (g, x, y, s, o) => fence(g, x, y, 1.2, s, o && o.dir) };
@@ -29,7 +27,7 @@ const SPR = { oak: [290, 300, 145, 268], swamp: [320, 320, 160, 282], pine: [210
 export class WorldView {
   constructor(world, deps = {}) {
     this.w = world; this.grid = makeGrid(); this.sprLv = new Map(); this.chunkLv = new Map(); this.lvCur = 0; this.lvPrev = 0; this.sprBudget = 99; this.shadeCache = new Map(); this.quality = { shadowRes: SHS, decals: true }; this.doc = deps.document || (typeof document !== 'undefined' ? document : null);
-    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.imgs = deps.images ? loadAssets(this.doc, () => { this._lamps = null; }) : {}; this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this._lamps = null;
+    this.entSpecs = world.entrances.map((e, i) => genEntrance(i + 3, e.kind)); this.baked = 0; this.occ = buildOccluders(world); this.t = 0; this.masks = new Map(); world.buildings.forEach((b) => { b.s.noSmoke = true; }); this._lamps = null;
     this.bld = new Map(); world.buildings.forEach((b) => { const k = (b.sy - 1) * N + (b.sx - 1); (this.bld.get(k) || this.bld.set(k, []).get(k)).push(b); });
     this.ent = new Map(); world.entrances.forEach((e, i) => { const k = Math.floor(e.at[1]) * N + Math.floor(e.at[0]); (this.ent.get(k) || this.ent.set(k, []).get(k)).push(i); });
   }
@@ -255,24 +253,19 @@ export class WorldView {
   }
   objectDrawer(o) {
     const sd = o.seed % 7 + 1;
-    const I = IMG_KIND[o.k];
-    if (I && this.imgs[I.key]) { const flip = sd % 2 === 1, q = Math.round((I.sc ? I.sc(o) : 1) * 8) / 8 * (I.vary ? 0.9 + 0.1 * (sd % 3) : 1), key = `img:${I.key}:${flip ? 1 : 0}:${q.toFixed(2)}`; return [key, assetDim(I.key, q), (gg, ax, ay) => drawAsset(gg, this.imgs[I.key], I.key, ax, ay, { flip, sc: q })]; }
     if (TREE[o.k]) { const spec = genTree(sd, o.k, o.biome || 'summer'); return [`${o.k}:${sd}:${o.biome || ''}`, SPR[o.k], (gg, ax, ay) => drawTree(gg, ax, ay, spec)]; }
     if (SMALL[o.k]) { const sc = o.sc || 1; return [`${o.k}:${sd}:${o.biome || ''}:${Math.round(sc * 4)}`, SPR[o.k], (gg, ax, ay) => SMALL[o.k](gg, ax, ay, sc, sd, o)]; }
     if (PROP[o.k]) return [`${o.k}:${sd}:${o.dir || ''}`, SPR[o.k], (gg, ax, ay) => PROP[o.k](gg, ax, ay, sd, o)];
     return null;
   }
-  // grafika z obrazów jest eksperymentem (domyślnie wyłączona): przełączenie czyści obrazki obiektów i punkty światła
-  setImages(on) { this.imgs = on ? loadAssets(this.doc, () => { this._lamps = null; this.sprLv.clear(); this.masks.clear(); }) : {}; this._lamps = null; this.sprLv.clear(); this.masks.clear(); }
   get lamps() { return this._lamps || (this._lamps = this.collectLights()); }
   // źródła światła w świecie (lampy, pochodnie przy wejściach) w pikselach świata: używane w nocy i do migotania
   collectLights() {
     const out = [], w = this.w;
-    for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y), L = ASSETS.latarnia, lit = this.imgs.latarnia; out.push({ x: lit ? p[0] + (L.lights[0][0] - 0.5) * L.w : p[0], y: lit ? p[1] + L.lights[0][1] * L.h - (L.h - L.foot) : p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
+    for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y); out.push({ x: p[0], y: p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
     // wejścia: światło wychodzi z pochodni (płomienie na słupach przy portyku krypty) albo z dziupli jamy, a nie z całej bryły
     w.entrances.forEach((e, i) => { const p = this.pos(e.at[0], e.at[1]), sc = this.entSpecs[i].scale || 1;
-      const A = ASSETS.krypta; if (e.kind === 'krypta' && this.imgs.krypta) for (const [fx, fy] of A.lights) out.push({ x: p[0] + (fx - 0.5) * A.w, y: p[1] + fy * A.h - (A.h - A.foot), r: 95, a: 0.95, ph: i + fx * 7 });
-      else if (e.kind === 'krypta') for (const sd of [-1, 1]) { const X = 0.894 * ((sd * 73) - 96), Y = 0.447 * ((sd * 73) + 96) - 82; out.push({ x: p[0] + X * sc, y: p[1] + Y * sc, r: 95, a: 0.95, ph: i + sd * 3.1 }); }
+      if (e.kind === 'krypta') for (const sd of [-1, 1]) { const X = 0.894 * ((sd * 73) - 96), Y = 0.447 * ((sd * 73) + 96) - 82; out.push({ x: p[0] + X * sc, y: p[1] + Y * sc, r: 95, a: 0.95, ph: i + sd * 3.1 }); }
       else out.push({ x: p[0], y: p[1] - 18 * sc, r: 70, a: 0.7, ph: i }); });
     return out;
   }
@@ -342,9 +335,9 @@ export class WorldView {
     drawFn(); if (occ && occ.length) for (const k of occ) this.redrawTile(g, k, scale);
   }
   // chata z obrazu na podstawie budynku typu cottage: szerokość z obrysu, podstawa w środku obrysu
-  bldDraw(b) { if (b.s.kind === 'cottage' && this.imgs.chata) { const A = ASSETS.chata, sc = (b.w + b.d) * 36 * 0.95 / A.w; return [`bi:${b.s.seed}`, assetDim('chata', sc), (gg, ax, ay) => drawAsset(gg, this.imgs.chata, 'chata', ax, ay, { sc }), true]; } return [`b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, false]; }
+  bldDraw(b) { return [`b:${b.s.seed}`, SPR.budynek, (gg, ax, ay) => { gg.save(); gg.translate(ax, ay); gg.scale(b.k, b.k); drawBuilding(gg, 0, 0, b.s); gg.restore(); }, false]; }
   // rysunek wejścia: gotowy obraz (krypta), gdy się wczytał, inaczej generator
-  entDraw(i) { const e = this.w.entrances[i]; if (e.kind === 'krypta' && this.imgs.krypta) return [`ei:${i}`, assetDim('krypta'), (gg, ax, ay) => drawAsset(gg, this.imgs.krypta, 'krypta', ax, ay)]; if (e.kind === 'jama' && this.imgs.jama) return [`ei:${i}`, assetDim('jama'), (gg, ax, ay) => drawAsset(gg, this.imgs.jama, 'jama', ax, ay)]; return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i])]; }
+  entDraw(i) { const e = this.w.entrances[i]; return [`e:${i}`, SPR[e.kind], (gg, ax, ay) => drawEntrance(gg, ax, ay, this.entSpecs[i])]; }
   // cały świat widoczny w oknie (cam: środek w px świata, view: {w,h} w px css, zoom). Najpierw cały teren (niezależna warstwa), potem wszystkie
   // przedmioty i postacie od tyłu do przodu; wyższy teren zasłania tylko te przedmioty, które faktycznie leżą za nim.
   draw(g, cam, view, zoom, dpr, t, entities = []) {

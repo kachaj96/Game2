@@ -16,7 +16,7 @@ await page.goto(U('swiat.html')); await page.waitForFunction(() => window.__swia
 // Menu otwiera panel, opcje zapisują się, Wznów zamyka
 await page.locator('#mmenu').tap(); await page.waitForSelector('#pause.on');
 await page.locator('#oq button', { hasText: 'Niska' }).tap(); await page.locator('#ot button', { hasText: 'Zawsze noc' }).tap(); await page.locator('#of button', { hasText: 'Wł.' }).tap();
-const st = await page.evaluate(() => JSON.parse(localStorage.getItem('arena.settings.v1'))); assert.deepEqual(st, { quality: 'low', time: 'night', fps: true, theme: 'default', images: false });
+const st = await page.evaluate(() => JSON.parse(localStorage.getItem('arena.settings.v1'))); assert.deepEqual(st, { quality: 'low', time: 'night', fps: true, theme: 'default' });
 await page.locator('#presume').tap(); assert.equal(await page.locator('#pause').evaluate((e) => e.classList.contains('on')), false);
 await page.waitForTimeout(800); assert.match(await page.locator('#fps').textContent(), /FPS/);
 // noc: lewy górny róg ekranu (daleko od światła) jest prawie czarny

@@ -82,9 +82,7 @@ import {genKopacz,drawKopacz} from '../src/art/creatures.js';
 import {DUNGEONS,dungeonLevel,levelAdvice} from '../src/game/dungeons.js';
 import {composeEncounter,spawnEncounter,enemyCap} from '../src/game/encounter.js';
 import {referenceHero} from '../src/game/reference.js';
-import {ASSETS} from '../src/art/assets.js';
 import {loadSettings} from '../src/game/settings.js';
-const IMG=!!loadSettings().images||new URLSearchParams(location.search).get('obrazy')==='1';
 import {makeArena,ARENA} from '../src/game/arena.js';
 import {loadCharacter,saveCharacter} from '../src/game/save.js';
 import {addXp,chamberReward,newRun,loadRun,saveRun,clearRun,roomSeed,levelFromXp} from '../src/game/run.js';
@@ -129,14 +127,11 @@ const FEET=-2;
 const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:'#e8e8e8'};
 
 const bg=document.createElement('canvas');
-// tło areny z gotowego obrazu (www/img/arena-<motyw>.png, rozmiar planszy w pikselach świata razy 2): gdy plik istnieje, zastępuje podłogę z generatora
 // przeszkody areny z gotowych obrazów (gdy się wczytają; inaczej generatory)
-const OBST=['przeszkoda1','przeszkoda2','stalagmit'].map(k=>{const im=new Image(),o={k,im,ok:false};if(IMG){im.onload=()=>{o.ok=true};im.src=ASSETS[k].src}return o});
-let arenaImg=null;if(IMG){const im=new Image();im.onload=()=>{arenaImg=im;if(typeof renderBg==='function'&&cv.width>2)renderBg()};im.src='img/arena-'+(DG?DG.theme:'arena')+'.png'}
 let moodLayer=null;
 function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');moodLayer=makeMoodLayer(document,cv.width,cv.height,mood);
-  if(arenaImg){b.fillStyle='#0a0908';b.fillRect(0,0,bg.width,bg.height)}else{N.ground(b,bg.width,bg.height,7,{biome:TH.biome});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400*TH.tufts),null,{biome:TH.biome});}
-  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);if(arenaImg)b.drawImage(arenaImg,0,0,WORLD.w,WORLD.h);else drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
+  {N.ground(b,bg.width,bg.height,7,{biome:TH.biome});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400*TH.tufts),null,{biome:TH.biome});}
+  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
   // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&TH.decals.length)DECALS[TH.decals[h%TH.decals.length]](b,c[0]+(h===0?4:0),c[1]+1,.9,x*7+y*3+h)}
   b.setTransform(1,0,0,1,0,0);applyMoodStatic(b,bg.width,bg.height,mood)}
@@ -320,7 +315,6 @@ function frame(now){
     if(preview.kind==='cast'){drawCellOutline(g,grid,preview.x,preview.y,'#ffffff',3.4);const c=grid.center(preview.x,preview.y);overlay.push(()=>label(c,`${preview.lo}-${preview.hi}${preview.known?'':'?'}`,'#ffd0a0'))}}
   const items=[];
   for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y);const t=(x*7+y*3)%3;
-    const ob=OBST[t];if(DG&&ob.ok){const A=ASSETS[ob.k],sc=1+((x*5+y*11)%3)*0.06;items.push({d:x+y+.5,f:()=>{g.imageSmoothingQuality='high';g.drawImage(ob.im,c[0]-A.w*sc/2,c[1]+12+A.foot-A.h*sc,A.w*sc,A.h*sc)}});continue}
     items.push({d:x+y+.5,f:()=>t===0?N.rock(g,c[0],c[1]+10,x*9+y,{sc:.9}):t===1?N.stump(g,c[0],c[1]+8,x+y*5):N.deadTree(g,c[0],c[1]+10,x*3+y,{sc:.8})})}
   for(const cl of state.clouds){const c=grid.center(cl.x,cl.y);items.push({d:cl.x+cl.y+.9,f:()=>ashCloud(g,c[0],c[1]+6,1.1,cl.x*7+cl.y)})}
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
