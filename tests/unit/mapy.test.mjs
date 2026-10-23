@@ -59,3 +59,29 @@ test('sortowanie głębi: bohater przed chatą gdy jest bliżej widza, za nią g
   const order = (hero) => m.drawOrder([hero]).map((o) => o.kind || 'hero');
   assert.deepEqual(order(front), ['object', 'hero']); assert.deepEqual(order(back), ['hero', 'object']);
 });
+
+import { shadowMask, sunkMask, groundLine } from '../../mapy/src/osadzenie.js';
+const solid = (w, h, x0, x1, y0, y1) => { const a = new Uint8ClampedArray(w * h); for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) a[y * w + x] = 255; return a; };
+
+test('cień: słup rzuca cień w prawo i w stronę widza, proporcjonalny do wysokości', () => {
+  const w = 20, h = 100, a = solid(w, h, 8, 12, 0, h), m = shadowMask(a, w, h, { base: 'center' });
+  let maxX = 0, maxY = 0; for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.data[y * m.w + x]) { maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+  assert.ok(maxX > 11 + 0.5 * h && maxX < 12 + 0.6 * h + 3, 'długość w prawo ' + maxX);   // koniec cienia około 0,55 wysokości od słupa
+  assert.ok(maxY >= h - 1 + 0.2 * h, 'cień schodzi poniżej podstawy ku widzowi ' + maxY);
+  const short = shadowMask(solid(w, 50, 8, 12, 0, 50), w, 50, { base: 'center' }); let sx = 0; for (let y = 0; y < short.h; y++) for (let x = 0; x < short.w; x++) if (short.data[y * short.w + x]) sx = Math.max(sx, x);
+  assert.ok(sx < maxX - 10, 'niższy słup, krótszy cień');
+});
+
+test('cień: pod podstawą bryły (corner) wychodzi od zarysu podstawy, nie od najniższego piksela', () => {
+  const w = 40, h = 40, a = new Uint8ClampedArray(w * h);   // bryła z podstawą w kształcie V: najniżej w środku
+  for (let x = 0; x < w; x++) { const yb = h - 1 - Math.abs(x - 20); for (let y = 0; y <= yb; y++) a[y * w + x] = 255; }
+  const gl = groundLine(a, w, h, 'corner'); assert.equal(gl[20], h - 1); assert.equal(gl[0], h - 21);
+  assert.ok(groundLine(a, w, h, 'center').every((v) => v === h - 1));
+});
+
+test('osadzenie: trawa nachodzi tylko na dolny pas, najmocniej przy gruncie', () => {
+  const w = 30, h = 60, a = solid(w, h, 5, 25, 0, h), m = sunkMask(a, w, h, { band: 12 });
+  assert.equal(m[0 * w + 10], 0); assert.equal(m[(h - 20) * w + 10], 0);
+  assert.ok(m[(h - 1) * w + 10] > m[(h - 6) * w + 10] && m[(h - 6) * w + 10] > 0);
+  assert.equal(m[(h - 1) * w + 2], 0, 'poza sylwetką bez maski');
+});

@@ -7,8 +7,8 @@ files = [lib['ground']['file'], lib['hero']['idle_sw']['file'], lib['hero']['idl
 mime = lambda f: 'image/jpeg' if f.endswith('.jpg') else 'image/png'
 assets = {f: 'data:%s;base64,%s' % (mime(f), base64.b64encode(open(os.path.join(R, 'gra', f), 'rb').read()).decode()) for f in files}
 def strip(src): return re.sub(r'^import .*?;\s*$', '', re.sub(r'^export ', '', src, flags=re.M), flags=re.M)
-iso = strip(open(os.path.join(R, 'src', 'iso.js'), encoding='utf-8').read()); md = strip(open(os.path.join(R, 'src', 'mapdata.js'), encoding='utf-8').read())
+iso = strip(open(os.path.join(R, 'src', 'iso.js'), encoding='utf-8').read()); md = strip(open(os.path.join(R, 'src', 'mapdata.js'), encoding='utf-8').read()) + '\n' + strip(open(os.path.join(R, 'src', 'osadzenie.js'), encoding='utf-8').read())
 head = '<script>window.__LIB=%s;window.__ASSETS=%s;</script>\n' % (json.dumps(lib), json.dumps(assets))
-page = re.sub(r"^import \{.*?\} from '\./src/(iso|mapdata)\.js';\n", '', page, flags=re.M)
+page = re.sub(r"^import \{.*?\} from '\./src/(iso|mapdata|osadzenie)\.js';\n", '', page, flags=re.M)
 page = page.replace('<script type="module">', head + '<script type="module">\n' + iso + '\n' + md + '\n', 1)
 open(out, 'w', encoding='utf-8').write(page); print(out, round(len(page) / 1e6, 2), 'MB')

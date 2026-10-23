@@ -10,11 +10,12 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:b
 #err{display:none;position:fixed;left:8px;right:8px;top:8px;z-index:9;background:#5a1a14;border:1px solid #ff7050;padding:10px}
 </style></head><body>
 <canvas id="c"></canvas><div id="err"></div>
-<div id="bar"><button id="bg">Siatka</button><button id="bc">Kolizje</button></div>
+<div id="bar"><button id="bo" class="on">Osadzenie</button><button id="bg">Siatka</button><button id="bc">Kolizje</button></div>
 <div id="msg">Dotknij ziemi, by tam pójść.</div>
 <script type="module">
 import {Iso, TW, TH} from './src/iso.js';
 import {buildMap} from './src/mapdata.js';
+import {shadowCanvas,sunkCanvas,pixelsOf,flipped} from './src/osadzenie.js';
 addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Strona wymaga serwera (npm start) albo adresu https, nie pliku z dysku.'});
 const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d');
 const LIB=window.__LIB||await (await fetch('gra/biblioteka.json')).json();
@@ -31,8 +32,25 @@ const M=buildMap(DEF),iso=M.iso;
 const [ground,...rest]=await Promise.all([load(LIB.ground.file),...Object.values(LIB.sprites).map(s=>load(s.file)),load(LIB.hero.idle_sw.file),load(LIB.hero.idle_ne.file),...LIB.hero.walk_w.map(f=>load(f.file))]);
 const names=Object.keys(LIB.sprites),IMG={};names.forEach((n,i)=>IMG[n]=rest[i]);
 const IDLE={sw:rest[names.length],ne:rest[names.length+1]},WALK=rest.slice(names.length+2);
+// ---- osadzenie w podłożu: wszystko, co statyczne, wypalamy raz w drugim obrazie podłoża ----
+const GP=pixelsOf(ground),mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const objPos=o=>{const s=LIB.sprites[o.sprite],c=s.base==='center'?iso.toScreen(o.x-.5,o.y-.5):iso.toScreen(o.x,o.y);return {s,x:c[0],y:c[1],gx:Math.round(2*c[0]-s.w/2),gy:Math.round(2*c[1]-s.h)}};
+const baked=mk(1536,1024),bg_=baked.getContext('2d');bg_.drawImage(ground,0,0);
+const SUNK={};
+for(const o of DEF.objects){const P=objPos(o),fp=P.s.footprint;
+ // zaczernienie przy podstawie: rozmyty romb odcisku
+ const cx=o.x-fp.w/2,cy=o.y-fp.d/2,k=1.22,pts=[[-fp.w,-fp.d],[0,-fp.d],[0,0],[-fp.w,0]].map(([a,b])=>iso.toScreen(cx+(a+fp.w/2)*k,cy+(b+fp.d/2)*k));
+ bg_.save();bg_.filter='blur(9px)';bg_.fillStyle='rgba(8,10,4,.42)';bg_.beginPath();pts.forEach((q,i)=>i?bg_.lineTo(q[0]*2,q[1]*2):bg_.moveTo(q[0]*2,q[1]*2));bg_.closePath();bg_.fill();bg_.restore();
+ // cień rzucony z sylwetki
+ bg_.drawImage(shadowCanvas(IMG[o.sprite],P.s.base,1.6,.5),P.gx,P.gy);
+ SUNK[o.sprite]=sunkCanvas(IMG[o.sprite],P.s.base,GP.d,P.gx,P.gy,{band:P.s.base==='center'?16:12,strength:.85})}
+// światło lampy: ciepła plama na ziemi i poświata latarni
+for(const o of DEF.objects.filter(q=>q.sprite==='lampa')){const P=objPos(o);bg_.save();bg_.globalCompositeOperation='screen';
+ let r=bg_.createRadialGradient(0,0,0,0,0,150);r.addColorStop(0,'rgba(255,170,60,.38)');r.addColorStop(1,'rgba(255,170,60,0)');bg_.translate(P.x*2,P.y*2);bg_.scale(1,.52);bg_.fillStyle=r;bg_.fillRect(-150,-150,300,300);bg_.restore()}
+// cienie bohatera: dla każdej klatki i lustra
+const HSH=new Map(),hshadow=(img,m)=>{if(!HSH.has(img)){const f=flipped(img);HSH.set(img,{n:{c:shadowCanvas(img,'center',1.1,.5),ax:m.ax},f:{c:shadowCanvas(f,'center',1.1,.5),ax:m.w-m.ax}})}return HSH.get(img)};
 const hero={x:DEF.start[0],y:DEF.start[1],path:[],dir:'SW',t:0,walk:false};
-let showGrid=false,showCol=false,view={z:1,ox:0,oy:0},dpr=1,msgT=0;
+let showGrid=false,showCol=false,osad=true,view={z:1,ox:0,oy:0},dpr=1,msgT=0;
 const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=.0,2400)};
 function resize(){dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.round(innerWidth*dpr);cv.height=Math.round(innerHeight*dpr);const z=Math.min(innerWidth/768,innerHeight/512);view={z,ox:(innerWidth-768*z)/2,oy:(innerHeight-512*z)/2}}
 addEventListener('resize',resize);resize();
@@ -57,14 +75,13 @@ function frame(now){
   if(d<=sp){hero.x=tx;hero.y=ty;hero.path.shift();if(!hero.path.length){const ex=M.exitAt(Math.floor(hero.x),Math.floor(hero.y));if(ex)toast('Przejście do mapy "'+ex.map+'" (tu nastąpiłoby przeniesienie)')}}
   else{hero.x+=dx/d*sp;hero.y+=dy/d*sp;hero.walk=true;hero.t+=dt;hero.dir=sector((dx-dy)*TW/2,(dx+dy)*TH/2)}}
  g.setTransform(1,0,0,1,0,0);g.fillStyle='#0a0908';g.fillRect(0,0,cv.width,cv.height);
- g.drawImage(ground,view.ox*dpr,view.oy*dpr,768*view.z*dpr,512*view.z*dpr);
+ g.drawImage(osad?baked:ground,view.ox*dpr,view.oy*dpr,768*view.z*dpr,512*view.z*dpr);
  if(showGrid||showCol)for(const [cx,cy] of iso.cells()){const c=[[cx,cy],[cx+1,cy],[cx+1,cy+1],[cx,cy+1]].map(([a,b])=>S2(a,b)),bl=M.blocked(cx,cy),ex=M.exitAt(cx,cy);
   g.beginPath();c.forEach((p,i)=>i?g.lineTo(p[0]*dpr,p[1]*dpr):g.moveTo(p[0]*dpr,p[1]*dpr));g.closePath();
   if(showCol&&bl){g.fillStyle='rgba(255,40,40,.35)';g.fill()}if(showCol&&ex){g.fillStyle='rgba(60,160,255,.35)';g.fill()}
   if(showGrid){g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=dpr;g.stroke()}}
- // cienie kontaktowe
- for(const o of DEF.objects){const s=LIB.sprites[o.sprite],cx=o.x-s.footprint.w/2,cy=o.y-s.footprint.d/2;drawShadow(cx,cy,s.footprint.w*34+8,s.footprint.w*14+6,o.sprite==='lampa'?.2:.3)}
- drawShadow(hero.x,hero.y,22,8,.4);
+ if(!osad){for(const o of DEF.objects){const s=LIB.sprites[o.sprite],cx=o.x-s.footprint.w/2,cy=o.y-s.footprint.d/2;drawShadow(cx,cy,s.footprint.w*34+8,s.footprint.w*14+6,.3)}drawShadow(hero.x,hero.y,22,8,.4)}
+ else{const hp=heroSprite(),sh=hshadow(hp.img,hp.m),v=hp.mir?sh.f:sh.n,hp0=S2(hero.x,hero.y);drawImg(v.c,{w:v.c.width,h:v.c.height,ax:v.ax},hp0[0],hp0[1],{bob:0,alpha:.95})}
  // rysowanie od najdalszych: obiekty mapy i bohater według klucza głębi
  const list=DEF.objects.map(o=>({o,x:o.x,y:o.y,bias:LIB.sprites[o.sprite].base==='center'?-1:0,kind:'o'}));list.push({x:hero.x,y:hero.y,kind:'h'});
  list.sort((a,b)=>(a.x+a.y+(a.bias||0))-(b.x+b.y+(b.bias||0)));
@@ -73,7 +90,8 @@ function frame(now){
   if(it.kind==='h'){const hsp=heroSprite();drawImg(hsp.img,hsp.m,hs[0],hs[1],{mir:hsp.mir,glow:true,bob:hsp.bob})}
   else{const b=spriteBox(it.o),behind=(hero.x+hero.y)<(it.o.x+it.o.y+(it.bias||0));
    let a=1;if(b.s.fade&&behind&&hs[0]>b.l&&hs[0]<b.r&&hs[1]-80*view.z<b.b&&hs[1]>b.t)a=.45;
-   drawImg(IMG[it.o.sprite],b.s,b.x,b.y,{alpha:a})}}
+   drawImg(IMG[it.o.sprite],b.s,b.x,b.y,{alpha:a});if(osad)drawImg(SUNK[it.o.sprite],b.s,b.x,b.y,{alpha:a})}}
+ if(osad){g.save();g.globalCompositeOperation='multiply';const x0=view.ox*dpr,y0=view.oy*dpr,w=768*view.z*dpr,h=512*view.z*dpr,gr=g.createLinearGradient(x0,y0,x0+w,y0+h);gr.addColorStop(0,'rgb(255,250,238)');gr.addColorStop(1,'rgb(205,210,222)');g.globalAlpha=.55;g.fillStyle=gr;g.fillRect(x0,y0,w,h);g.restore()}
 }
 // dotyk: kafel pod palcem, ścieżka A*
 cv.addEventListener('pointerdown',e=>{const wx=(e.clientX-view.ox)/view.z,wy=(e.clientY-view.oy)/view.z,[cx,cy]=iso.cellAt(wx,wy);
@@ -81,8 +99,8 @@ cv.addEventListener('pointerdown',e=>{const wx=(e.clientX-view.ox)/view.z,wy=(e.
  const p=M.findPath([Math.floor(hero.x),Math.floor(hero.y)],[cx,cy]);if(!p){toast('Nie da się tam dojść.');return}
  hero.path=p.slice(1).map(([x,y])=>[x+.5,y+.5]);if(!hero.path.length)hero.path=[[cx+.5,cy+.5]]});
 const tg=(b,get,set)=>{$(b).onclick=()=>{set(!get());$(b).classList.toggle('on',get())}};
-tg('bg',()=>showGrid,v=>showGrid=v);tg('bc',()=>showCol,v=>showCol=v);
-addEventListener('keydown',e=>{if(e.key==='g')$('bg').click();if(e.key==='c')$('bc').click()});
+tg('bo',()=>osad,v=>osad=v);tg('bg',()=>showGrid,v=>showGrid=v);tg('bc',()=>showCol,v=>showCol=v);
+addEventListener('keydown',e=>{if(e.key==='o')$('bo').click();if(e.key==='g')$('bg').click();if(e.key==='c')$('bc').click()});
 window.__podglad={hero,M,view:()=>view,go:(cx,cy)=>{const p=M.findPath([Math.floor(hero.x),Math.floor(hero.y)],[cx,cy]);if(p)hero.path=p.slice(1).map(([x,y])=>[x+.5,y+.5]);return !!p}};
 requestAnimationFrame(frame);
 </script></body></html>
