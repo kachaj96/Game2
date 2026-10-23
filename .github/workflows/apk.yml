@@ -1,0 +1,49 @@
+name: APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['src/**', 'www/**', 'android/**', 'capacitor.config.json', 'tools/build-app.mjs', 'tools/android/**', '.github/workflows/apk.yml']
+jobs:
+  apk:
+    name: Budowa APK (Android)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
+      - name: Złóż aplikację webową (dist/)
+        run: node tools/build-app.mjs
+      - name: Zsynchronizuj z projektem Androida
+        run: npx cap sync android
+      - name: Zbuduj podpisany APK
+        working-directory: android
+        env:
+          APK_VERSION_CODE: ${{ github.run_number }}
+          APK_VERSION_NAME: 0.1.${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Nazwij plik
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/arena-iso.apk
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arena-iso-apk
+          path: out/arena-iso.apk
+      - name: Wydanie z plikiem APK (stały link do pobrania na telefonie)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest out/arena-iso.apk --title "Arena Iso (APK do instalacji)" --prerelease --target "${{ github.sha }}" --notes "Wersja 0.1.${{ github.run_number }} z commita ${{ github.sha }}. Pobierz arena-iso.apk na telefon i zainstaluj (zezwól na instalację z nieznanych źródeł). Kolejne wersje aktualizują zainstalowaną grę."

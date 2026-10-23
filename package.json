@@ -11,6 +11,9 @@
     "e2e": "node tests/e2e/walka.mjs && node tests/e2e/kreator.mjs && node tests/e2e/czary.mjs && node tests/e2e/pasek.mjs && node tests/e2e/postac.mjs && node tests/e2e/swiat.mjs && node tests/e2e/loch.mjs && node tests/e2e/petla.mjs"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
     "playwright": "^1.49.0"
   }
 }

@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>Ikona</title><body style="margin:0;background:transparent"><canvas id="c"></canvas>
+<script type="module">
+// Ikona aplikacji rysowana kodem (jak cała grafika): ciemna łąka, mosiężny romb kafla, bohater z poświatą. ?v=full|round|fg & size=px
+import {heroSpec} from '../src/art/classes.js';
+import {drawCharacter,DIRS} from '../src/art/characters.js';
+const Q=new URLSearchParams(location.search),S=Number(Q.get('size')||512),V=Q.get('v')||'full',c=document.getElementById('c');c.width=c.height=S;const g=c.getContext('2d');
+const k=S/108;                                  // jednostka: 1 dp adaptacyjnej ikony 108
+g.save();
+if(V==='round'){g.beginPath();g.arc(S/2,S/2,S/2,0,7);g.clip()}
+else if(V==='full'){g.beginPath();g.roundRect(0,0,S,S,S*0.22);g.clip()}
+if(V!=='fg'){const bg=g.createRadialGradient(S*0.35,S*0.2,S*0.05,S*0.5,S*0.5,S*0.8);bg.addColorStop(0,'#3d5a2a');bg.addColorStop(0.6,'#1f2e18');bg.addColorStop(1,'#14110f');g.fillStyle=bg;g.fillRect(0,0,S,S)}
+// romb kafla (rzut 2:1) z mosiężną ramką
+const cx=S/2,cy=S*0.64,w=34*k,h=17*k;
+g.beginPath();g.moveTo(cx,cy-h);g.lineTo(cx+w,cy);g.lineTo(cx,cy+h);g.lineTo(cx-w,cy);g.closePath();
+const tg=g.createLinearGradient(cx-w,cy-h,cx+w,cy+h);tg.addColorStop(0,'#6a8a3a');tg.addColorStop(1,'#3a5a26');g.fillStyle=tg;g.fill();g.lineWidth=2.2*k;g.strokeStyle='#d8b45a';g.lineJoin='round';g.stroke();
+g.beginPath();g.moveTo(cx,cy-h*0.62);g.lineTo(cx+w*0.62,cy);g.lineTo(cx,cy+h*0.62);g.lineTo(cx-w*0.62,cy);g.closePath();g.lineWidth=0.7*k;g.strokeStyle='rgba(255,236,170,.5)';g.stroke();
+// poświata za bohaterem
+const gl=g.createRadialGradient(cx,S*0.46,0,cx,S*0.46,28*k);gl.addColorStop(0,'rgba(255,210,120,.55)');gl.addColorStop(1,'rgba(255,210,120,0)');g.fillStyle=gl;g.fillRect(0,0,S,S);
+const spec=heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
+g.save();g.translate(cx,cy+h*0.35);g.scale(k*0.62,k*0.62);drawCharacter(g,0,0,{...spec,sc:(spec.sc||1)*1},{...DIRS.SE,t:undefined});g.restore();
+g.restore();window.__ok=true;
+</script>
