@@ -1,11 +1,11 @@
 // Mapa cieni świata: dla punktu gruntu liczy, czy promień do słońca przechodzi przez teren (ściany tarasów), drzewa, budynki albo wejścia.
-// Czysta logika, bez rysowania. Światło pada z lewej góry (na ekranie), więc cienie biegną w stronę +x i trochę -y siatki.
+// Czysta logika, bez rysowania. Światło pada z lewej góry (na ekranie), więc cienie biegną w stronę +x i trochę +y siatki (w prawo i w dół, ku widzowi).
 // Wysokości w poziomach (1 poziom = HZ px). Cień jest więc zawsze rzutowany na właściwą platformę, a ściana tarasu rzuca cień na niższy.
 import { N } from './kraina.js';
 import { heightAt } from './nav.js';
 import { hash2 } from './noise.js';
 
-export const SUN = { dx: 0.96, dy: -0.28, k: 0.5 };   // kierunek cienia w siatce (jednostkowy) i długość cienia na poziom wysokości
+export const SUN = { dx: 0.97, dy: 0.24, k: 0.8 };   // kierunek cienia w siatce (jednostkowy) i długość cienia na poziom wysokości
 const LEN = Math.hypot(SUN.dx, SUN.dy), DX = SUN.dx / LEN, DY = SUN.dy / LEN;
 
 // opis przeszkód: korona (walec lub stożek) + pień, rozmiary w kaflach i poziomach
@@ -36,7 +36,7 @@ export function buildOccluders(world) {
   }
   for (const e of world.entrances) {
     const z = heightAt(world, e.at[0], e.at[1]);
-    if (e.kind === 'krypta') { const o = { t: 'b', x0: e.at[0] - 1.5, x1: e.at[0] + 1.5, y0: e.at[1] - 1.15, y1: e.at[1] + 1.15, z0: z, z1: z + 5.6 }; add(bins, { ...o, x: e.at[0], y: e.at[1] }, 2); }
+    if (e.kind === 'krypta') for (const [hx, hy, h] of [[1.4, 1.02, 1.95], [1.05, 0.76, 3.65], [0.7, 0.5, 5.2]]) { const o = { t: 'b', x0: e.at[0] - hx, x1: e.at[0] + hx, y0: e.at[1] - hy, y1: e.at[1] + hy, z0: z, z1: z + h }; add(bins, { ...o, x: e.at[0], y: e.at[1] }, 2); }
     else { add(bins, cyl(e.at[0], e.at[1], z, z + 3.8, 0.55, 0.55), 0.8); add(bins, cyl(e.at[0], e.at[1], z + 3.4, z + 8.2, 1.9, 1.4), 2); add(ao, { x: e.at[0], y: e.at[1], r: 2.1, k: 'swamp' }, 2.2); }
   }
   return { bins, ao };

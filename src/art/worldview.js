@@ -13,7 +13,7 @@ import { genTree, drawTree } from './trees.js';
 import * as NA from './nature.js';
 import { lampPost, bench, barrel, crate, cart, sack, logs } from './props.js';
 
-export const MAXZ = 8, CS = 6, SUB = 8, SHS = 6;
+export const MAXZ = 8, CS = 6, SUB = 8, SHS = 12, SHB = 2;
 
 export const makeGrid = () => new IsoGrid(N, N, { x: N * 36, y: MAXZ * HZ + 60 });
 
@@ -58,26 +58,33 @@ export class WorldView {
   }
   // mapa cieni bloku: próbki 4 x 4 na kafel (z ramką 1), liczone raz przy pieczeniu; cień rzucają teren, drzewa, budynki, a pod koronami jest półcień
   shadeGrid(x0, y0) {
-    const S = SHS, n = CS * S + 2, arr = new Float32Array(n * n), w = this.w;
+    const S = SHS, B = SHB, n = CS * S + 2 * B, arr = new Float32Array(n * n), w = this.w;
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const px = x0 + (i - 1 + 0.5) / S, py = y0 + (j - 1 + 0.5) / S; if (px < 0 || py < 0 || px >= N || py >= N) continue;
+      const px = x0 + (i - B + 0.5) / S, py = y0 + (j - B + 0.5) / S; if (px < 0 || py < 0 || px >= N || py >= N) continue;
       const kind = w.cellKind[Math.floor(py) * N + Math.floor(px)]; if (kind === w.KIND.water || kind === w.KIND.chasm) continue;
       const z = heightAt(w, px, py), sun = sunShadow(w, this.occ, px, py, z), can = canopyShade(w, this.occ, px, py, 5);
-      arr[j * n + i] = Math.min(0.58, 0.44 * sun + 0.4 * can);
+      arr[j * n + i] = Math.min(0.58, 0.5 * sun + 0.4 * can);
     }
-    const bl = new Float32Array(n * n); for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) { let v = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) v += arr[(j + dj) * n + i + di] * (di || dj ? 1 : 2); bl[j * n + i] = v / 10; }
+    // rozmycie 5 x 5 (trójkątne wagi 1 2 3 2 1): miękki półcień zamiast schodków
+    const K = [1, 2, 3, 2, 1], tmp = new Float32Array(n * n), bl = new Float32Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 2; i < n - 2; i++) { let v = 0; for (let d = -2; d <= 2; d++) v += arr[j * n + i + d] * K[d + 2]; tmp[j * n + i] = v / 9; }
+    for (let j = 2; j < n - 2; j++) for (let i = 0; i < n; i++) { let v = 0; for (let d = -2; d <= 2; d++) v += tmp[(j + d) * n + i] * K[d + 2]; bl[j * n + i] = v / 9; }
     return { x0, y0, n, arr, bl };
   }
   drawTile(g, tx, ty) {
     const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
     if (w.ramp[k]) return this.drawRamp(g, tx, ty, z);
-    const e = 0.7, SUBN = SHS, sg = this.sg, sn = sg.n, six = (tx - sg.x0) * SHS + 1, siy = (ty - sg.y0) * SHS + 1, TINT = [22, 12, 52]; let tileShade = 0;
+    const e = 0.7, SUBN = SUB - 2, R = SHS / SUBN, sg = this.sg, sn = sg.n, six = (tx - sg.x0) * SHS + SHB, siy = (ty - sg.y0) * SHS + SHB, TINT = [22, 12, 52]; let tileShade = 0;
+    const mix = (col, sh) => (sh > 0.01 ? rgbStr([col[0] + (TINT[0] - col[0]) * sh, col[1] + (TINT[1] - col[1]) * sh, col[2] + (TINT[2] - col[2]) * sh]) : rgbStr(col));
+    const quad = (u0, v0, u1, v1, zz) => { const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz); g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill(); };
     for (let j = 0; j < SUBN; j++) for (let i = 0; i < SUBN; i++) {
-      const u0 = i / SUBN, u1 = (i + 1) / SUBN, v0 = j / SUBN, v1 = (j + 1) / SUBN, zz = z[0];
-      const a = P(u0, v0, zz), b = P(u1, v0, zz), c = P(u1, v1, zz), d = P(u0, v1, zz);
-      const col = groundRGB(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2), sh = sg.bl[(siy + j) * sn + six + i]; tileShade += sh;
-      g.fillStyle = sh > 0.01 ? rgbStr([col[0] + (TINT[0] - col[0]) * sh, col[1] + (TINT[1] - col[1]) * sh, col[2] + (TINT[2] - col[2]) * sh]) : rgbStr(col);
-      g.beginPath(); g.moveTo(a[0], a[1] - e); g.lineTo(b[0] + e, b[1]); g.lineTo(c[0], c[1] + e); g.lineTo(d[0] - e, d[1]); g.closePath(); g.fill();
+      const u0 = i / SUBN, u1 = (i + 1) / SUBN, v0 = j / SUBN, v1 = (j + 1) / SUBN, zz = z[0], col = groundRGB(w, tx + (u0 + u1) / 2, ty + (v0 + v1) / 2);
+      // R x R próbek cienia na jeden kolorowy romb; gdy cień w nim niemal stały, jeden romb, a w półcieniu dzielimy dalej
+      const sv = []; let lo = 9, hi = -9, sum = 0;
+      for (let q = 0; q < R * R; q++) { const v = sg.bl[(siy + j * R + Math.floor(q / R)) * sn + six + i * R + (q % R)]; sv.push(v); lo = Math.min(lo, v); hi = Math.max(hi, v); sum += v; }
+      tileShade += sum / (R * R);
+      if (hi - lo < 0.025) { g.fillStyle = mix(col, sum / (R * R)); quad(u0, v0, u1, v1, zz); continue; }
+      for (let q = 0; q < R * R; q++) { const qi = q % R, qj = Math.floor(q / R); g.fillStyle = mix(col, sv[q]); quad(u0 + qi / (R * SUBN), v0 + qj / (R * SUBN), u0 + (qi + 1) / (R * SUBN), v0 + (qj + 1) / (R * SUBN), zz); }
     }
     tileShade /= SUBN * SUBN;
     // trawiaste kępki malarsko pokrywają równe powierzchnie

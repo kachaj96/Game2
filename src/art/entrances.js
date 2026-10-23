@@ -37,7 +37,7 @@ export function drawEntrance(g, x, y, sp) {
     // rzeźbione czaszki (w płaszczyźnie ściany), obeliski na narożnikach, piramidowy dach, schody, pochodnie i obozowisko
     const stone = sp.stone, cols = (k) => ({ left: shade(stone, 0.06 - k * 0.03), right: shade(stone, -0.14 - k * 0.03), top: shade(stone, 0.16 - k * 0.04) });
     const colsP = { left: shade(stone, 0.12), right: shade(stone, -0.1), top: shade(stone, 0.24) };
-    blob(10, 5, 150, 30, '#000', 0.34);
+    blob(10, 5, 150, 30, '#000', 0.34); blob(0, 14, 190, 44, '#3a2c18', 0.38); blob(40, 22, 120, 22, '#5a4428', 0.3);
     const tiers = [[210, 150, 70], [160, 112, 62], [108, 76, 54]]; let z = 0; const Ps = [];
     tiers.forEach(([lx, ly, h], i) => {
       // cień piętra wyżej leży na dachu tego niżej (światło z lewej góry rzuca go w prawo)
@@ -96,6 +96,8 @@ export function drawEntrance(g, x, y, sp) {
       ln([P2(-a2, b3, h2 - 2), ap], 2, 'rgba(255,240,210,.3)'); }
     // pochodnie na żelaznych słupach przy portyku
     for (const sd of [-1, 1]) { const t = P0(sd * (px + 26), py + 6, 0), tt = [t[0], t[1] - 70]; ln([t, tt], 3.4, '#2a2018'); ell(tt[0], tt[1] - 2, 6, 3, '#3a3028', 1.4); glowAt(g, tt[0], tt[1] - 12, 50, '255,150,60', 0.55 * sp.glow); g.fillStyle = '#ffb848'; g.beginPath(); g.ellipse(tt[0], tt[1] - 10, 4, 9 + (r() - 0.5) * 3, 0, 0, 7); g.fill(); g.fillStyle = '#fff0b0'; g.beginPath(); g.ellipse(tt[0], tt[1] - 8, 1.8, 4.6, 0, 0, 7); g.fill(); }
+    // kępy trawy i kamyki przy podstawie murów: budowla wyrasta z ziemi, a nie stoi na niej
+    for (let i = 0; i < 26; i++) { const onFront = i < 14, u = onFront ? r.range(-a0 - 10, a0) : r.range(-b0, b0 - 6), p = onFront ? P0(u, b0 + r.range(0, 5), 0) : P0(a0 + r.range(0, 5), u, 0); if (onFront && Math.abs(u) < dw + 40 && Math.abs(u) > 0) continue; const h = r.range(6, 11); g.strokeStyle = r() < 0.5 ? '#3a7a2a' : '#7ab048'; g.lineWidth = 1.6; g.lineCap = 'round'; g.beginPath(); g.moveTo(p[0] - 2, p[1]); g.lineTo(p[0] - 4, p[1] - h); g.moveTo(p[0], p[1]); g.lineTo(p[0], p[1] - h - 2); g.moveTo(p[0] + 2, p[1]); g.lineTo(p[0] + 4, p[1] - h); g.stroke(); }
     // mech i pnącza na piętrach, zawalony narożnik
     if (sp.moss) for (let i = 0; i < 12; i++) { const P = Ps[i % 3], q = P(r.range(-50, 50), 20, r.range(2, 40)); blob(q[0], q[1], r.range(8, 18), r.range(3, 6), '#4a6a30', 0.5); }
     for (let i = 0; i < 3; i++) { const P = Ps[2], t = P(r.range(-30, 30), 38, 54); g.beginPath(); g.moveTo(t[0], t[1]); g.quadraticCurveTo(t[0] + r.range(-6, 6), t[1] + 16, t[0] + r.range(-3, 3), t[1] + r.range(24, 40)); g.lineWidth = 1.6; g.strokeStyle = '#3a5a28'; g.stroke(); }
@@ -106,12 +108,26 @@ export function drawEntrance(g, x, y, sp) {
     for (let i = 0; i < sp.slabs; i++) { const p = P0(-a0 - 70 - i * 22, b0 + 10, 0); grave(g, p[0], p[1], 0.9); }
   } else {
     // olbrzymie drzewo (to samo malarskie drzewo co w lesie, tylko większe) z jamą między korzeniami, pajęczynami i kokonami
-    const tw = sp.trunkW * 1.5, th = sp.height * 1.15;
+    const tw = sp.trunkW * 1.5, th = sp.height * 1.15, hw = tw * 0.34;
+    // podłoże: ciemna ściółka pod koroną i wydeptana ziemia przed dziuplą, żeby drzewo wyrastało z gruntu
+    blob(0, 6, tw * 2.6, 16, '#120c06', 0.5); blob(tw * 0.2, 12, tw * 1.5, 9, '#6a4e2c', 0.7); blob(tw * 0.5, 16, tw * 0.9, 6, '#7e603a', 0.5);
+    for (let i = 0; i < 16; i++) { const lx = r.range(-tw * 2.2, tw * 2.2), ly = r.range(-2, 18); ell(lx, ly, r.range(2, 4), r.range(1, 2), r.pick(['#5a3a1a', '#6a4a22', '#3a4a1a']), 0); }
     drawTree(g, 0, 0, { ...genTree(sp.seed, 'swamp', 'dark'), trunkW: tw * 0.7, trunkH: th, crownW: 150, crownH: 96, blobs: 12, clumps: 22, vines: 12, lean: 4 });
+    // tylne korzenie
     for (let i = 0; i < sp.roots; i++) { const sd = i % 2 ? 1 : -1, t = Math.floor(i / 2), len = tw * (1.0 + t * 0.4) * r.range(0.8, 1.2), yy = r.range(-4, 5) - t * 2; g.beginPath(); g.moveTo(sd * tw * 0.3, -18); g.bezierCurveTo(sd * tw * 0.7, -6 - t, sd * len * 0.9, yy - 8, sd * len * 1.25, yy + 3); g.bezierCurveTo(sd * len * 0.9, yy + 3, sd * tw * 0.8, 4, sd * tw * 0.15, 3); g.closePath(); g.fillStyle = shade(sp.bark, sd < 0 ? 0.05 : -0.05); g.fill(); g.lineWidth = 1.4; g.strokeStyle = 'rgba(20,10,6,.55)'; g.stroke(); }
-    ell(0, -16, tw * 0.5, 26, '#080406', 2.4); glowAt(g, 0, -15, 40, '120,200,140', 0.22 * sp.glow);
-    for (let i = 0; i < sp.webs; i++) { const yy = -36 + i * 8; ln([[-tw * 0.46, yy + 12], [-tw * 0.12, yy], [tw * 0.14, yy + 6], [tw * 0.46, yy + 13]], 1, 'rgba(235,235,250,.8)'); }
-    ln([[-tw * 0.48, -2], [tw * 0.1, -40], [tw * 0.48, -3]], 1, 'rgba(235,235,250,.75)'); ln([[0, -42], [0, -1]], 0.9, 'rgba(235,235,250,.65)');
+    // dziupla: łuk z płaską podłogą, głęboka ciemność i widoczna kora wokół otworu
+    g.beginPath(); g.moveTo(-hw * 1.15, 3); g.lineTo(-hw, -16); g.quadraticCurveTo(-hw * 1.05, -40, 0, -43); g.quadraticCurveTo(hw * 1.05, -40, hw, -16); g.lineTo(hw * 1.15, 3); g.closePath();
+    const hg = g.createRadialGradient(0, -14, 2, 0, -14, hw * 1.7); hg.addColorStop(0, '#020103'); hg.addColorStop(0.7, '#0a100c'); hg.addColorStop(1, '#1d2a20'); g.fillStyle = hg; g.fill(); g.lineWidth = 3.4; g.strokeStyle = '#1e120a'; g.stroke();
+    g.save(); g.beginPath(); g.moveTo(-hw * 1.15, 3); g.lineTo(-hw, -16); g.quadraticCurveTo(-hw * 1.05, -40, 0, -43); g.quadraticCurveTo(hw * 1.05, -40, hw, -16); g.lineTo(hw * 1.15, 3); g.closePath(); g.clip();
+    glowAt(g, 0, -15, 40, '120,200,140', 0.2 * sp.glow); ell(0, 2, hw * 1.1, 4, '#26331f', 0); g.restore();
+    g.strokeStyle = 'rgba(255,225,170,.28)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-hw * 1.02, -18); g.quadraticCurveTo(-hw * 1.02, -38, -hw * 0.2, -41.5); g.stroke();
+    // korzenie przed otworem: grube łuki oplatające dziuplę i wrastające w ziemię
+    for (const sd of [-1, 1]) { const x0 = sd * hw * 1.05; g.lineCap = 'round';
+      for (const [wd, col] of [[10, shade(sp.bark, -0.18)], [7, sp.bark], [2.6, shade(sp.bark, 0.2)]]) { g.beginPath(); g.moveTo(x0, -36); g.bezierCurveTo(sd * hw * 2.4, -30, sd * hw * 2.6, -8, sd * hw * 3.6, 5); g.lineWidth = wd; g.strokeStyle = col; g.stroke(); }
+      blob(sd * hw * 3.6, 5, 10, 4, '#120c06', 0.5); }
+    for (let i = 0; i < 9; i++) { const gx = r.range(-tw * 1.7, tw * 1.7), gy = r.range(2, 12); g.strokeStyle = r() < 0.5 ? '#2f5a2c' : '#4a7a3a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(gx - 2, gy); g.lineTo(gx - 3.5, gy - 8); g.moveTo(gx, gy); g.lineTo(gx, gy - 10); g.moveTo(gx + 2, gy); g.lineTo(gx + 3.5, gy - 8); g.stroke(); }
+    for (let i = 0; i < sp.webs; i++) { const yy = -36 + i * 8; ln([[-hw * 1.05, yy + 12], [-hw * 0.3, yy], [hw * 0.35, yy + 6], [hw * 1.05, yy + 13]], 1, 'rgba(235,235,250,.8)'); }
+    ln([[-hw * 1.05, -2], [hw * 0.3, -40], [hw * 1.05, -3]], 1, 'rgba(235,235,250,.75)'); ln([[0, -42], [0, -1]], 0.9, 'rgba(235,235,250,.65)');
     if (sp.eyes) { circ(-6, -17, 2, '#ffe060', 0); circ(6, -17, 2, '#ffe060', 0); glowAt(g, 0, -17, 20, '255,220,90', 0.4); }
     for (let i = 0; i < sp.eggs + 3; i++) { const ex2 = r.range(-tw * 1.5, tw * 1.5), ey2 = r.range(-2, 12), s2 = r.range(3, 5); ell(ex2, ey2 - s2, s2, s2 * 1.3, '#d4d0c4', 1.3); }
     for (let i = 0; i < sp.shrooms + 3; i++) { const mx = r.range(-tw * 1.4, tw * 1.4), my = r.range(-2, 10), s2 = r.range(2.5, 5); ln([[mx, my], [mx, my - s2 * 1.4]], 1.8, '#e0d8c0'); ell(mx, my - s2 * 1.5, s2 * 1.4, s2 * 0.9, '#a05a3a', 1.2); }
