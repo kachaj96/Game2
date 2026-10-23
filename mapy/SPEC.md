@@ -84,3 +84,6 @@ Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciąg
 - Czy bohater i NPC też przechodzą na PNG, czy zostają z generatora (domyślnie: zostają).
 - Wielkość mapy: proponuję 48 x 48 kafli na mapę, ze strefą przejścia na krawędziach (?).
 - Format sąsiednich map: wyjście = para (mapa, kafel startu), bez płynnego łączenia obrazów.
+
+## 12. Szablony geometrii dla generatora
+`mapy/szablony/*.png` (tworzone przez `tools/make_szablony.py`): szara bryła w rzucie 2:1 z odciskiem i sylwetką bohatera dla skali. Wgrywasz szablon do generatora jako obraz referencyjny i prosisz o przemalowanie dokładnie tego kształtu. Drugim obrazem dajesz wzorzec stylu (Twój najlepszy dotychczasowy obraz).
