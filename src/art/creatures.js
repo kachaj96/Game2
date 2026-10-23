@@ -6,9 +6,12 @@ import { hsl, shade } from './color.js';
 import { DIRS } from './characters.js';
 
 export const KOPACZE = ['kopacz', 'pancerny', 'szperacz', 'pluja', 'zerca'];
+// boss rodziny: duży, w koronie z kości (nie losuje się go bez nazwy rodzaju)
+export const BOSSOWIE = ['krol'];
 export { DIRS };
 // zakresy sylwetki na rodzaj: skala, szerokość tułowia, wysokość tułowia, długość ramienia, głowa, liczba pazurów
 const PLAN = {
+  krol: { sc: [1.65, 1.85], bw: [17, 19], bh: [22, 25], arm: [12, 14], head: [7, 8], claws: [3, 4], sh: [1.1, 1.2], wa: [0.95, 1.05] },
   kopacz: { sc: [0.95, 1.1], bw: [11, 14], bh: [17, 21], arm: [13, 17], head: [7, 8.6], claws: [3, 4], sh: [1.2, 1.35], wa: [0.7, 0.85] },
   pancerny: { sc: [1.22, 1.42], bw: [15, 18], bh: [18, 22], arm: [9, 12], head: [6, 7.2], claws: [2, 3], sh: [1.0, 1.1], wa: [0.9, 1.0] },
   szperacz: { sc: [0.8, 0.92], bw: [8, 10], bh: [15, 18], arm: [15, 19], head: [7.4, 9], claws: [4, 5], sh: [0.8, 0.95], wa: [0.55, 0.7] },
@@ -20,7 +23,7 @@ const MORPHS = {
   glina: [[18, 34], [0.3, 0.45], [0.3, 0.38]], lupek: [[205, 232], [0.12, 0.22], [0.28, 0.36]], mech: [[72, 108], [0.22, 0.36], [0.25, 0.33]],
   rdza: [[2, 16], [0.42, 0.56], [0.3, 0.38]], kosc: [[38, 50], [0.2, 0.3], [0.52, 0.64]], fiolet: [[262, 296], [0.16, 0.3], [0.3, 0.38]], siarka: [[46, 62], [0.4, 0.55], [0.34, 0.44]],
 };
-const KIND_MORPHS = { kopacz: ['glina', 'glina', 'lupek', 'mech', 'rdza'], pancerny: ['kosc', 'lupek', 'rdza', 'glina', 'mech'], szperacz: ['kosc', 'fiolet', 'mech', 'siarka', 'lupek'], pluja: ['rdza', 'siarka', 'glina', 'fiolet', 'rdza'], zerca: ['mech', 'fiolet', 'lupek', 'rdza', 'siarka'] };
+const KIND_MORPHS = { krol: ['kosc', 'glina', 'rdza'], kopacz: ['glina', 'glina', 'lupek', 'mech', 'rdza'], pancerny: ['kosc', 'lupek', 'rdza', 'glina', 'mech'], szperacz: ['kosc', 'fiolet', 'mech', 'siarka', 'lupek'], pluja: ['rdza', 'siarka', 'glina', 'fiolet', 'rdza'], zerca: ['mech', 'fiolet', 'lupek', 'rdza', 'siarka'] };
 const BLIND_EYES = ['#e4ecf0', '#f0e8b0', '#c8e8c8', '#e8c8d8', '#d8c8f0'];
 
 export function genKopacz(seed, kind) {
@@ -34,7 +37,8 @@ export function genKopacz(seed, kind) {
     pal: { mid, dark: shade(mid, -0.1), light: shade(mid, 0.1), belly: hsl(hue + r.range(-35, 35), Math.min(0.5, sat * 0.9), r.range(0.46, 0.58)), bone: hsl(r.range(34, 60), r.range(0.25, 0.42), r.range(0.74, 0.88)), acc: hsl(hue + r.range(110, 210), r.range(0.3, 0.5), r.range(0.4, 0.55)) },
     eyeCol: kind === 'pluja' ? '#ff8a30' : kind === 'zerca' ? '#c83a3a' : r.pick(BLIND_EYES), stripes: r.int(0, 3),
   };
-  if (kind === 'pancerny') sp.plates = r.int(5, 7);
+  if (kind === 'pancerny' || kind === 'krol') sp.plates = r.int(5, 7);
+  if (kind === 'krol') sp.crown = r.int(5, 7);
   if (kind === 'szperacz') sp.feelers = r.int(2, 4);
   if (kind === 'pluja') sp.sac = r.range(5.5, 8.5);
   if (kind === 'zerca') { sp.neck = r.range(5, 9); sp.ribs = r.int(3, 4); }
@@ -52,7 +56,7 @@ function smooth(g, pts, fill, lw = 1.9) {
 
 export function drawKopacz(g, x, y, sp, o = {}) {
   const { poly, ln, circ, ell, blob, lg } = kit(g), back = o.view === 'back', walking = o.t != null, th = walking ? o.t * Math.PI * 2 : 0;
-  const P = sp.pal, heavy = sp.kind === 'pancerny';
+  const P = sp.pal, heavy = sp.kind === 'pancerny' || sp.kind === 'krol';
   const bob = walking ? -Math.abs(Math.cos(th)) * (heavy ? 2.4 : 1.6) : 0, step = walking ? Math.sin(th) * 3.2 : 0;
   const bw = sp.bw, bh = sp.bh, top = -9 - bh + bob, cy = -9 - bh / 2 + bob, neck = sp.neck || 0;
   g.save(); g.translate(x, y);
@@ -74,6 +78,7 @@ export function drawKopacz(g, x, y, sp, o = {}) {
     if (neck) { poly([[-3, cy - bh * 0.3], [3, cy - bh * 0.3], [2.5, hy + hr * 0.6], [-2.5, hy + hr * 0.6]], P.mid, 1.6); }
     for (let i = 0; i < sp.horns; i++) { const sg = i ? 1 : -1; poly([[sg * hr * 0.55, hy - hr * 0.5], [sg * hr * 1.15, hy - hr * 1.35], [sg * hr * 0.2, hy - hr * 0.8]], P.bone, 1.4); }
     if (sp.feelers) for (let i = 0; i < sp.feelers; i++) { const sg = i % 2 ? 1 : -1, k = 1 + (i >> 1) * 0.6; ln([[sg * hr * 0.3, hy - hr * 0.8], [sg * hr * 1.1 * k, hy - hr * 1.7 * k], [sg * hr * 1.7 * k, hy - hr * 1.5 * k]], 1.6, P.dark); circ(sg * hr * 1.7 * k, hy - hr * 1.5 * k, 1.5, P.bone, 1); }
+    if (sp.crown) for (let i = 0; i < sp.crown; i++) { const t = (i / (sp.crown - 1)) * 2 - 1, bx = t * hr * 0.95, h2 = (i % 2 ? 5 : 8) + hr * 0.3; poly([[bx - 2.2, hy - hr * 0.7 - Math.abs(t) * 1.5], [bx, hy - hr * 0.7 - h2 - Math.abs(t) * 1.5], [bx + 2.2, hy - hr * 0.7 - Math.abs(t) * 1.5]], P.bone, 1.3); if (i % 2 === 0) circ(bx, hy - hr * 0.7 - h2 - 1 - Math.abs(t) * 1.5, 1.6, '#e8e0cc', 1); }
     const skull = sp.kind === 'zerca';
     ell(0, hy, hr * 1.15, hr, lg(-hr, hy - hr, hr, hy + hr, skull ? P.bone : P.light, skull ? shade(P.bone, -0.18) : P.mid), 1.8);
     if (back) { for (let i = 0; i < 3; i++) ln([[-hr * 0.5 + i * hr * 0.5, hy - hr * 0.8], [-hr * 0.4 + i * hr * 0.4, hy - hr * 0.1]], 1.1, P.dark); return; }

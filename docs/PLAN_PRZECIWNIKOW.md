@@ -1,6 +1,14 @@
 # Plan: przeciwnicy (do akceptacji)
 
-Status: **czeka na akceptację**. Nic z tego nie jest jeszcze zbudowane. Obecne 5 "tymczasowych" wrogów z `bestiary.js` (wszyscy z Cios Łopatą) zostaje zastąpione.
+Status: **zatwierdzony, kroki 1, 2, 5, 6, 7 zbudowane** (dane, mechaniki, AI, skład spotkania, boss, Księga, symulacja). Brakuje: generatora wyglądu owadów i pajęczaków oraz lochu 2.
+
+## Zmiany po symulacji (strojenie)
+- **HP bazowe wyższe o około 20%** (kopacz 36 + 7/L, pancerny 72 + 12/L, szperacz 29 + 5/L, pluja 31 + 5/L, żerca 36 + 6/L): przy planowanych wartościach bohater referencyjny wygrywał 100% walk na poziomach 1 i 5 (za łatwo). Boss bez zmian.
+- **Moc wroga 3,5% na poziom zamiast 4%**: przy 4% najgorsza runda na poziomie 20 wynosiła 0,84 życia bohatera (limit 0,8).
+- **Liczba wrogów solo to 3 do 4 na każdym poziomie** (plan zakładał 2 do 4 rosnące z poziomem): przy 2 wrogach na niskich poziomach walka była zbyt łatwa.
+- Wynik symulacji (bohater referencyjny, 30 walk na poziom): wygrane L1 0,88, L5 0,80, L10 0,80, L20 0,82; średnio 5,5 do 7,6 rundy; nikt nie ginie w pierwszej rundzie; najgorsza runda 0,70 do 0,77 życia bohatera.
+- Walki na poziomie 20 potrafią trwać do 12 rund (limit w teście 14, średnia poniżej 10).
+ Nic z tego nie jest jeszcze zbudowane. Obecne 5 "tymczasowych" wrogów z `bestiary.js` (wszyscy z Cios Łopatą) zostaje zastąpione.
 
 ## Założenia od autora
 - Lochy tematyczne: wrogowie różni, ale z jednej rodziny, jak Gobballe w Dofusie. Każdy rodzaj ma inne PA, PM, inicjatywę i czary.
