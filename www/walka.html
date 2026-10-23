@@ -47,7 +47,8 @@ button{font-family:inherit}
 #rotate{display:none;position:fixed;inset:0;z-index:9;background:#0c1210;align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
 @media (orientation:portrait){#rotate{display:flex}}
 #banner{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(6,8,6,.7);font:800 44px Georgia,serif}
-#banner button{background:#b4501c;width:220px;height:58px;border:0;border-radius:14px;color:#fff;font:700 17px system-ui}
+#banner button,#banner .bb{background:#b4501c;width:260px;height:52px;border:0;border-radius:14px;color:#fff;font:700 17px system-ui;display:flex;align-items:center;justify-content:center;text-decoration:none}
+#banner .bb{background:#3a4a2a}#bx{font:500 18px/1.5 system-ui;text-align:center;max-width:560px;padding:0 16px;color:#e8f0d0}
 </style></head><body><div id="app">
 <canvas id="c"></canvas>
 <div id="top"><div id="hud" class="pill"><span id="who">Walka</span><span id="pts"></span></div><div id="turns" class="pill"></div><div id="msg" class="pill"></div></div>
@@ -57,7 +58,7 @@ button{font-family:inherit}
 <div id="bar"><span id="pgi"></span><button class="pg" id="prev" aria-label="Poprzednia strona">‹</button><div id="slots"></div><button class="pg" id="next" aria-label="Następna strona">›</button></div>
 <button id="end"><span id="endt">Koniec tury</span><small id="tm"></small></button>
 <div id="rotate">Obróć telefon do poziomu</div>
-<div id="banner"><span id="bt"></span><button id="again">Jeszcze raz</button></div></div>
+<div id="banner"><span id="bt"></span><div id="bx"></div><button id="again">Jeszcze raz</button><a id="sheet" class="bb" href="postac.html" style="display:none">Karta postaci</a><a id="world" class="bb" href="swiat.html" style="display:none">Wróć do świata</a></div></div>
 <script type="module">
 import {IsoGrid} from '../src/grid.js';
 import {installFrames,drawOrb} from '../src/art/ui.js';
@@ -81,7 +82,8 @@ import {genKopacz,drawKopacz} from '../src/art/creatures.js';
 import {DUNGEONS,dungeonLevel,levelAdvice} from '../src/game/dungeons.js';
 import {composeEncounter,spawnEncounter,enemyCap} from '../src/game/encounter.js';
 import {referenceHero} from '../src/game/reference.js';
-import {loadCharacter} from '../src/game/save.js';
+import {loadCharacter,saveCharacter} from '../src/game/save.js';
+import {addXp,chamberReward,newRun,loadRun,saveRun,clearRun,roomSeed,levelFromXp} from '../src/game/run.js';
 import {unitFromCharacter,learnSpell,toggleEquipped,setLevel} from '../src/game/progression.js';
 
 const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
@@ -100,18 +102,23 @@ const SCEN={
   push:{blocked:[{x:6,y:4}],units:[hero(2,4),guard('e1',4,4,9)]},
 };
 // tryb lochu (?dungeon=korytarze&level=N[&boss=1&seed=S&companions=K]): skład wrogów z composeEncounter, poziom wrogów przycięty do pasma lochu
-let DINFO=null;
-if(DG){const HL=Math.max(1,Math.min(30,Number(Q.get('level')||(SAVED&&SAVED.level)||1))),EL=dungeonLevel(HL,DG.band),comp=Math.max(0,Number(Q.get('companions')||0)),
-    spec=composeEncounter(Number(Q.get('seed')||1),EL,comp,{boss:Q.get('boss')==='1'}),blocked=[{x:3,y:2},{x:3,y:4},{x:2,y:6}],
+let DINFO=null,RUN=null;
+const WORLD_AT={korytarze:'krypta',gniazdo:'jama'};
+if(DG){const HL=Math.max(1,Math.min(30,Number(Q.get('level')||(SAVED&&SAVED.level)||1))),EL=dungeonLevel(HL,DG.band),comp=Math.max(0,Number(Q.get('companions')||0));
+  // podejście do lochu to kolejne komnaty (po jednej walce); stan leży w pamięci, żeby przeładowanie strony nie gubiło komnaty
+  RUN=loadRun();if(!RUN||RUN.dungeon!==DG.id||Q.get('seed')||Q.get('new'))RUN=newRun(DG.id,Q.get('seed')?Number(Q.get('seed')):Date.now());
+  if(Q.get('room'))RUN={...RUN,room:Math.max(1,Math.min(DG.chambers,Number(Q.get('room'))))};saveRun(RUN);
+  const boss=Q.get('boss')==='1'||RUN.room===DG.chambers,
+    spec=composeEncounter(Q.get('seed')?Number(Q.get('seed')):roomSeed(RUN),EL,comp,{boss}),blocked=[{x:3,y:2},{x:3,y:4},{x:2,y:6}],
     ch=SAVED?setLevel(SAVED,HL):referenceHero(HL,HERO),hu=unitFromCharacter(ch,{seed:3,x:1,y:4,initiative:99,name:ch.name},{allowDev:ALL});
   SCEN.dungeon={zone:(x,y)=>x<=1,blocked,cap:enemyCap(comp),units:[hu,...spawnEncounter(spec,{cols:7,rows:7,blocked})]};
-  DINFO={id:DG.id,name:DG.name,heroLevel:HL,enemyLevel:EL,advice:levelAdvice(HL,DG)}}
+  DINFO={id:DG.id,name:DG.name,heroLevel:HL,enemyLevel:EL,advice:levelAdvice(HL,DG),room:RUN.room,chambers:DG.chambers,boss}}
 const TURN_TIME=Number(Q.get('time')??30);let phase='fight',ZONE=null,turnLeft=0,timerKey='',lastTm='';
-let state,look,facing,lastPos,preview=null,selSpell=null,anim=null,busy=false,pendingResult=null,floats=[],shake=new Map(),page=0,inspect=null,swiped=false;
+let resultShown=false,state,look,facing,lastPos,preview=null,selSpell=null,anim=null,busy=false,pendingResult=null,floats=[],shake=new Map(),page=0,inspect=null,swiped=false;
 function newGame(){const sc=DINFO?SCEN.dungeon:(SCEN[scenario]||SCEN.default);ZONE=sc.zone||null;phase=ZONE?'place':'fight';timerKey='';turnLeft=TURN_TIME;state=createState({cols:7,rows:7,seed:42,blocked:sc.blocked,units:structuredClone(sc.units),enemyCap:sc.cap||0});
   look=new Map(state.units.map(u=>[u.id,u.id==='h'?heroSpec(HERO,SAVED?{...SAVED.look,seed:3}:{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'}):u.kind?genKopacz(u.seed,u.kind):genCharacter(u.seed,u.role)]));
   facing=new Map(state.units.map(u=>[u.id,u.team==='gracz'?'SE':'SW']));lastPos=new Map(state.units.map(u=>[u.id,{x:u.x,y:u.y}]));
-  preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say(phase==='place'?(DINFO?DINFO.name+': wrogowie mają poziom '+DINFO.enemyLevel+'. '+DINFO.advice+' ':'')+'Wybierz pole startowe na niebieskich kaflach, potem dotknij "Zaczynamy".':'Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
+  preview=null;selSpell=null;anim=null;busy=false;pendingResult=null;resultShown=false;floats=[];inspect=null;page=0;$('banner').style.display='none';hud();say(phase==='place'?(DINFO?DINFO.name+', komnata '+DINFO.room+' z '+DINFO.chambers+(DINFO.boss?' (boss)':'')+': wrogowie mają poziom '+DINFO.enemyLevel+'. '+DINFO.advice+' ':'')+'Wybierz pole startowe na niebieskich kaflach, potem dotknij "Zaczynamy".':'Twoja tura: dotknij kafla, by zobaczyć drogę, dotknij ponownie, by iść.')}
 const dirFor=(dx,dy)=>dx>0?'SE':dx<0?'NW':dy>0?'SW':'NE';   // x rośnie w prawo-dół, y w lewo-dół
 // stopy postaci stoją tak, by środek kręgu (2 px pod stopami) wypadał dokładnie w środku kafla
 const FEET=-2;
@@ -218,8 +225,24 @@ function afterAnim(){
 }
 function startFight(){phase='fight';selSpell=null;preview=null;inspect=null;say('Walka się zaczyna.');afterAnim()}
 function endTurn(){const u=currentUnit(state);if(u.team!=='gracz')return;selSpell=null;inspect=null;if(act({type:'endTurn',unit:u.id})&&!anim)afterAnim()}
-function showResult(){busy=true;$('bt').textContent=pendingResult==='victory'?'Zwycięstwo':'Porażka';$('banner').style.display='flex';hud()}
-$('again').onclick=newGame;
+// koniec walki: w lochu liczymy nagrodę (XP, poziom), zapisujemy postać i prowadzimy dalej (następna komnata, powrót do świata)
+function showResult(){
+  if(resultShown)return;resultShown=true;busy=true;const win=pendingResult==='victory',bx=$('bx'),again=$('again'),world=$('world'),sheet=$('sheet');
+  $('bt').textContent=win?'Zwycięstwo':'Porażka';bx.innerHTML='';sheet.style.display='none';world.style.display='none';again.style.display='';again.textContent='Jeszcze raz';again.onclick=newGame;
+  if(DINFO&&RUN){
+    const last=DINFO.room>=DINFO.chambers,back='swiat.html?at='+(WORLD_AT[DINFO.id]||'start');world.href=back;world.style.display='';world.onclick=()=>{clearRun()};
+    if(win){
+      const rew=chamberReward(DINFO.enemyLevel,DINFO.heroLevel,DG.band,DINFO.boss);let line='Komnata '+DINFO.room+' z '+DINFO.chambers+' za tobą. +'+rew+' XP.';
+      if(SAVED){const a=addXp(SAVED,rew);SAVED=a.ch;saveCharacter(SAVED);const lv=levelFromXp(SAVED.xp||0);
+        line+='<br>Poziom '+SAVED.level+(lv.need?', '+lv.into+'/'+lv.need+' XP do następnego':'');
+        if(a.gained>0){line+='<br><b style="color:#ffd27a">Nowy poziom: '+SAVED.level+'!</b> Masz punkty cech i czarów do rozdania.';sheet.style.display='';sheet.href='postac.html?back='+encodeURIComponent(back)}}
+      else line+='<br>(tryb testowy bez zapisanej postaci: XP się nie zapisuje)';
+      if(last){line+='<br><b>Loch ukończony.</b>';again.style.display='none';clearRun()}
+      else{again.textContent='Następna komnata ('+(DINFO.room+1)+' z '+DINFO.chambers+')';again.onclick=()=>{saveRun({...RUN,room:RUN.room+1});location.href='walka.html?dungeon='+DG.id}}
+      bx.innerHTML=line}
+    else{bx.innerHTML='Padasz w komnacie '+DINFO.room+' z '+DINFO.chambers+'. Nic nie tracisz, możesz spróbować jeszcze raz.';again.textContent='Spróbuj jeszcze raz'}}
+  $('banner').style.display='flex';hud()}
+window.__walka={finish:(r)=>{pendingResult=r;showResult()},get run(){return RUN},get info(){return DINFO},get saved(){return SAVED}};
 
 function tap(sx,sy){
   if(busy||state.result)return;

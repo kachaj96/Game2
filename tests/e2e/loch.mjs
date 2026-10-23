@@ -22,7 +22,7 @@ const S = (page) => page.evaluate(() => JSON.parse(JSON.stringify(window.__game.
 {
   const { page, errors, ctx } = await open('dungeon=korytarze&level=20&seed=7');
   const g = await page.evaluate(() => window.__game.dungeon); assert.deepEqual([g.id, g.heroLevel, g.enemyLevel], ['korytarze', 20, 6], 'bohater 20, wrogowie przycięci do 6');
-  assert.match(g.advice, /słabsi/); assert.match(await page.locator('#msg').textContent(), /Podziemne Korytarze: wrogowie mają poziom 6/);
+  assert.match(g.advice, /słabsi/); assert.match(await page.locator('#msg').textContent(), /Podziemne Korytarze, komnata 1 z 4: wrogowie mają poziom 6/);
   const s = await S(page), foes = s.units.filter((u) => u.team === 'wrog'), spec = composeEncounter(7, 6, 0);
   assert.deepEqual(foes.map((u) => u.kind), spec.map((x) => x.kind), 'skład z composeEncounter');
   for (const f of foes) assert.equal(f.maxHp, enemyHp(f.kind, 6), `${f.kind}: HP z poziomu 6`);

@@ -62,7 +62,7 @@ const open = async (q = '') => {
   assert.equal(await page.locator('#reg').textContent(), 'Cmentarne Wzgórze');
   await tapAt(e[0], e[1]); await idle(); await page.waitForSelector('#card', { state: 'visible', timeout: 5000 });
   const card = await page.locator('#card').textContent(); assert.match(card, /Podziemne Korytarze/); assert.match(card, /Zalecany poziom 3/); assert.match(card, /pasmo 2 do 6/); assert.match(card, /Twój poziom: 1/); assert.match(card, /Poniżej pasma/);
-  const href = await page.locator('#enter').getAttribute('href'); assert.match(href, /walka\.html\?dungeon=korytarze&theme=kopacze/);
+  const href = await page.locator('#enter').getAttribute('href'); assert.match(href, /walka\.html\?new=1&dungeon=korytarze&theme=kopacze/);
   await page.screenshot({ path: path.join(ROOT, 'docs/podglad/swiat-krypta.png') });
   await page.locator('#stay').tap(); assert.equal(await page.evaluate(() => window.__swiat.card), 'none');
   await ctx.close();

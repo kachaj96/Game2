@@ -7,6 +7,8 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 .pill{position:fixed;background:rgba(14,11,12,.86);border:7px solid #2c2628;border-image:var(--f-panel) 16 fill/7px stretch;padding:2px 8px;pointer-events:none}
 #hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;white-space:nowrap}
 #hud small{color:#a89878;font-weight:400;margin-left:8px}
+#xpb{display:block;height:5px;margin-top:4px;background:#1a1612;border-radius:3px;overflow:hidden}#xpb b{display:block;height:100%;width:0;background:linear-gradient(90deg,#d0602c,#ffd27a)}
+#menu{position:fixed;left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 62px);display:flex;gap:6px}#menu a{position:static;color:#e6dcc8;text-decoration:none;font:600 13px system-ui;padding:8px 12px;min-height:34px;display:flex;align-items:center}
 #toast{top:calc(max(8px,env(safe-area-inset-top)) + 4px);left:50%;transform:translateX(-50%);font:400 22px Georgia,serif;letter-spacing:.04em;opacity:0;transition:opacity .5s}
 #toast.on{opacity:1}
 #hint{bottom:max(8px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#c6d6a6;font-size:13px;text-align:center;max-width:70vw}
@@ -27,7 +29,8 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 @media (orientation:portrait){#rotate{display:flex}}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small></div>
+<div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small><i id="xpb"><b></b></i></div>
+<div id="menu"><a class="pill" id="mchar" href="postac.html?back=swiat.html">Postać</a><a class="pill" href="index.html">Menu</a></div>
 <div id="toast" class="pill"></div>
 <div id="mini"><canvas id="mm" width="352" height="192"></canvas></div>
 <button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
@@ -44,13 +47,14 @@ import {genCharacter,drawCharacter,DIRS} from '../src/art/characters.js';
 import {heroSpec} from '../src/art/classes.js';
 import {applyMood} from '../src/art/mood.js';
 import {loadCharacter} from '../src/game/save.js';
+import {levelFromXp} from '../src/game/run.js';
 installFrames();
 const $=id=>document.getElementById(id),Q=new URLSearchParams(location.search);
 const FALLBACK={korytarze:{name:'Podziemne Korytarze',family:'kopacze',rec:3,band:[2,6],theme:'kopacze',maxCompanions:2,available:true},gniazdo:{name:'Gniazdo',family:'pajaki',rec:8,band:[6,10],theme:'pajaki',maxCompanions:2,available:false}};
 const FAM={kopacze:'Kopacze',pajaki:'owady i pajęczaki',wszystkie:'wszystkie rodziny'};
 let DUN=FALLBACK;try{const m=await import('../src/game/dungeons.js'),D=m.DUNGEONS;if(D){DUN=Array.isArray(D)?Object.fromEntries(D.map(d=>[d.id,d])):D;for(const k of Object.keys(FALLBACK))if(!DUN[k])DUN[k]=FALLBACK[k]}}catch(e){}
 const world=generateWorld(Number(Q.get('seed'))||1),wv=new WorldView(world),cv=$('c'),g=cv.getContext('2d');
-const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;$('lvl').textContent='poziom '+LEVEL;
+const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;{const lv=levelFromXp(SAVED?.xp||0);$('lvl').textContent='poziom '+LEVEL+(lv.need?' · '+lv.into+'/'+lv.need+' XP':'');$('xpb').firstChild.style.width=(lv.need?Math.round(100*lv.into/lv.need):100)+'%'}
 const hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
 const hero=newWalker(...world.start);let face='SE';
 const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9],studnia:(()=>{const o=world.objects.find(q=>q.k==='well');return o?[o.x-1.5,o.y+2.5]:world.start})(),plot:(()=>{const o=world.objects.find(q=>q.k==='fence');return o?[o.x-2,o.y+2]:world.start})()};
@@ -126,7 +130,7 @@ function arrive(){const p=pending;pending=null;if(!p)return;if(p.kind==='ent')op
 function openEntrance(i){
   const e=world.entrances[i],d=DUN[e.dungeon]||{name:e.name,family:'',rec:1,band:[1,5],theme:'arena'},[lo,hi]=d.band||[1,5];
   const cmp=LEVEL<lo?['w','Poniżej pasma lochu: wrogowie będą silniejsi od ciebie. Zabierz kompana albo wróć później.']:LEVEL>hi?['','Powyżej pasma: wrogowie będą słabsi, nagrody mniejsze.']:['','Twój poziom mieści się w paśmie lochu.'];
-  const c=$('card');c.innerHTML=`<h2>${d.name}</h2><p>${e.name}${d.family?`, mieszkają tu: ${FAM[d.family]||d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p>${d.available===false?'<p class="w">Ten loch jest jeszcze zamknięty. Wejście otworzy się w kolejnej wersji.</p>':''}<div class="row"><button id="stay">${d.available===false?'Wróć':'Zostań'}</button>${d.available===false?'':`<a class="go" id="enter" href="walka.html?dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a>`}</div>`;
+  const c=$('card');c.innerHTML=`<h2>${d.name}</h2><p>${e.name}${d.family?`, mieszkają tu: ${FAM[d.family]||d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p>${d.available===false?'<p class="w">Ten loch jest jeszcze zamknięty. Wejście otworzy się w kolejnej wersji.</p>':''}<div class="row"><button id="stay">${d.available===false?'Wróć':'Zostań'}</button>${d.available===false?'':`<a class="go" id="enter" href="walka.html?new=1&dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a>`}</div>`;
   c.style.display='block';$('stay').onclick=()=>{c.style.display='none'};
 }
 function npcSay(n){const b=$('bubble');b.innerHTML=`<b>${n.name}</b>${n.line}`;b.style.display='block';bubbleT=6}

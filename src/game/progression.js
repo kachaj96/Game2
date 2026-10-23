@@ -62,6 +62,7 @@ export function validateCharacter(ch) {
   if (!ch || typeof ch !== 'object' || ch.v !== 1) return false;
   if (!CLASSES[ch.classId] || typeof ch.name !== 'string' || ch.name.length > 24) return false;
   if (!Number.isInteger(ch.level) || ch.level < 1 || ch.level > MAX_LEVEL) return false;
+  if (ch.xp !== undefined && (!Number.isInteger(ch.xp) || ch.xp < 0 || ch.xp > 1e8)) return false;
   if (!ch.alloc || STATS.some((k) => !Number.isInteger(ch.alloc[k]) || ch.alloc[k] < 0 || ch.alloc[k] > 300)) return false;
   if (pointsLeft(ch.level, ch.alloc) < 0) return false;
   if (!ch.spellLevels || typeof ch.spellLevels !== 'object') return false;

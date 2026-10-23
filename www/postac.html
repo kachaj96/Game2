@@ -80,7 +80,7 @@ function render(){
   const m=$('main');m.innerHTML='';m.append(tab==='stats'?statsView():spellsView());previewView()}
 $('lvm').onclick=()=>set(P.setLevel(ch,ch.level-1));$('lvp').onclick=()=>set(P.setLevel(ch,ch.level+1));
 $('tab-stats').onclick=()=>{tab='stats';render()};$('tab-spells').onclick=()=>{tab='spells';render()};
-$('tofight').href='walka.html'+(ALL?'?spells=all':'');
+{const back=Q.get('back');if(back&&/^[a-z0-9_.?=&%-]+$/i.test(back)){$('tofight').href=back;$('tofight').textContent='Do świata'}else $('tofight').href='walka.html'+(ALL?'?spells=all':'')}
 render();$('note').textContent=fresh?'Brak zapisanej postaci: tryb testowy. Utwórz bohatera w kreatorze.':'';
 window.__postac={get ch(){return ch}};
 </script></body></html>
