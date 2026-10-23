@@ -86,12 +86,14 @@
       stats.slopes = [sl, sr];
     }
 
-    // --- skala względem tabeli ---
+    // --- proporcje względem tabeli: generator nie trafi w piksele, więc porównujemy stosunek wysokości do szerokości,
+    // a bezwzględny rozmiar zamieniamy na współczynnik skalowania do wpisania w bibliotece ---
     if (hj) {
-      const expH = hj * S + (w + d) * (TH / 2) * S, expW = (w + d) * (TW / 2) * S, rh = bh / expH, rw = bw / expW;
-      add('skala', rh > 0.85 && rh < 1.15 ? 'ok' : rh > 0.7 && rh < 1.3 ? 'warn' : 'fail',
-        `Wysokość ${bh} px, oczekiwana około ${Math.round(expH)} px (${Math.round(rh * 100)}%).`);
-      add('szerokosc', rw >= 0.8 ? 'ok' : rw >= 0.6 ? 'warn' : 'fail', `Szerokość ${bw} px, podstawa ${w}x${d} ma co najmniej ${Math.round(expW * 0.8)} px (${Math.round(rw * 100)}% wzoru).`);
+      const expH = hj * S + (w + d) * (TH / 2) * S, expW = (w + d) * (TW / 2) * S, q = (bh / bw) / (expH / expW), k = expH / bh;
+      add('proporcje', q > 0.85 && q < 1.15 ? 'ok' : q > 0.7 && q < 1.3 ? 'warn' : 'fail',
+        `Proporcje wysokość do szerokości: ${Math.round(q * 100)}% wzoru` + (q > 1.15 ? ' (obiekt za wysoki lub za wąski).' : q < 0.85 ? ' (obiekt za niski lub za szeroki).' : '.'));
+      add('skalowanie', 'ok', `Żeby wejść w skalę tabeli, skaluj plik do ${Math.round(k * 100)}% (po skalowaniu ${Math.round(bw * k)}x${Math.round(bh * k)} px).`);
+      stats.scale = k;
     }
 
     // --- światło z lewej góry: lewa strona ciemniejsza od prawej ---

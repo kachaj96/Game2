@@ -20,7 +20,7 @@ const lv = (r, id) => r.checks.find((c) => c.id === id)?.level;
 test('poprawna bryła 1x1 z alfą przechodzi wszystkie testy', () => {
   const r = run(box(), { kind: 'bryla', w: 1, d: 1, hj: 64 });
   assert.equal(r.ok, true, JSON.stringify(r.checks.filter((c) => c.level !== 'ok')));
-  for (const id of ['alfa', 'margines', 'rzut', 'skala', 'swiatlo', 'cien']) assert.equal(lv(r, id), 'ok', id);
+  for (const id of ['alfa', 'margines', 'rzut', 'proporcje', 'swiatlo', 'cien']) assert.equal(lv(r, id), 'ok', id);
 });
 
 test('rzut: za płaska albo za stroma podstawa jest odrzucana', () => {
@@ -29,7 +29,8 @@ test('rzut: za płaska albo za stroma podstawa jest odrzucana', () => {
 });
 
 test('skala: obiekt dwa razy za wysoki to błąd', () => {
-  assert.equal(lv(run(box({ hj: 128 }), { kind: 'bryla', w: 1, d: 1, hj: 64 }), 'skala'), 'fail');
+  assert.equal(lv(run(box({ hj: 128 }), { kind: 'bryla', w: 1, d: 1, hj: 64 }), 'proporcje'), 'fail');
+  const big = run(box({ w: 1, d: 1, hj: 64 }), { kind: 'bryla', w: 1, d: 1, hj: 64 }); assert.equal(lv(big, 'proporcje'), 'ok');
 });
 
 test('margines: obiekt przy krawędzi pliku', () => {
