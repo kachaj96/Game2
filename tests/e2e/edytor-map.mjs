@@ -22,15 +22,24 @@ await page.mouse.move(sx, sy); await page.mouse.down(); await page.mouse.move((s
 d = await D(); assert.equal(d.objects.at(-1).x, 7, 'przesunięty o 2 kafle w x');
 // kolizje: zamaluj kafel
 await page.locator('#modes [data-m=col]').click(); await tap(2, 3); d = await D(); assert.ok(d.blocked.some(([x, y]) => x === 2 && y === 3));
-// przejście: nowe, wpisz cel, maluj kafel
-await page.locator('#modes [data-m=exit]').click(); await page.getByText('Nowe przejście').click(); await page.locator('#sub input[type=text]').fill('cmentarz'); await page.locator('#sub input[type=text]').press('Enter');
-await tap(1, 1); d = await D(); assert.equal(d.exits.at(-1).to.map, 'cmentarz'); assert.ok(d.exits.at(-1).cells.length >= 1);
+// przejście w pilocie: nowe, cel z listy, maluj kafel
+await page.locator('#modes [data-m=exit]').click(); await page.getByText('Nowe przejście').click(); await page.locator('#sub select').selectOption('las');
+await tap(1, 1); d = await D(); assert.equal(d.exits.at(-1).to.map, 'las'); assert.ok(d.exits.at(-1).cells.length >= 1);
 // start na zablokowanym kaflu, walidacja ma to złapać
 await page.locator('#modes [data-m=start]').click(); await tap(2, 3); await page.locator('#val').click();
 assert.ok((await page.locator('#res .fail').allInnerTexts()).some((t) => /zablokowanym/.test(t)));
-await page.locator('#undo').click(); await page.locator('#val').click(); assert.ok(!(await page.locator('#res .fail').count()) || true);
-// wersja robocza przeżywa odświeżenie
-await page.reload(); await page.waitForFunction(() => window.__edytor); d = await D(); assert.ok(d.exits.some((e) => e.to.map === 'cmentarz'));
+await page.locator('#undo').click();
+// nowa mapa: tworzy się, ma własne przejście, cel wybierany kliknięciem na mapie docelowej
+await page.locator('#newmap').click(); await page.locator('#dline').fill('Cmentarz'); await page.locator('#dok').click(); await page.waitForTimeout(150);
+assert.equal(await page.evaluate(() => window.__edytor.cur), 'cmentarz');
+await page.locator('#modes [data-m=exit]').click(); await page.getByText('Nowe przejście').click(); await page.locator('#sub select').selectOption('pilot'); await tap(0, 4);
+await page.getByText('Wybierz kafel celu').click(); await page.waitForTimeout(150); assert.equal(await page.evaluate(() => window.__edytor.cur), 'pilot');
+await tap(5, 5); await page.waitForTimeout(150); assert.equal(await page.evaluate(() => window.__edytor.cur), 'cmentarz');
+const cm = await page.evaluate(() => window.__edytor.maps.cmentarz); assert.deepEqual(cm.exits[0].to, { map: 'pilot', x: 5, y: 5 }); assert.ok(cm.exits[0].cells.length >= 1);
+await page.locator('#val').click(); const msgs = await page.locator('#res div').allInnerTexts(); assert.ok(msgs.some((t) => /nie jest osiągalna/.test(t)), 'nowa mapa bez dojścia z pilota');
+// wersja robocza i nowa mapa przeżywają odświeżenie
+await page.reload(); await page.waitForFunction(() => window.__edytor); const ids = await page.evaluate(() => Object.keys(window.__edytor.maps)); assert.ok(ids.includes('cmentarz') && ids.includes('pilot') && ids.includes('las'));
+await page.evaluate(() => window.__edytor.openMap('pilot')); d = await D(); assert.ok(d.exits.some((e) => e.to.map === 'las'));
 // tryb Graj: bohater idzie
 await page.locator('#modes [data-m=play]').click(); assert.ok(await page.evaluate(() => window.__edytor.sc.play));
 await page.screenshot({ path: new URL('../../docs/podglad/edytor-map.png', import.meta.url).pathname });

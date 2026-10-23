@@ -25,48 +25,58 @@ small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
 <button id="tog" aria-label="Panel">☰</button>
 <div id="err"></div>
 <div id="panel">
-<h4>Tryb</h4>
+<h4>Mapa</h4><div class="row"><select id="msel" style="min-height:38px;background:#1c1814;border:1px solid #3a3126"></select><button class="b" id="newmap">Nowa</button></div><h4>Tryb</h4>
 <div id="modes"><button class="b" data-m="obj">Obiekty</button><button class="b" data-m="col">Kolizje</button><button class="b" data-m="lvl">Wysokości</button><button class="b" data-m="exit">Przejścia</button><button class="b" data-m="start">Start</button><button class="b" data-m="play">Graj</button></div>
 <div id="sub"></div>
 <small id="help"></small>
 <h4>Widok</h4><label><input type="checkbox" id="gridchk" checked> siatka</label> <label><input type="checkbox" id="colchk"> kolizje</label> <label><input type="checkbox" id="oschk" checked> osadzenie</label>
 <h4>Edycja</h4><button class="b" id="undo">Cofnij</button><button class="b" id="redo">Ponów</button>
 <h4>Dane</h4>
-<button class="b" id="save">Zapisz roboczą</button><button class="b" id="cp">Kopiuj JSON</button><button class="b" id="ld">Wczytaj</button><button class="b" id="orig">Wróć do pliku</button>
+<button class="b" id="save">Zapisz roboczą</button><button class="b" id="cp">Kopiuj mapę</button><button class="b" id="cpw">Kopiuj świat</button><button class="b" id="ld">Wczytaj</button><button class="b" id="orig">Wróć do pliku</button>
 <h4>Sprawdź mapę</h4><button class="b" id="val">Sprawdź</button><div id="res"></div>
 <small id="stat"></small>
 </div>
 <div id="msg"></div>
-<div id="dlg"><div class="box"><div id="dt" style="margin-bottom:8px"></div><textarea id="dta" spellcheck="false"></textarea><input type="file" id="file" accept=".json,application/json" style="display:none"><div style="margin-top:10px"><button class="b" id="dok">OK</button><button class="b" id="dno">Anuluj</button><button class="b" id="dfile" style="display:none">Z pliku</button></div></div></div>
+<div id="dlg"><div class="box"><div id="dt" style="margin-bottom:8px"></div><input type="text" id="dline" style="display:none"><textarea id="dta" spellcheck="false"></textarea><input type="file" id="file" accept=".json,application/json" style="display:none"><div style="margin-top:10px"><button class="b" id="dok">OK</button><button class="b" id="dno">Anuluj</button><button class="b" id="dfile" style="display:none">Z pliku</button></div></div></div>
 <script type="module">
-import {createScene, loadAssets, MAP_W, MAP_H} from './src/scena.js';
+import {createScene, loadAssets, spriteDefs} from './src/scena.js';
 import {validateMap} from './src/walidacja.js';
-import {spriteDefs} from './src/scena.js';
+import {validateWorld} from './src/swiat.js';
 addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Jeśli przyciski nie działają, strona jest prawdopodobnie otwarta z pliku (file://). Otwórz ją przez serwer (npm start) albo adres https.'});
 setTimeout(()=>{if(!window.__edytor){const b=document.getElementById('err');b.style.display='block';b.textContent='Skrypt edytora się nie uruchomił, dlatego przyciski nie działają. Otwórz stronę przez serwer (npm start) albo adres https, nie z pliku.'}},4000);
-const $=id=>document.getElementById(id),cv=$('c'),Q=new URLSearchParams(location.search),MAP=Q.get('map')||'pilot',KEY='arena.mapdraft.v3.'+MAP;
+const $=id=>document.getElementById(id),cv=$('c'),Q=new URLSearchParams(location.search),DK=id=>'arena.mapdraft.v3.'+id;
 const LIB=window.__LIB||await (await fetch('gra/biblioteka.json')).json();
 const url=p=>(window.__ASSETS&&window.__ASSETS[p])||('gra/'+p);
-const FILE=async()=>window.__MAPS?JSON.parse(JSON.stringify(window.__MAPS[MAP])):await (await fetch('maps/'+MAP+'.json')).json();
-let def=null;try{def=JSON.parse(localStorage.getItem(KEY))}catch(_){}
-const fromDraft=!!(def&&def.objects);if(!fromDraft)def=await FILE();
+const INDEX=window.__MAPS?{start:window.__INDEX||'pilot',maps:Object.keys(window.__MAPS)}:await (await fetch('maps/index.json')).json();
+const FILEMAP=async id=>window.__MAPS?(window.__MAPS[id]?JSON.parse(JSON.stringify(window.__MAPS[id])):null):await fetch('maps/'+id+'.json').then(r=>r.ok?r.json():null).catch(()=>null);
+const maps={};let extra=[],fromDraft=false;try{extra=JSON.parse(localStorage.getItem(DK('__list')))||[]}catch(_){}
+for(const id of [...INDEX.maps,...extra]){let d=null;try{d=JSON.parse(localStorage.getItem(DK(id)))}catch(_){}if(d&&d.objects){maps[id]=d;fromDraft=true}else if(INDEX.maps.includes(id))maps[id]=await FILEMAP(id)}
+let cur=Q.get('map')&&maps[Q.get('map')]?Q.get('map'):INDEX.start,def=maps[cur];
 const A=await loadAssets(LIB,url),SP=spriteDefs(LIB);
+const saveList=()=>{try{localStorage.setItem(DK('__list'),JSON.stringify(Object.keys(maps).filter(i=>!INDEX.maps.includes(i))))}catch(_){}};
 let msgT=0;const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=0,2600)};
 if(fromDraft)toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');
 // ---- okienka w stronie (prompt i confirm nie działają w WebView ani w artefakcie) ----
-function dialog(title,{text='',ok='OK',area=false,file=false}={}){return new Promise(res=>{$('dt').textContent=title;const ta=$('dta');ta.style.display=area?'block':'none';ta.value=text;$('dok').textContent=ok;$('dfile').style.display=file?'inline-block':'none';$('dlg').style.display='flex';if(area){ta.focus();ta.select()}
- const done=v=>{$('dlg').style.display='none';res(v)};$('dok').onclick=()=>done(area?ta.value:true);$('dno').onclick=()=>done(null);$('dfile').onclick=()=>$('file').click();
+function dialog(title,{text='',ok='OK',area=false,file=false,line=false}={}){return new Promise(res=>{$('dt').textContent=title;const ta=$('dta'),ln=$('dline');ln.style.display=line?'block':'none';ln.value=line?text:'';if(line)setTimeout(()=>ln.focus(),30);ta.style.display=area?'block':'none';ta.value=area?text:'';$('dok').textContent=ok;$('dfile').style.display=file?'inline-block':'none';$('dlg').style.display='flex';if(area){ta.focus();ta.select()}
+ const done=v=>{$('dlg').style.display='none';res(v)};$('dok').onclick=()=>done(line?ln.value:area?ta.value:true);$('dno').onclick=()=>done(null);$('dfile').onclick=()=>$('file').click();
  $('file').onchange=async e=>{const f=e.target.files[0];if(f){ta.value=await f.text()}e.target.value=''}})}
 // ---- stan ----
 let mode='obj',placing=null,sel=-1,exSel=-1,lvl=1,brush='add',ramp=false,undo=[],redo=[],drag=null,ghost=null;
 const snap=()=>JSON.stringify(def),clone=o=>JSON.parse(JSON.stringify(o));
 const push=()=>{undo.push(snap());if(undo.length>80)undo.shift();redo=[]};
+let pick=null;
 const sc=createScene(cv,LIB,A,def,{toast});sc.showGrid=true;sc.play=false;
 const PW=()=>$('panel').classList.contains('off')?0:244;
 const key=(x,y)=>x+','+y;
-function changed(save=true,lazy=true){sc.setDef(def,{keepHero:mode==='play',lazy});if(save)try{localStorage.setItem(KEY,snap())}catch(_){}stat()}
-function stat(){$('stat').textContent=`Obiektów: ${def.objects.length}, ręcznych blokad: ${(def.blocked||[]).length}, przejść: ${def.exits.length}`}
+function changed(save=true,lazy=true){maps[cur]=def;sc.setDef(def,{keepHero:mode==='play',lazy});if(save){try{localStorage.setItem(DK(cur),snap())}catch(_){}saveList()}stat()}
+function stat(){$('stat').textContent=`Mapa „${cur}”. Obiektów: ${def.objects.length}, ręcznych blokad: ${(def.blocked||[]).length}, przejść: ${def.exits.length}`}
 sc.resize(PW());addEventListener('resize',()=>sc.resize(PW()));
+// ---- mapy ----
+function fillMaps(){const m=$('msel');m.innerHTML='';for(const id of Object.keys(maps)){const o=document.createElement('option');o.value=id;o.textContent=(maps[id].name||id)+(INDEX.maps.includes(id)?'':' (nowa)');m.append(o)}m.value=cur}
+function openMap(id){if(!maps[id])return;cur=id;def=maps[id];undo=[];redo=[];sel=-1;exSel=-1;sc.setDef(def);fillMaps();ui();stat();history.replaceState(null,'',location.pathname+'?map='+id)}
+$('msel').onchange=e=>openMap(e.target.value);
+$('newmap').onclick=async()=>{const raw=await dialog('Nazwa nowej mapy (litery, cyfry, podkreślnik), np. cmentarz:',{line:true,text:'mapa'+(Object.keys(maps).length+1),ok:'Utwórz'});if(raw===null)return;const id=raw.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/^_+|_+$/g,'');if(!id){toast('Podaj nazwę.');return}if(maps[id]){toast('Mapa o tej nazwie już istnieje.');return}
+ maps[id]={version:3,id,name:raw.trim(),size:[768,512],origin:[384,0],objects:[],blocked:[],levels:{},ramps:[],exits:[],start:[10.5,10]};cur=id;def=maps[id];changed(true,false);openMap(id);toast('Utworzono mapę „'+id+'”. Podłoże jest na razie to samo co w pilocie.')};
 // ---- paleta ----
 const pal=$('pal');
 function drawPalette(el){el.innerHTML='';for(const [n,s] of Object.entries(LIB.sprites)){const b=document.createElement('button');b.dataset.s=n;const c=document.createElement('canvas'),k=Math.min(56/s.w,44/s.h);c.width=Math.round(s.w*k);c.height=Math.round(s.h*k);c.getContext('2d').drawImage(A.IMG[n],0,0,c.width,c.height);b.append(c);const t=document.createElement('span');t.textContent=n+' '+s.footprint.w+'x'+s.footprint.d;b.append(t);b.classList.toggle('on',placing===n);b.onclick=()=>{placing=placing===n?null:n;sel=-1;ui()};el.append(b)}}
@@ -89,8 +99,9 @@ function ui(){
  if(mode==='col'){btn('Blokuj',brush==='add',()=>{brush='add';ui()});btn('Gumka',brush==='del',()=>{brush='del';ui()})}
  if(mode==='lvl'){for(const n of [0,1,2,3])btn('Poziom '+n,!ramp&&lvl===n,()=>{lvl=n;ramp=false;ui()});btn('Rampa',ramp,()=>{ramp=!ramp;ui()})}
  if(mode==='exit'){def.exits.forEach((e,i)=>btn(`${i+1}: ${e.to.map||'(bez celu)'} (${e.cells.length})`,exSel===i,()=>{exSel=i;ui()}));btn('Nowe przejście',false,()=>{push();def.exits.push({cells:[],to:{map:'',x:2,y:2}});exSel=def.exits.length-1;changed();ui()});
-  const e=def.exits[exSel];if(e){inp('Mapa docelowa',e.to.map,v=>{push();e.to.map=v.trim();changed();ui()});const r=document.createElement('div');r.className='row';sub.append(r);
+  const e=def.exits[exSel];if(e){const l=document.createElement('label');l.style.display='block';l.textContent='Mapa docelowa';const se=document.createElement('select');se.style.cssText='width:100%;min-height:36px;background:#1c1814;border:1px solid #3a3126;margin:2px 0';se.innerHTML='<option value="">(wybierz)</option>'+Object.keys(maps).map(id=>`<option value="${id}">${maps[id].name||id}</option>`).join('');se.value=e.to.map||'';se.onchange=()=>{push();e.to.map=se.value;changed();ui()};l.append(se);sub.append(l);const r=document.createElement('div');r.className='row';sub.append(r);
    for(const [lab,k] of [['Kafel x','x'],['Kafel y','y']]){const l=document.createElement('label');l.textContent=lab;const i=document.createElement('input');i.type='number';i.value=e.to[k];i.onchange=()=>{push();e.to[k]=+i.value;changed()};l.append(i);r.append(l)}
+   btn('Wybierz kafel celu na mapie docelowej',false,()=>{if(!e.to.map||!maps[e.to.map]){toast('Najpierw wybierz mapę docelową.');return}pick={from:cur,idx:exSel};openMap(e.to.map);mode='start';ui();toast('Dotknij kafla, na którym bohater pojawi się po przejściu.')});
    btn('Dodaj kafle',brush==='add',()=>{brush='add';ui()});btn('Gumka',brush==='del',()=>{brush='del';ui()});btn('Usuń przejście',false,()=>{push();def.exits.splice(exSel,1);exSel=-1;changed();ui()},'danger')}}
  if(mode==='play')btn('Ustaw bohatera na starcie',false,()=>{sc.hero.x=def.start[0];sc.hero.y=def.start[1];sc.hero.path=[]});
 }
@@ -112,6 +123,7 @@ cv.addEventListener('pointerdown',e=>{if(e.target!==cv)return;const m=sc.toMap(e
  if(mode==='obj'){const i=objAt(e.clientX,e.clientY);
   if(placing&&i<0){if(!inMap(cx,cy)){toast('Tu jest poza mapą.');return}push();def.objects.push({sprite:placing,x:cx+1,y:cy+1});sel=def.objects.length-1;changed(true,false);ui();return}
   sel=i;ui();if(i>=0){push();drag={i,dx:def.objects[i].x-(cx+1),dy:def.objects[i].y-(cy+1),moved:false}}return}
+ if(pick&&mode==='start'){if(!inMap(cx,cy))return;if(sc.M.blocked(cx,cy)){toast('Ten kafel jest zablokowany.');return}const from=pick.from,idx=pick.idx;pick=null;maps[from].exits[idx].to={map:cur,x:cx,y:cy};try{localStorage.setItem(DK(from),JSON.stringify(maps[from]))}catch(_){}openMap(from);mode='exit';exSel=idx;ui();toast('Cel przejścia ustawiony: ('+cx+', '+cy+').');return}
  if(mode==='start'){if(!inMap(cx,cy))return;push();def.start=[cx+.5,cy+.5];changed(true,false);toast('Start ustawiony.');return}
  if(mode==='exit'&&exSel<0){toast('Najpierw wybierz lub dodaj przejście.');return}
  push();drag={paint:true,last:null};paintCell(cx,cy);changed(true,false)});
@@ -137,12 +149,13 @@ sc.overlay=(g,s)=>{if(mode==='play')return;const d=s.dpr,fp=o=>{const f=LIB.spri
 // ---- dane ----
 $('undo').onclick=()=>{if(!undo.length)return;redo.push(snap());def=JSON.parse(undo.pop());changed(true,false);ui()};
 $('redo').onclick=()=>{if(!redo.length)return;undo.push(snap());def=JSON.parse(redo.pop());changed(true,false);ui()};
-$('save').onclick=()=>{try{localStorage.setItem(KEY,snap());toast('Zapisano wersję roboczą w tej przeglądarce.')}catch(_){toast('Przeglądarka nie pozwala zapisać wersji roboczej.')}};
+$('save').onclick=()=>{try{localStorage.setItem(DK(cur),snap());toast('Zapisano wersję roboczą w tej przeglądarce.')}catch(_){toast('Przeglądarka nie pozwala zapisać wersji roboczej.')}};
 $('cp').onclick=async()=>{const js=JSON.stringify(def);try{await navigator.clipboard.writeText(js);toast('Skopiowano JSON do schowka. Wklej go w czacie.')}catch(_){await dialog('Skopiuj ten JSON (zaznaczony) i wklej w czacie:',{text:js,area:true,ok:'Zamknij'})}};
 $('ld').onclick=async()=>{const t=await dialog('Wklej JSON mapy albo wybierz plik:',{area:true,file:true,ok:'Wczytaj'});if(!t)return;try{const d=JSON.parse(t);if(!d.objects||!d.exits||!d.start)throw 0;push();def=d;sel=-1;exSel=-1;changed(true,false);ui();toast('Wczytano mapę.')}catch(_){toast('To nie jest poprawny plik mapy.')}};
-$('orig').onclick=async()=>{if(!(await dialog('Usunąć wersję roboczą i wczytać oryginał z pliku?')))return;try{localStorage.removeItem(KEY)}catch(_){}push();def=await FILE();sel=-1;exSel=-1;changed(false,false);ui()};
-$('val').onclick=()=>{const r=validateMap(def,SP),el=$('res');el.innerHTML='';for(const c of r){const d=document.createElement('div');d.className=c.level;d.textContent=c.msg;el.append(d)}};
-ui();stat();
-window.__edytor={get def(){return def},sc,setMode:m=>$('modes').querySelector(`[data-m=${m}]`).click(),view:()=>sc.view,undoLen:()=>undo.length};
+$('orig').onclick=async()=>{if(!(await dialog('Usunąć wersję roboczą tej mapy i wczytać oryginał z pliku?')))return;try{localStorage.removeItem(DK(cur))}catch(_){}const f=INDEX.maps.includes(cur)?await FILEMAP(cur):null;if(!f){toast('Ta mapa nie ma pliku (jest nowa).');return}push();maps[cur]=def=f;sel=-1;exSel=-1;sc.setDef(def);ui();stat()};
+$('val').onclick=()=>{const r=validateWorld(maps,SP,INDEX.start),el=$('res');el.innerHTML='';for(const c of r){const d=document.createElement('div');d.className=c.level;d.textContent=(c.map?'['+c.map+'] ':'')+c.msg;el.append(d)}};
+$('cpw').onclick=async()=>{const js=JSON.stringify({start:INDEX.start,maps});try{await navigator.clipboard.writeText(js);toast('Skopiowano cały świat (wszystkie mapy). Wklej w czacie.')}catch(_){await dialog('Skopiuj ten JSON (zaznaczony) i wklej w czacie:',{text:js,area:true,ok:'Zamknij'})}};
+fillMaps();ui();stat();
+window.__edytor={get def(){return def},get cur(){return cur},get maps(){return maps},openMap,sc,setMode:m=>$('modes').querySelector(`[data-m=${m}]`).click(),view:()=>sc.view,undoLen:()=>undo.length};
 const loop=t=>{requestAnimationFrame(loop);sc.draw(t)};requestAnimationFrame(loop);
 </script></body></html>

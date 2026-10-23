@@ -19,7 +19,7 @@ export const spriteDefs = (LIB) => Object.fromEntries(Object.entries(LIB.sprites
 
 export function createScene(cv, LIB, A, def0, opts = {}) {
   const g = cv.getContext('2d'), SP = spriteDefs(LIB), GP = pixelsOf(A.ground), baked = mkCanvas(1536, 1024), bg = baked.getContext('2d');
-  const sc = { osad: true, showGrid: false, showCol: false, play: true, view: { z: 1, ox: 0, oy: 0 }, dpr: 1, hero: { x: 0, y: 0, path: [], dir: 'SW', t: 0, walk: false }, overlay: null, toast: opts.toast || (() => {}), hideObjects: null };
+  const sc = { exitLock: true, onExit: null, osad: true, showGrid: false, showCol: false, play: true, view: { z: 1, ox: 0, oy: 0 }, dpr: 1, hero: { x: 0, y: 0, path: [], dir: 'SW', t: 0, walk: false }, overlay: null, toast: opts.toast || (() => {}), hideObjects: null };
   let M, iso, SUNK = [], shCache = new Map(), HSH = new Map(), bakeTimer = 0, last = 0;
 
   const sprAlpha = {};   // maski alfa sprite'ów do trafiania w obiekty kliknięciem
@@ -81,9 +81,11 @@ export function createScene(cv, LIB, A, def0, opts = {}) {
     h.walk = false;
     if (sc.play && h.path.length) {
       const [tx, ty] = h.path[0], dx = tx - h.x, dy = ty - h.y, dist = Math.hypot(dx, dy), sp = 2.7 * dt;
-      if (dist <= sp) { h.x = tx; h.y = ty; h.path.shift(); if (!h.path.length) { const ex = M.exitAt(Math.floor(h.x), Math.floor(h.y)); if (ex) sc.toast('Przejście do mapy "' + ex.map + '" (tu nastąpiłoby przeniesienie)'); } }
+      if (dist <= sp) { h.x = tx; h.y = ty; h.path.shift(); }
       else { h.x += dx / dist * sp; h.y += dy / dist * sp; h.walk = true; h.t += dt; h.dir = sector((dx - dy) * TW / 2, (dx + dy) * TH / 2); }
     }
+    // przejście na krawędzi: wejście w kafel strefy przenosi od razu; po przybyciu strefa jest zablokowana, dopóki bohater z niej nie zejdzie
+    if (sc.play) { const ex = M.exitAt(Math.floor(h.x), Math.floor(h.y)); if (!ex) sc.exitLock = false; else if (!sc.exitLock) { sc.exitLock = true; h.path = []; if (sc.onExit) sc.onExit(ex); } }
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0a0908'; g.fillRect(0, 0, cv.width, cv.height);
     g.drawImage(sc.osad ? baked : A.ground, sc.view.ox * d, sc.view.oy * d, MAP_W * z * d, MAP_H * z * d);
     if (sc.showGrid || sc.showCol) for (const [cx, cy] of iso.cells()) {
@@ -107,6 +109,7 @@ export function createScene(cv, LIB, A, def0, opts = {}) {
     if (sc.osad) { g.save(); g.globalCompositeOperation = 'multiply'; const x0 = sc.view.ox * d, y0 = sc.view.oy * d, w = MAP_W * z * d, hh = MAP_H * z * d, gr = g.createLinearGradient(x0 + w, y0, x0, y0 + hh); gr.addColorStop(0, 'rgb(255,250,238)'); gr.addColorStop(1, 'rgb(205,210,222)'); g.globalAlpha = .55; g.fillStyle = gr; g.fillRect(x0, y0, w, hh); g.restore(); }
     if (sc.overlay) sc.overlay(g, sc);
   }
+  sc.enter = (d, pos) => { sc.hero.x = pos[0]; sc.hero.y = pos[1]; sc.hero.path = []; setDef(d, { keepHero: true }); sc.exitLock = true; };
   sc.setDef = setDef; sc.scheduleBake = scheduleBake; sc.rebake = rebake; sc.resize = resize; sc.draw = draw; sc.drawImgAt = drawImg;
   setDef(def0);
   return sc;

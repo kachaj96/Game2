@@ -93,3 +93,9 @@ Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciąg
 - Rysujemy tylko dwa kierunki: SE (twarzą do widza, w prawo) i NE (tyłem, w prawo). SW i NW to lustro SE i NE, jak w grze z kodu.
 - Chód: klatki cyklu (docelowo 6 do 8 klatek na kierunek), stały rozmiar klatki, kotwica w tym samym punkcie.
 - Test pilota: jeden bohater (Grabarz) w dwóch kierunkach na jednym arkuszu, sprawdzamy czy to ta sama postać i czy skala jest ta sama.
+
+## 14. Przejścia między mapami (zrobione)
+- Przejście to zestaw kafli na mapie z celem `{map, x, y}`, gdzie `x, y` to kafel startu w mapie docelowej. Dane w `maps/<id>.json`, lista map w `maps/index.json`.
+- Wejście bohatera w kafel strefy przenosi go od razu (zanikanie ekranu), bez przycisku. Po przybyciu strefa jest zablokowana, dopóki bohater z niej nie zejdzie, więc nie ma odbijania tam i z powrotem.
+- Walidacja świata (`src/swiat.js`): cel istnieje i jest wolnym kaflem, cel nie leży w strefie przejścia, mapa docelowa ma przejście z powrotem, każda mapa jest osiągalna z mapy startowej.
+- Edytor: wybór mapy, tworzenie nowej, cel przejścia wybierany z listy lub kliknięciem kafla na mapie docelowej, "Kopiuj świat" kopiuje wszystkie mapy naraz.

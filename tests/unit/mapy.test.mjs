@@ -107,3 +107,19 @@ test('walidacja: poprawna mapa przechodzi, błędne przypadki są nazwane', () =
   const overlap = def(); overlap.start = [4.5, 8.5]; overlap.objects.push({ sprite: 'chata', x: 11, y: 11 }); assert.ok(validateMap(overlap, sp).some((c) => /nakładają/.test(c.msg)));
   const bad = def(); bad.objects = [{ sprite: 'nieistnieje', x: 1, y: 1 }]; assert.ok(validateMap(bad, sp).some((c) => c.level === 'fail'));
 });
+
+import { resolveExit, validateWorld } from '../../mapy/src/swiat.js';
+const world = () => { const a = def(), b = def(); a.id = 'a'; b.id = 'b'; a.start = [4.5, 8.5]; b.start = [4.5, 8.5]; a.exits = [{ cells: [[2, 12]], to: { map: 'b', x: 4, y: 8 } }]; b.exits = [{ cells: [[3, 12]], to: { map: 'a', x: 4, y: 8 } }]; return { a, b }; };
+test('przejście: cel musi istnieć i być wolnym kaflem w mapie', () => {
+  const m = world(), sp = def().sprites;
+  const ok = resolveExit(m, { map: 'b', x: 4, y: 8 }, sp); assert.deepEqual(ok.pos, [4.5, 8.5]);
+  assert.ok(resolveExit(m, { map: 'zzz', x: 1, y: 1 }, sp).error); assert.ok(resolveExit(m, { map: 'b', x: 9, y: 9 }, sp).error, 'zablokowany kafel');
+  assert.ok(resolveExit(m, { map: 'b', x: 900, y: 900 }, sp).error, 'poza mapą');
+});
+test('świat: spójny zestaw przechodzi, braki są nazwane', () => {
+  const sp = def().sprites, m = world(); assert.deepEqual(validateWorld(m, sp, 'a').filter((c) => c.level === 'fail'), []);
+  const noBack = world(); noBack.b.exits = []; assert.ok(validateWorld(noBack, sp, 'a').some((c) => /z powrotem/.test(c.msg)));
+  const lone = world(); lone.c = { ...def(), id: 'c', start: [4.5, 8.5], exits: [] }; assert.ok(validateWorld(lone, sp, 'a').some((c) => /nie jest osiągalna/.test(c.msg)));
+  const bad = world(); bad.a.exits[0].to.map = 'x'; assert.ok(validateWorld(bad, sp, 'a').some((c) => c.level === 'fail' && /Nie ma mapy/.test(c.msg)));
+  const onExit = world(); onExit.a.exits[0].to = { map: 'b', x: 3, y: 12 }; assert.ok(validateWorld(onExit, sp, 'a').some((c) => /strefie przejścia/.test(c.msg)));
+});
