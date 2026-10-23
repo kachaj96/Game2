@@ -30,3 +30,8 @@ test('noc: warstwa rysuje się bez złych liczb, w dzień nic nie rysuje', () =>
   const g = mockCtx(); drawNight(g, night, 0, { x: 400, y: 200, angle: 0.5 }, [], 1); assert.equal(g.__state.calls, 0);
   drawNight(g, night, 1, { x: 400, y: 200, angle: 0.5 }, [{ x: 100, y: 100, r: 150, a: 0.8 }], 1.4); assert.ok(g.__state.calls > 5); assert.deepEqual(g.__state.bad, []); assert.deepEqual(night.__state.bad, []);
 });
+
+test('areny i wnętrza mają stałe światło: walka.html nie używa pory dnia ani nocy', async () => {
+  const { readFileSync } = await import('node:fs'); const src = readFileSync(new URL('../../www/walka.html', import.meta.url), 'utf8');
+  assert.ok(!/daylight|darkness|drawNight/.test(src), 'walka nie importuje modułu pory dnia');
+});

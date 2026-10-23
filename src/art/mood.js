@@ -37,3 +37,17 @@ function grain(g, w, h, a) {
   const pat = g.createPattern(noise, 'repeat'); if (!pat) return;
   g.save(); g.globalCompositeOperation = 'overlay'; g.globalAlpha = a; g.fillStyle = pat; g.fillRect(0, 0, w, h); g.restore();
 }
+
+// Wersja do pętli gry: ciężkie części (odbarwienie, ziarno) wypiekamy raz w statycznym tle, a co klatkę nakładamy tylko gotową warstwę
+// (odcień razem z winietą jako mnożenie), co jest wielokrotnie tańsze niż applyMood na pełnym ekranie.
+export function applyMoodStatic(g, w, h, name = 'noc') {
+  const m = MOODS[name] || MOODS.dzien;
+  if (m.desat) { g.save(); g.globalCompositeOperation = 'saturation'; g.fillStyle = `rgba(128,128,128,${m.desat})`; g.fillRect(0, 0, w, h); g.restore(); }
+  if (m.grain) grain(g, w, h, m.grain);
+}
+export function makeMoodLayer(doc, w, h, name = 'noc') {
+  const m = MOODS[name] || MOODS.dzien, c = doc.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  g.fillStyle = m.tint || '#fff'; g.fillRect(0, 0, w, h);
+  const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.22, w / 2, h / 2, Math.max(w, h) * 0.78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(4,7,18,${m.vig})`); g.fillStyle = v; g.fillRect(0, 0, w, h);
+  return c;
+}

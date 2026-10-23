@@ -69,7 +69,7 @@ import {drawGridLines,fillCells,drawCellOutline,drawFlagstones} from '../src/art
 import * as N from '../src/art/nature.js';
 import {grave,ashCloud,DECALS} from '../src/art/props.js';
 import {applyTheme} from '../src/art/theme.js';
-import {applyMood,glow} from '../src/art/mood.js';
+import {applyMood,applyMoodStatic,makeMoodLayer,glow} from '../src/art/mood.js';
 import {drawSpellIcon} from '../src/art/spellicons.js';
 import {createState,currentUnit,unitById,gridOf,occupied} from '../src/game/state.js';
 import {applyCommand,legalMoves,ERRORS} from '../src/game/commands.js';
@@ -126,11 +126,13 @@ const FEET=-2;
 const COL={earth:'#d2a45c',fire:'#ff6a3a',water:'#5ab0ff',air:'#7ae07a',neutral:'#e8e8e8'};
 
 const bg=document.createElement('canvas');
-function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');
+let moodLayer=null;
+function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext('2d');moodLayer=makeMoodLayer(document,cv.width,cv.height,mood);
   N.ground(b,bg.width,bg.height,7,{biome:TH.biome});N.tufts(b,bg.width,bg.height,7,Math.round(bg.width*bg.height/1400*TH.tufts),null,{biome:TH.biome});
   b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
   // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
-  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&TH.decals.length)DECALS[TH.decals[h%TH.decals.length]](b,c[0]+(h===0?4:0),c[1]+1,.9,x*7+y*3+h)}}
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&TH.decals.length)DECALS[TH.decals[h%TH.decals.length]](b,c[0]+(h===0?4:0),c[1]+1,.9,x*7+y*3+h)}
+  b.setTransform(1,0,0,1,0,0);applyMoodStatic(b,bg.width,bg.height,mood)}
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr));
   const bar=$('bar').getBoundingClientRect(),topPad=14*dpr,botPad=14*dpr,rightPad=(bar.width+22)*dpr;
   const availW=cv.width-rightPad,availH=cv.height-botPad-topPad,s=Math.min(availW/WORLD.w,availH/WORLD.h);
@@ -321,7 +323,7 @@ function frame(now){
       if(u.id===cur.id&&!busy&&!state.result){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
       if(u.team==='gracz')glow(g,v.x+8,v.y-50+FEET-8,34,'255,150,70',.55)})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.f());
-  g.setTransform(1,0,0,1,0,0);applyMood(g,cv.width,cv.height,mood);
+  g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='multiply';g.drawImage(moodLayer,0,0);g.globalCompositeOperation='source-over';
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);overlay.forEach(f=>f());
   for(const f of floats){g.globalAlpha=Math.max(0,1-f.t/1.1);g.font='bold 24px system-ui';g.textAlign='center';g.lineWidth=5;g.strokeStyle='#000';g.strokeText(f.text,f.x,f.y-f.t*34);g.fillStyle=f.color;g.fillText(f.text,f.x,f.y-f.t*34);g.globalAlpha=1}
   requestAnimationFrame(frame);

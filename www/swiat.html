@@ -28,7 +28,8 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 #card p{margin:3px 0;font-size:14px;line-height:1.4;color:#d8cdb4}#card p.w{color:#e8a070}
 #card .row{display:flex;gap:8px;margin-top:8px}
 #card a,#card button{flex:1;text-align:center;text-decoration:none;min-height:44px;display:flex;align-items:center;justify-content:center;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 15px system-ui;padding:0 8px}
-#card a.go{color:#25300a;background:linear-gradient(180deg,#f0ff6a,#b8d420)!important}
+#card a.go{color:#1b2606!important;background:linear-gradient(180deg,#f0ff6a,#b8d420)!important}
+#card a,#card button{border:1px solid rgba(255,255,255,.14)!important;border-image:none!important;border-radius:10px!important;background:#3a3d68!important;color:#fff!important}
 #rotate{display:none;position:fixed;inset:0;z-index:9;background:#0e100c;align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
 @media (orientation:portrait){#rotate{display:flex}}
 </style><link rel="stylesheet" href="ui.css"></head><body>
@@ -204,8 +205,9 @@ function frame(now){
   g.setTransform(1,0,0,1,0,0);
   const dark=darkness(tt+(Q.get('clock')?Number(Q.get('clock')):0),SET.time);
   if(!Q.get('nomood')){drawLight(tt,s,dark);drawVig()}
-  if(dark>0.01){const hs=wv.pos(hero.x,hero.y),X=cv.width/2+(hs[0]-cam.x)*s,Y=cv.height/2+(hs[1]-cam.y)*s,ang=Math.atan2((hero.dx+hero.dy)*0.5,hero.dx-hero.dy);
-    if(hero.moving||lanternA===null)lanternA=ang;const lights=[];for(const l of wv.lamps){const lx=cv.width/2+(l.x-cam.x)*s,ly=cv.height/2+(l.y-cam.y)*s;if(lx<-300*s||lx>cv.width+300*s||ly<-300*s||ly>cv.height+300*s)continue;lights.push({x:lx,y:ly,r:l.r*(0.94+0.06*Math.sin(tt*7+l.ph)+0.03*Math.sin(tt*13.3+l.ph*2)),a:l.a})}
+  { const a0=Math.atan2((hero.dx+hero.dy)*0.5,hero.dx-hero.dy);if(hero.moving||lanternA===null)lanternA=a0 }
+  if(dark>0.01){const hs=wv.pos(hero.x,hero.y),X=cv.width/2+(hs[0]-cam.x)*s,Y=cv.height/2+(hs[1]-cam.y)*s;
+    const lights=[];for(const l of wv.lamps){const lx=cv.width/2+(l.x-cam.x)*s,ly=cv.height/2+(l.y-cam.y)*s;if(lx<-300*s||lx>cv.width+300*s||ly<-300*s||ly>cv.height+300*s)continue;lights.push({x:lx,y:ly,r:l.r*(0.94+0.06*Math.sin(tt*7+l.ph)+0.03*Math.sin(tt*13.3+l.ph*2)),a:l.a})}
     drawNight(g,night,dark,{x:X,y:Y,angle:lanternA},lights,s)}
   if(SET.fps){fpsN++;if(now-fpsT>500){$('fps').textContent=Math.round(fpsN*1000/(now-fpsT))+' FPS';fpsN=0;fpsT=now}$('fps').style.display='block'}else $('fps').style.display='none'
   mini();requestAnimationFrame(frame)

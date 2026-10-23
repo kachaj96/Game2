@@ -261,7 +261,10 @@ export class WorldView {
   collectLights() {
     const out = [], w = this.w;
     for (const o of w.objects) if (o.k === 'lamp') { const p = this.pos(o.x, o.y); out.push({ x: p[0], y: p[1] - 50, r: 130, a: 0.9, ph: o.x * 7.3 + o.y }); }
-    for (const e of w.entrances) { const p = this.pos(e.at[0], e.at[1]); out.push({ x: p[0], y: p[1] - (e.kind === 'krypta' ? 40 : 30), r: e.kind === 'krypta' ? 260 : 190, a: 0.85, ph: e.at[0] }); }
+    // wejścia: światło wychodzi z pochodni (płomienie na słupach przy portyku krypty) albo z dziupli jamy, a nie z całej bryły
+    w.entrances.forEach((e, i) => { const p = this.pos(e.at[0], e.at[1]), sc = this.entSpecs[i].scale || 1;
+      if (e.kind === 'krypta') for (const sd of [-1, 1]) { const X = 0.894 * ((sd * 73) - 96), Y = 0.447 * ((sd * 73) + 96) - 82; out.push({ x: p[0] + X * sc, y: p[1] + Y * sc, r: 95, a: 0.95, ph: i + sd * 3.1 }); }
+      else out.push({ x: p[0], y: p[1] - 18 * sc, r: 70, a: 0.7, ph: i }); });
     return out;
   }
   // jakość: przy zmianie czyścimy cache (bloki, obrazki, mapy cieni), bo zależą od rozdzielczości cieni i dekoracji

@@ -1,3 +1,4 @@
+// UWAGA: pora dnia dotyczy tylko świata zewnętrznego (swiat.html). Wnętrza, areny i lochy (walka.html) mają stałe oświetlenie z motywu lochu i nigdy nie importują tego pliku.
 // Pora dnia i noc: im ciemniej, tym mniej widać poza światłem latarni bohatera (stożek przed nim) i lamp. Rysowane na osobnej, półprzezroczystej warstwie.
 export const DAY_LENGTH = 300;                       // sekund na pełną dobę w trybie zmiennym
 // poziom ciemności 0 (dzień) .. 1 (głęboka noc): dzień, zmierzch, noc, świt
