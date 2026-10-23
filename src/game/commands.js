@@ -1,7 +1,7 @@
 // Komendy zmieniają stan. Interfejs, sztuczna inteligencja i (później) sieć wysyłają te same komendy.
 import { findPath, reachable } from './pathfinding.js';
 import { gridOf, unitById, currentUnit, occupied, alive } from './state.js';
-import { castProblem, resolveCast } from './spells.js';
+import { castProblem, resolveCast, checkRage } from './spells.js';
 
 export const ERRORS = {
   unknown_command: 'Nieznana komenda.', no_unit: 'Nie ma takiej jednostki.', not_your_turn: 'To nie jest tura tej jednostki.',
@@ -9,7 +9,7 @@ export const ERRORS = {
   no_path: 'Nie ma drogi.', too_far: 'Za daleko, brakuje punktów ruchu.', same_cell: 'Już tu stoisz.',
   spell_unknown: 'Nie znasz tego czaru.', not_implemented: 'Ten czar jeszcze nie działa.', no_pa: 'Za mało punktów akcji.', cooldown: 'Czar jeszcze się odnawia.',
   limit: 'Ten czar był już rzucony maksymalną liczbę razy w tej turze.', range: 'Poza zasięgiem czaru.', not_in_line: 'Cel musi być w jednej linii.',
-  no_los: 'Nie widzisz celu (coś zasłania).', no_target: 'Brak celu na tym kaflu.', finished: 'Walka już się skończyła.',
+  no_los: 'Nie widzisz celu (coś zasłania).', no_grave: 'Tu nie ma grobu.', target_occupied: 'Tego kafla nie da się zająć.', summon_full: 'Nie ma miejsca na kolejnych sojuszników.', no_target: 'Brak celu na tym kaflu.', finished: 'Walka już się skończyła.',
 };
 
 // kafle, na które jednostka może teraz dojść (Map klucz -> {x,y,cost})
@@ -57,7 +57,7 @@ function advanceTurn(s) {
     s.turn.index = (s.turn.index + 1) % s.order.length;
     if (s.turn.index === 0) s.turn.round++;
     const u = unitById(s, s.order[s.turn.index]);
-    if (u.hp > 0) { u.pm = u.maxPm; u.pa = u.maxPa; u.casts = {}; for (const k of Object.keys(u.cooldowns || {})) { u.cooldowns[k] = Math.max(0, u.cooldowns[k] - 1); }
-      s.clouds = (s.clouds || []).map((c) => (c.owner === u.id ? { ...c, turns: c.turns - 1 } : c)).filter((c) => c.turns > 0); return; }
+    if (u.hp > 0) { u.pm = Math.max(0, u.maxPm - (u.slow || 0)); u.slow = 0; u.pa = u.maxPa; u.casts = {}; for (const k of Object.keys(u.cooldowns || {})) { u.cooldowns[k] = Math.max(0, u.cooldowns[k] - 1); }
+      checkRage(u, []); s.clouds = (s.clouds || []).map((c) => (c.owner === u.id ? { ...c, turns: c.turns - 1 } : c)).filter((c) => c.turns > 0); return; }
   }
 }

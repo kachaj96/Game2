@@ -1,5 +1,6 @@
 // Dane klas: statystyki i czary. PROPOZYCJA, liczby do strojenia po pierwszych walkach.
 // Wszystkie klasy startują z 6 PA i 3 PM (zwiększane ekwipunkiem). Każda ma 3 czary po 5 poziomów.
+import { ENEMY_SPELLS } from './enemyspells.js';
 export const BASE = { pa: 6, pm: 3 };
 // Żywioły (PROPOZYCJA do akceptacji): cztery plus neutralny. Kolor i kształt ramki ikony zależą od żywiołu. Efekt na obrażenia dopiero po akceptacji planu.
 export const ELEMENTS = {
@@ -76,7 +77,7 @@ export const DEV_SPELLS = [
   { id: 'szron', element: 'water', name: 'Szron', tags: ['damage'], dev: true, desc: 'Lodowy dotyk z bliska.', levels: lv((i) => ({ pa: 2, min: 1, max: 2, cd: i < 3 ? 1 : 0, perTurn: 2, dmg: [8 + 2 * i, 11 + 2 * i] })) },
   { id: 'wicher', element: 'air', name: 'Wicher', tags: ['damage', 'los'], dev: true, desc: 'Cięcie wiatrem na dystans.', levels: lv((i) => ({ pa: 2, min: 2, max: 6, los: true, cd: 0, perTurn: 3, dmg: [8 + 2 * i, 11 + 2 * i] })) },
 ];
-export const findSpellDef = (classId, spellId) => CLASSES[classId]?.spells.find((s) => s.id === spellId) || DEV_SPELLS.find((s) => s.id === spellId) || null;
+export const findSpellDef = (classId, spellId) => CLASSES[classId]?.spells.find((s) => s.id === spellId) || DEV_SPELLS.find((s) => s.id === spellId) || ENEMY_SPELLS[spellId] || null;
 export const spellAt = (classId, spellId, level) => { const sp = CLASSES[classId]?.spells.find((s) => s.id === spellId); return sp ? sp.levels[level - 1] || null : null; };
 
 // Przeszłość (jedna) i cechy (dwie): historia bohatera plus drobne liczby. Każda cecha ma plus i skazę.

@@ -6,6 +6,7 @@ import { rng } from '../art/rng.js';
 import { CLASSES, findSpellDef } from './classdata.js';
 import { gridOf, unitById, alive } from './state.js';
 import { hasLineOfSight } from './los.js';
+import { enemyForLevel } from './enemies.js';
 
 export const NOT_IMPLEMENTED = ['trap', 'glyph', 'jump'];
 export const spellData = (unit, spellId) => {
@@ -50,6 +51,12 @@ export function castProblem(state, unitId, spellId, target) {
   if (d < data.min || d > data.max) return 'range';
   if (data.line && u.x !== target.x && u.y !== target.y) return 'not_in_line';
   if (data.los && !hasLineOfSight(g, sightBlockers(state), u, target)) return 'no_los';
+  if (data.eatGrave && !state.graves.some((gr) => gr.x === target.x && gr.y === target.y)) return 'no_grave';
+  if (data.heal) { const t = alive(state).find((x) => x.x === target.x && x.y === target.y); if (!t || t.team !== u.team) return 'no_target'; }
+  if (data.summon) {
+    if (g.isBlocked(target.x, target.y) || alive(state).some((x) => x.x === target.x && x.y === target.y) || state.graves.some((gr) => gr.x === target.x && gr.y === target.y)) return 'target_occupied';
+    if (state.enemyCap && alive(state, u.team).length >= state.enemyCap) return 'summon_full';
+  }
   if (data.dmg) { const t = alive(state).find((x) => x.x === target.x && x.y === target.y); if (!t || t.team === u.team) return 'no_target'; }
   return null;
 }
@@ -58,12 +65,19 @@ export function validTargets(state, unitId, spellId) {
   const out = []; for (let y = 0; y < state.rows; y++) for (let x = 0; x < state.cols; x++) if (castProblem(state, unitId, spellId, { x, y }) === null) out.push({ x, y }); return out;
 }
 
+// faza szału bossa: poniżej progu życia dostaje +PA i krótsze odnowienie wezwania (dane: ENEMIES.rage w enemies.js, tu stałe)
+export const RAGE = { below: 0.5, pa: 1 };
+export function checkRage(unit, events) {
+  if (!unit.boss || unit.enraged || unit.hp <= 0 || unit.hp > unit.maxHp * RAGE.below) return;
+  unit.enraged = true; unit.maxPa += RAGE.pa; unit.pa += RAGE.pa; events.push({ type: 'enraged', unit: unit.id });
+}
 // rozstrzygnięcie rzutu na sklonowanym stanie (komenda jest już zwalidowana)
 function kill(next, t) { next.graves.push({ x: t.x, y: t.y, unit: t.id }); }
 export function resolveCast(next, unit, spellId, target, events) {
   const { data } = spellData(unit, spellId);
   unit.pa -= data.pa; unit.casts = { ...unit.casts, [spellId]: (unit.casts?.[spellId] || 0) + 1 };
-  if (data.cd > 0) unit.cooldowns = { ...unit.cooldowns, [spellId]: data.cd + 1 };
+  const cdv = unit.enraged && data.rageCd !== undefined ? data.rageCd : data.cd;
+  if (cdv > 0) unit.cooldowns = { ...unit.cooldowns, [spellId]: cdv + 1 };
   const hits = [], died = [];
   let victim = null;
   if (data.dmg) {
@@ -71,6 +85,25 @@ export function resolveCast(next, unit, spellId, target, events) {
     t.hp = Math.max(0, t.hp - dmg); hits.push({ unit: t.id, dmg, raw, element: el, resist: resistOf(t, el), hp: t.hp, killed: t.hp === 0, kind: 'spell' }); victim = t;
     next.known[t.id] = { ...(next.known[t.id] || {}), [el]: resistOf(t, el) };
     if (t.hp === 0) { kill(next, t); died.push({ unit: t.id, grave: { x: t.x, y: t.y } }); }
+    else { if (data.slow) { t.pm = Math.max(0, t.pm - data.slow); t.slow = Math.min(t.maxPm, (t.slow || 0) + data.slow); events.push({ type: 'slowed', unit: t.id, pm: data.slow }); } checkRage(t, events); }
+  }
+  if (data.heal) {
+    const t = alive(next).find((x) => x.x === target.x && x.y === target.y), amt = rollInt(next, data.heal[0], data.heal[1]), before = t.hp;
+    t.hp = Math.min(t.maxHp, t.hp + amt); hits.push({ unit: t.id, dmg: -(t.hp - before), hp: t.hp, killed: false, kind: 'heal', element: 'neutral' }); events.push({ type: 'healed', unit: t.id, amount: t.hp - before });
+  }
+  if (data.eatGrave) {
+    next.graves = next.graves.filter((gr) => !(gr.x === target.x && gr.y === target.y));
+    const before = unit.hp; unit.hp = Math.min(unit.maxHp, unit.hp + Math.floor(unit.maxHp * data.eatGrave.healPct));
+    hits.push({ unit: unit.id, dmg: -(unit.hp - before), hp: unit.hp, killed: false, kind: 'heal', element: 'neutral' });
+    events.push({ type: 'graveEaten', unit: unit.id, at: { x: target.x, y: target.y }, healed: unit.hp - before });
+  }
+  if (data.summon) {
+    next.summoned = (next.summoned || 0) + 1;
+    const id = `s${next.summoned}`, nu = enemyForLevel(data.summon.kind, unit.level || 1, id, target.x, target.y, { seed: 100 + next.summoned, summonedBy: unit.id });
+    nu.hp = nu.maxHp; nu.pm = nu.maxPm; nu.pa = nu.maxPa; nu.cooldowns = {}; nu.casts = {}; nu.known = undefined; delete nu.known;
+    nu.stats = { earth: 0, fire: 0, water: 0, air: 0, power: 0, flat: 0, ...nu.stats }; nu.resist = { earth: 0, fire: 0, water: 0, air: 0, neutral: 0, ...nu.resist };
+    next.units.push(nu); next.order.splice(next.turn.index + 1, 0, id);
+    events.push({ type: 'summoned', unit: id, by: unit.id, at: { x: target.x, y: target.y }, kind: data.summon.kind });
   }
   events.push({ type: 'cast', unit: unit.id, spell: spellId, to: { x: target.x, y: target.y }, hits });
   // odpychanie: tylko żywy cel, w kierunku od rzucającego, do N kafli; przeszkoda kończy ruch i zadaje obrażenia za każdy niewykorzystany kafel
@@ -90,6 +123,7 @@ export function resolveCast(next, unit, spellId, target, events) {
       if (victim.hp === 0) { kill(next, victim); died.push({ unit: victim.id, grave: { x: victim.x, y: victim.y } }); }
       if (blocker) { blocker.hp = Math.max(0, blocker.hp - coll); pHits.push({ unit: blocker.id, dmg: coll, hp: blocker.hp, killed: blocker.hp === 0, kind: 'collision', element: 'neutral' }); if (blocker.hp === 0) { kill(next, blocker); died.push({ unit: blocker.id, grave: { x: blocker.x, y: blocker.y } }); } }
     }
+    checkRage(victim, events);
     events.push({ type: 'pushed', unit: victim.id, from, to: { x: victim.x, y: victim.y }, moved, collision: coll, blocker: blocker ? blocker.id : null, hits: pHits });
     if (data.cloud) { next.clouds.push({ x: from.x, y: from.y, turns: data.cloud.turns, owner: unit.id }); events.push({ type: 'cloud', at: from, turns: data.cloud.turns }); }
   }
