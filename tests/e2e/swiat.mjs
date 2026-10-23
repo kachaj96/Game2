@@ -40,7 +40,7 @@ const open = async (q = '') => {
   // 5. miejsce, do którego nie da się dojść (za przepaścią), daje komunikat zamiast trasy
   await page.evaluate(() => { const s = window.__swiat; s.hero.x = 140; s.hero.y = 150; });
   // 6. przybliżanie i oddalanie
-  const z0 = await page.evaluate(() => window.__swiat.zoom); await page.locator('#zin').tap(); assert.ok((await page.evaluate(() => window.__swiat.zoom)) > z0); await page.locator('#zout').tap(); await page.locator('#zout').tap(); assert.ok((await page.evaluate(() => window.__swiat.zoom)) < z0);
+  const z0 = await page.evaluate(() => window.__swiat.zoom); await page.locator('#zin').tap(); assert.ok((await page.evaluate(() => window.__swiat.zoom)) > z0); await page.waitForTimeout(600); await page.locator('#zout').tap(); await page.locator('#zout').tap(); await page.waitForTimeout(900); const z1 = await page.evaluate(() => window.__swiat.zoom); assert.ok(z1 <= z0 + 0.01 && z1 >= z0 - 0.01, 'oddalenie nie schodzi poniżej stałej odległości');
   await ctx.close();
 }
 

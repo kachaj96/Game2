@@ -8,39 +8,40 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 #hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;white-space:nowrap}
 #hud small{color:#a89878;font-weight:400;margin-left:8px}
 #xpb{display:block;height:5px;margin-top:4px;background:#1a1612;border-radius:3px;overflow:hidden}#xpb b{display:block;height:100%;width:0;background:linear-gradient(90deg,#d0602c,#ffd27a)}
-#pause{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(6,6,8,.55)}#pause.on{display:flex}#pbox{position:static;pointer-events:auto;padding:8px 14px 12px;min-width:min(86vw,460px)}#pbox h2{margin:2px 0 8px;font:400 22px Georgia,serif}
+#pause{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(6,6,8,.55)}#pause.on{display:flex}#pbox{position:relative;pointer-events:auto;min-width:min(92vw,520px)}
 .opt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;font-size:14px}.seg{display:flex;gap:4px}.seg button{min-height:38px;padding:0 12px;border:0;border-radius:8px;background:#2a2425;color:#d8cdb4;font:600 13px system-ui}.seg button.on{background:#b4501c;color:#fff}
-#pbox .row{display:flex;gap:8px;margin-top:10px}#pbox .row a,#pbox .row button{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:#3a2c26;color:#fff;text-decoration:none;font:700 14px system-ui}#pbox .row .go{background:#b4501c}
+#pbox .row{display:flex;gap:8px;margin-top:10px}#pbox .row a,#pbox .row button{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:#3a3d68;color:#fff;text-decoration:none;font:700 14px system-ui}#pbox .row .go{background:#b4501c}
 #fps{right:max(8px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 130px);font:600 12px ui-monospace,monospace;padding:2px 8px;display:none}
 #menu{position:fixed;left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 62px);display:flex;gap:6px}#menu{z-index:3}#menu a,#menu button{pointer-events:auto;position:static;color:#e6dcc8;text-decoration:none;font:600 13px system-ui;padding:8px 14px;min-height:40px;display:flex;align-items:center}
 #toast{top:calc(max(8px,env(safe-area-inset-top)) + 4px);left:50%;transform:translateX(-50%);font:400 22px Georgia,serif;letter-spacing:.04em;opacity:0;transition:opacity .5s}
 #toast.on{opacity:1}
-#hint{bottom:max(8px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#c6d6a6;font-size:13px;text-align:center;max-width:70vw}
+#hint{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 12px);left:50%;transform:translateX(-50%);color:#c6d6a6;font-size:13px;text-align:center;max-width:70vw}
 #hint:empty{display:none}
-#bubble{left:50%;top:38%;transform:translateX(-50%);max-width:min(60vw,520px);text-align:center;font-size:14px;line-height:1.4;display:none}
-#bubble b{display:block;color:#e0b44a;margin-bottom:2px}
+#bubble{position:fixed;left:50%;top:22%;transform:translateX(-50%);width:min(62vw,540px);display:none;z-index:4}
+#choices{position:fixed;left:50%;top:calc(22% + 112px);transform:translateX(-50%);width:min(62vw,540px);display:none;z-index:4}
 #mini{position:fixed;right:max(10px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));width:124px;height:124px;pointer-events:none}
 #mini canvas{width:124px;height:124px;display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
 .zb{position:fixed;right:max(8px,env(safe-area-inset-right));width:44px;height:44px;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 20px system-ui;padding:0}
-#zin{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 50px)}#zout{bottom:max(8px,env(safe-area-inset-bottom))}
-#card{left:50%;top:50%;transform:translate(-50%,-50%);display:none;pointer-events:auto;min-width:260px;max-width:min(78vw,430px);padding:6px 10px 10px}
+#zin{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 66px)}#zout{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 16px)}
+#card{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;pointer-events:auto;min-width:300px;max-width:min(82vw,460px);z-index:4}
 #card h2{margin:4px 0 2px;font:400 22px Georgia,serif}
 #card p{margin:3px 0;font-size:14px;line-height:1.4;color:#d8cdb4}#card p.w{color:#e8a070}
 #card .row{display:flex;gap:8px;margin-top:8px}
 #card a,#card button{flex:1;text-align:center;text-decoration:none;min-height:44px;display:flex;align-items:center;justify-content:center;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 15px system-ui;padding:0 8px}
-#card a.go{border-image-source:var(--f-on);color:#fff}
+#card a.go{color:#25300a;background:linear-gradient(180deg,#f0ff6a,#b8d420)!important}
 #rotate{display:none;position:fixed;inset:0;z-index:9;background:#0e100c;align-items:center;justify-content:center;text-align:center;font:700 20px system-ui;padding:24px}
 @media (orientation:portrait){#rotate{display:flex}}
-</style></head><body>
+</style><link rel="stylesheet" href="ui.css"></head><body>
 <canvas id="c"></canvas>
-<div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small><i id="xpb"><b></b></i></div>
+<div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small></div><div class="xpbar"><b id="xpb"></b><i id="xpt"></i></div>
 <div id="menu"><a class="pill" id="mchar" href="postac.html?back=swiat.html">Postać</a><button class="pill" id="mmenu" type="button">Menu</button></div>
-<div id="pause"><div class="pill" id="pbox"><h2>Menu</h2><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div><div id="fps" class="pill"></div>
+<div id="pause"><div class="win" id="pbox"><div class="wh">Menu<button class="x" id="pclose" type="button" aria-label="Zamknij">×</button></div><div class="wb"><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Motyw interfejsu</span><div class="seg" id="oth"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go btn-go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div></div>
+<div id="fps" class="pill"></div>
 <div id="toast" class="pill"></div>
 <div id="mini"><canvas id="mm" width="240" height="240"></canvas></div>
 <button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
-<div id="bubble" class="pill"></div>
-<div id="card" class="pill"></div>
+<div id="bubble" class="bubble"><div class="scroll" id="bname"></div><button class="x" id="bclose" type="button" aria-label="Zamknij">×</button><div id="btext"></div></div><div id="choices" class="choices"><h3 id="cname"></h3><div id="copts"></div></div>
+<div id="card" class="win"></div>
 <div id="hint" class="pill"></div>
 <div id="rotate">Obróć telefon do poziomu</div>
 <script type="module">
@@ -49,7 +50,7 @@ import {generateWorld,N,REGIONS,HZ} from '../src/world/kraina.js';
 import {heightAt,findPath,newWalker,setPath,stepWalker,freeAt} from '../src/world/nav.js';
 import {WorldView} from '../src/art/worldview.js';
 import {genCharacter,drawCharacter,DIRS,DIRS8,dir8} from '../src/art/characters.js';
-import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES} from '../src/game/settings.js';
+import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES,THEMES,THEME_NAMES} from '../src/game/settings.js';
 import {darkness,drawNight} from '../src/art/daylight.js';
 import {heroSpec} from '../src/art/classes.js';
 import {applyMood} from '../src/art/mood.js';
@@ -61,14 +62,14 @@ const FALLBACK={korytarze:{name:'Podziemne Korytarze',family:'kopacze',rec:3,ban
 const FAM={kopacze:'Kopacze',pajaki:'owady i pajęczaki',wszystkie:'wszystkie rodziny'};
 let DUN=FALLBACK;try{const m=await import('../src/game/dungeons.js'),D=m.DUNGEONS;if(D){DUN=Array.isArray(D)?Object.fromEntries(D.map(d=>[d.id,d])):D;for(const k of Object.keys(FALLBACK))if(!DUN[k])DUN[k]=FALLBACK[k]}}catch(e){}
 const world=generateWorld(Number(Q.get('seed'))||1),wv=new WorldView(world),cv=$('c'),g=cv.getContext('2d');
-const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;{const lv=levelFromXp(SAVED?.xp||0);$('lvl').textContent='poziom '+LEVEL+(lv.need?' · '+lv.into+'/'+lv.need+' XP':'');$('xpb').firstChild.style.width=(lv.need?Math.round(100*lv.into/lv.need):100)+'%'}
+const SAVED=loadCharacter(),LEVEL=SAVED?.level||1;{const lv=levelFromXp(SAVED?.xp||0);$('lvl').textContent='poziom '+LEVEL+(lv.need?' · '+lv.into+'/'+lv.need+' XP':'');$('xpb').style.width=(lv.need?Math.round(100*lv.into/lv.need):100)+'%';$('xpt').textContent='POZ. '+LEVEL}
 const hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
 const hero=newWalker(...world.start);let face='SE';
 const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9],studnia:(()=>{const o=world.objects.find(q=>q.k==='well');return o?[o.x-1.5,o.y+2.5]:world.start})(),plot:(()=>{const o=world.objects.find(q=>q.k==='fence');return o?[o.x-2,o.y+2]:world.start})()};
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
 const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');
-wv.setQuality(QUALITY[SET.quality]);const night=document.createElement('canvas');
+wv.setQuality(QUALITY[SET.quality]);document.documentElement.dataset.theme=SET.theme||'default';const night=document.createElement('canvas');
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 // malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
 let beamT=null;function beamTex(){if(beamT)return beamT;const c=document.createElement('canvas');c.width=64;c.height=256;const q=c.getContext('2d');
@@ -129,11 +130,12 @@ const say=t=>{$('hint').textContent=t};
 function buildOpts(){
   const seg=(id,items,cur,fn)=>{const el=$(id);el.innerHTML='';for(const [k,name] of items){const b=document.createElement('button');b.type='button';b.textContent=name;b.className=k===cur?'on':'';b.onclick=()=>{fn(k);buildOpts()};el.append(b)}};
   seg('oq',QUALITY_IDS.map(k=>[k,QUALITY[k].name]),SET.quality,k=>{SET.quality=k;saveSettings(SET);wv.setQuality(QUALITY[k]);resize()});
+  seg('oth',THEMES.map(k=>[k,THEME_NAMES[k]]),SET.theme||'default',k=>{SET.theme=k;saveSettings(SET);document.documentElement.dataset.theme=k});
   seg('ot',TIME_MODES.map(k=>[k,TIME_NAMES[k]]),SET.time,k=>{SET.time=k;saveSettings(SET)});
   seg('of',[[false,'Wył.'],[true,'Wł.']],SET.fps,k=>{SET.fps=k;saveSettings(SET)});
 }
 let paused=false;const setPause=v=>{paused=v;$('pause').classList.toggle('on',v);if(v)buildOpts()};
-$('mmenu').onclick=()=>setPause(true);$('presume').onclick=()=>setPause(false);$('pause').addEventListener('pointerdown',e=>{if(e.target===$('pause'))setPause(false)});
+$('mmenu').onclick=()=>setPause(true);$('presume').onclick=()=>setPause(false);$('pclose').onclick=()=>setPause(false);$('pause').addEventListener('pointerdown',e=>{if(e.target===$('pause'))setPause(false)});
 const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),2600)};
 const dirOf=(dx,dy)=>{const sx=dx-dy,sy=dx+dy;return sx>=0?(sy>=0?'SE':'NE'):(sy>=0?'SW':'NW')};
 const regionAt=(x,y)=>REGIONS[world.cellRegion[Math.max(0,Math.min(N-1,Math.floor(y)))*N+Math.max(0,Math.min(N-1,Math.floor(x)))]]||REGIONS[0];
@@ -150,7 +152,7 @@ function resolveTap(cx,cy){
 let marker=null,down=null;
 function goTo(cx,cy,hold=false){
   if($('card').style.display==='block')return;
-  $('bubble').style.display='none';
+  closeTalk();
   let tp=resolveTap(cx,cy);if(hold&&tp.kind!=='ground')tp={kind:'ground',target:tp.target,label:''};
   const path=findPath(world,[hero.x,hero.y],tp.target);
   if(!path){if(!hold)say('Tam nie da się dojść.');return}
@@ -162,16 +164,20 @@ const rel=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clien
 cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}const [x,y]=rel(e);down={t:performance.now(),x:e.clientX,y:e.clientY,hold:false,last:performance.now(),cur:[x,y]};goTo(x,y);e.preventDefault()});
 cv.addEventListener('pointermove',e=>{if(!down)return;down.cur=rel(e);if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)down.hold=true});
 const up=()=>{down=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-let zoomT=zoom;$('zin').onclick=()=>{zoomT=Math.min(1.3,zoomT*1.2)};$('zout').onclick=()=>{zoomT=Math.max(0.5,zoomT/1.2)};
+const ZMIN=Math.min(zoom,0.8);let zoomT=zoom;$('zin').onclick=()=>{zoomT=Math.min(1.6,zoomT*1.2)};$('zout').onclick=()=>{zoomT=Math.max(ZMIN,zoomT/1.2)};
 
 function arrive(){const p=pending;pending=null;if(!p)return;if(p.kind==='ent')openEntrance(p.i);else if(p.kind==='npc')npcSay(p.n)}
 function openEntrance(i){
   const e=world.entrances[i],d=DUN[e.dungeon]||{name:e.name,family:'',rec:1,band:[1,5],theme:'arena'},[lo,hi]=d.band||[1,5];
   const cmp=LEVEL<lo?['w','Poniżej pasma lochu: wrogowie będą silniejsi od ciebie. Zabierz kompana albo wróć później.']:LEVEL>hi?['','Powyżej pasma: wrogowie będą słabsi, nagrody mniejsze.']:['','Twój poziom mieści się w paśmie lochu.'];
-  const c=$('card');c.innerHTML=`<h2>${d.name}</h2><p>${e.name}${d.family?`, mieszkają tu: ${FAM[d.family]||d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p>${d.available===false?'<p class="w">Ten loch jest jeszcze zamknięty. Wejście otworzy się w kolejnej wersji.</p>':''}<div class="row"><button id="stay">${d.available===false?'Wróć':'Zostań'}</button>${d.available===false?'':`<a class="go" id="enter" href="walka.html?new=1&dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a>`}</div>`;
-  c.style.display='block';$('stay').onclick=()=>{c.style.display='none'};
+  const c=$('card');c.innerHTML=`<div class="wh">${d.name}<button class="x" id="cx" type="button">×</button></div><div class="wb"><p>${e.name}${d.family?`, mieszkają tu: ${FAM[d.family]||d.family}`:''}.</p><p>Zalecany poziom <b>${d.rec}</b> (pasmo ${lo} do ${hi}). Twój poziom: <b>${LEVEL}</b>.</p><p class="${cmp[0]}">${cmp[1]}</p>${d.available===false?'<p class="w">Ten loch jest jeszcze zamknięty. Wejście otworzy się w kolejnej wersji.</p>':''}<div class="row"><button id="stay">${d.available===false?'Wróć':'Zostań'}</button>${d.available===false?'':`<a class="go" id="enter" href="walka.html?new=1&dungeon=${e.dungeon}&theme=${d.theme||'arena'}&level=${LEVEL}">Wejdź</a>`}</div></div>`;
+  c.style.display='block';$('stay').onclick=()=>{c.style.display='none'};$('cx').onclick=()=>{c.style.display='none'};
 }
-function npcSay(n){const b=$('bubble');b.innerHTML=`<b>${n.name}</b>${n.line}`;b.style.display='block';bubbleT=6}
+function closeTalk(){$('bubble').style.display='none';$('choices').style.display='none'}
+function npcSay(n){$('bname').textContent=n.name;$('btext').textContent=n.line;$('cname').textContent=SAVED?SAVED.name:'Bohater';
+  const o=$('copts');o.innerHTML='';const b1=document.createElement('button');b1.innerHTML='<b>!</b>Opowiedz mi o okolicy';b1.onclick=()=>{$('btext').textContent=n.line2||'Trzymaj się dróg. Wejścia do lochów są na wzgórzu i w lesie, a po zmroku bez latarni lepiej nie wychodzić.';b1.style.display='none'};
+  const b2=document.createElement('button');b2.textContent='Żegnaj';b2.onclick=closeTalk;o.append(b1,b2);$('bubble').style.display='block';$('choices').style.display='block';bubbleT=0}
+$('bclose').onclick=closeTalk;
 
 // --- pętla ---
 let last=performance.now(),lanternA=null,fpsN=0,fpsT=performance.now();
@@ -182,7 +188,7 @@ function frame(now){
   const wasMoving=hero.moving;if(!paused)stepWalker(world,hero,dt);
   if(hero.moving||wasMoving)face=dir8(hero.dx,hero.dy);
   if(hero.arrived){hero.arrived=false;arrive()}
-  if(bubbleT>0&&(bubbleT-=dt)<=0)$('bubble').style.display='none';
+  
   const hp=wv.pos(hero.x,hero.y),k=1-Math.exp(-dt*6);cam.x+=(hp[0]-cam.x)*k;cam.y+=(hp[1]-30-cam.y)*k;
   const reg=regionAt(hero.x,hero.y);if(reg.id!==lastReg){lastReg=reg.id;$('reg').textContent=reg.name;toast(reg.name)}
   const s=zoom*dpr;g.setTransform(1,0,0,1,0,0);g.fillStyle='#10140e';g.fillRect(0,0,cv.width,cv.height);
