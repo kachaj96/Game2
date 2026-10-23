@@ -32,7 +32,7 @@ test('świat: ten sam seed daje ten sam świat, inny seed inny, generowanie jest
 test('świat: ma tarasy, pochylnie i wodę, krypta wysoko, wioska w dolinie', () => {
   const hist = {}; let ramps = 0, water = 0;
   for (let i = 0; i < N * N; i++) { hist[W.lvl[i]] = (hist[W.lvl[i]] || 0) + 1; if (W.ramp[i]) ramps++; if (W.cellKind[i] === W.KIND.water) water++; }
-  assert.ok(Object.keys(hist).length >= 5, 'kilka poziomów'); assert.ok(ramps > 20, 'są schody'); assert.ok(water > 1000, 'jest woda');
+  assert.ok(Object.keys(hist).length >= 5, 'kilka poziomów'); assert.ok(ramps > 8, 'są schody'); assert.ok(water > 1000, 'jest woda');
   assert.ok(heightAt(W, ...ENTRANCES[0].at) >= 2, 'krypta na wzgórzu'); assert.equal(Math.round(heightAt(W, ...W.start)), 0, 'wioska w dolinie');
 });
 

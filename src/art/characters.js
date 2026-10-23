@@ -99,13 +99,13 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   const drawLeg = (cx, L) => {
     const fx = cx + L.dx, fy = L.dy - L.lift;
     poly([[cx - 2.8, -13 + HL - EXT], [cx + 2.8, -13 + HL - EXT], [fx + 2.8, fy - 4], [fx - 2.8, fy - 4]], O_.pants, 1.5);
-    poly([[fx - 3, fy - 5], [fx + 3, fy - 5], [fx + 3.6 + (back ? 0 : 1.8), fy], [fx - 3.4, fy]], O_.boots, 1.6);
+    poly([[fx - 3.3, fy - 6.5], [fx + 3.3, fy - 6.5], [fx + 4 + (back ? 0 : 1.8) + (side ? 2.4 : 0), fy + 0.4], [fx - 3.7, fy + 0.4]], O_.boots, 1.6); ln([[fx - 3, fy - 5.6], [fx + 3, fy - 5.6]], 1.1, 'rgba(255,255,255,.18)');
   };
   g.save(); g.translate(0, -EXT);
   // tył: peleryna za ciałem (widok z przodu)
   if (sp.cloak && !back) poly([[-shw - 1.5, -27 + bob], [shw + 1.5, -27 + bob], [hw + 5, -4 + EXT], [-hw - 5, -4 + EXT]], lg(-hw, 0, hw, 0, shade(sp.cloak, -0.06), shade(sp.cloak, -0.16)), 1.8);
   if (sp.pack === 'quiver' && !back) { poly([[shw - 2, -22 + bob], [shw + 4, -26 + bob], [shw + 7, -34 + bob], [shw + 1, -30 + bob]], '#7a4a26', 1.5); for (let i = 0; i < 3; i++) ln([[shw + 3 + i, -31 + bob - i], [shw + 5 + i, -37 + bob - i]], 1.2, '#e8e0c8'); }
-  if (!back && !(sp.hat && sp.hat.kind === 'hood') && (sp.hairStyle === 'long' || sp.hairStyle === 'braids')) {
+  if (!back && !side && !(sp.hat && sp.hat.kind === 'hood') && (sp.hairStyle === 'long' || sp.hairStyle === 'braids')) {
     const hr0 = 8.6 * HEAD * sp.headS * (sp.female && sp.role !== 'child' ? 0.96 : 1), hy0 = -35 - (sp.headS - 1) * 8; g.save(); g.translate(0, bob); drapePath(g, hr0, hy0);
     g.fillStyle = lg(0, hy0 - hr0, 0, hy0 + hr0, shade(sp.hair, 0.1), shade(sp.hair, -0.12)); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke(); g.restore();
   }
@@ -153,7 +153,7 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   // --- ręce ---
   const armSw = walking ? Math.sin(th) : 0;
   const sleeve = O_.kind === 'armor' ? O_.metal : base, glove = O_.kind === 'armor' ? shade(O_.metal, -0.15) : sp.skin;
-  const hand = (sd) => { const a = sd * armSw * 2.4 * (back ? -1 : 1); return [sd * (hw + 3.6), -13.5 + a, sd * (shw - 0.6), -25.5]; };
+  const hand = (sd) => { if (side) { const sw = sd * armSw * 6.5; return [1 + sw, -14 - Math.abs(sw) * 0.25, 1 + sd * 0.8, -25.5]; } const a = sd * armSw * 2.4 * (back ? -1 : 1); return [sd * (hw + 3.6), -13.5 + a, sd * (shw - 0.6), -25.5]; };
   const drawArm = (sd) => { const [hx, hy, sx, sy] = hand(sd); ln([[sx, sy], [hx, hy]], 6.6, OUT); ln([[sx, sy], [hx, hy]], 4.6, sd < 0 ? bDark : sleeve); circ(hx, hy + 1.4, 2.3, glove, 1.2); if (O_.kind === 'armor') circ(sx, sy + 0.5, 3.6, shade(O_.metal, 0.06), 1.4); };
   const held = (sd) => {
     const [hx, hy] = hand(sd);
@@ -177,13 +177,31 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   const hairCol = sp.hair, hairDk = shade(hairCol, -0.12), hairLt = shade(hairCol, 0.1);
   const hair = (pts, lw = 1.6) => poly(pts, lg(0, hy - hr, 0, hy + hr, hairLt, hairDk), lw);
   const fillHair = () => { g.fillStyle = lg(0, hy - hr, 0, hy + hr, hairLt, hairDk); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.lineJoin = 'round'; g.stroke(); };
+  // głowa z profilu (E/W): czaszka z tyłu, twarz z przodu (nos, jedno oko, ucho), włosy opadają do tyłu
+  const profileHead = () => {
+    const hr2 = hr, cx = 1.4, hs2 = sp.hairStyle, longH = hs2 === 'long' || hs2 === 'braids' || hs2 === 'ponytail';
+    poly([[-2, hy + hr2 - 2], [3, hy + hr2 - 2], [3.4, hy + hr2 + 3.5], [-2, hy + hr2 + 3.5]], shade(sp.skin, -0.1), 1.4);
+    if (!hoodUp && hs2 !== 'bald') { if (longH) poly([[cx - hr2 * 0.9, hy - 4], [cx - hr2 - 3.5, hy + 4], [cx - hr2 - 2, hy + hr2 + 11], [cx - 1, hy + hr2 + 9], [cx, hy]], lg(0, hy - hr2, 0, hy + hr2 + 10, shade(sp.hair, 0.04), shade(sp.hair, -0.16)), 1.6); if (hs2 === 'bun') circ(cx - hr2 * 0.7, hy - hr2 - 1.6, 4, sp.hair, 1.6); }
+    if (hoodUp) { g.beginPath(); g.ellipse(cx - 2.2, hy - 0.5, hr2 + 2.6, hr2 + 2, 0, 0, Math.PI * 2); g.fillStyle = shade(sp.cloak || base, -0.08); g.fill(); g.lineWidth = 1.8; g.strokeStyle = OUT; g.stroke(); }
+    g.beginPath(); g.ellipse(cx, hy, hr2 * 0.94, hr2, 0, 0, Math.PI * 2); g.fillStyle = lg(cx - hr2, hy, cx + hr2, hy, shade(sp.skin, -0.06), shade(sp.skin, 0.06)); g.fill(); g.lineWidth = 1.8; g.strokeStyle = OUT; g.stroke();
+    const nx = cx + hr2 * 0.9; poly([[nx - 0.8, hy + 1.2], [nx + 2.6, hy + 3.6], [nx - 0.6, hy + 4.4]], shade(sp.skin, 0.02), 1.3);
+    const ex = cx + hr2 * 0.5, ey = hy + 0.2; ell(ex, ey, 1.7, 2.1, '#d8d0c0', 0.8); circ(ex + 0.6, ey + 0.2, 1.1, sp.eye, 0); circ(ex + 0.8, ey + 0.2, 0.6, '#16100c', 0); circ(ex + 1, ey - 0.6, 0.4, '#fff', 0);
+    ln([[ex - 2, ey - 3.2], [ex + 2.2, ey - 3.6 + sp.brow * 0.4]], 1.5, shade(sp.hair, -0.12));
+    ln([[cx + hr2 * 0.55, hy + 6], [cx + hr2 * 0.9, hy + 5.6]], 1.1, sp.female ? '#a8302a' : '#6a2a1a');
+    blob(cx + hr2 * 0.3, hy + 4.2, 2.4, 1.5, '#ff7a6a', 0.22);
+    if (sp.face && sp.face.ears === 'pointy') poly([[cx - 1, hy - 0.5], [cx - 7.5, hy - 5], [cx - 0.6, hy + 3.2]], shade(sp.skin, -0.04), 1.2); else circ(cx - 0.8, hy + 1.2, 2.5, shade(sp.skin, -0.08), 1.2);
+    if (!hoodUp && hs2 !== 'bald') { g.beginPath(); g.arc(cx - 0.6, hy - 1, hr2 + 0.8, Math.PI * 1.02, Math.PI * 1.98); g.lineTo(cx + hr2 * 0.9, hy - 4); g.quadraticCurveTo(cx + hr2 * 0.4, hy - 8, cx - hr2 * 0.2, hy - 2); g.lineTo(cx - hr2 - 0.5, hy + 2); g.closePath(); g.fillStyle = lg(0, hy - hr2, 0, hy, shade(sp.hair, 0.1), shade(sp.hair, -0.12)); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke(); ln([[cx - 3, hy - hr2 + 1.5], [cx + 3, hy - hr2 + 3]], 1.2, 'rgba(255,255,255,.3)'); }
+    if (hoodUp) { g.beginPath(); g.ellipse(cx - 1.2, hy - 1, hr2 + 2.2, hr2 + 1.6, 0, Math.PI * 1.02, Math.PI * 1.9); g.lineWidth = 4.4; g.strokeStyle = OUT; g.stroke(); g.lineWidth = 2.6; g.strokeStyle = shade(sp.cloak || base, -0.02); g.stroke(); }
+    if (sp.mask) { poly([[cx + 0.5, hy + 2.6], [cx + hr2 * 0.95, hy + 2.8], [cx + hr2 * 0.7, hy + hr2 + 3], [cx - 0.5, hy + hr2 + 2]], sp.mask, 1.4); }
+  };
   // włosy za głową
-  const hs = sp.hairStyle, hoodUp = sp.hat && sp.hat.kind === 'hood';
-  if (!hoodUp) {
+  const hs = sp.hairStyle, hoodUp = sp.hat && sp.hat.kind === 'hood', prof = side > 0 && !back;
+  if (!hoodUp && !prof) {
     if (hs === 'ponytail') { g.beginPath(); g.moveTo(-hr + 1, hy - 3); g.bezierCurveTo(-hr - 9, hy - 2, -hr - 10, hy + 10, -hr - 4, hy + 16); g.bezierCurveTo(-hr - 3, hy + 8, -hr + 1, hy + 4, -hr + 3, hy + 2); g.closePath(); g.fillStyle = hairCol; g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke(); }
   }
   if (hoodUp) { poly([[-hr - 2.5, hy + 4], [-hr - 3, hy - 7], [-hr * 0.5, hy - hr - 4], [hr * 0.5, hy - hr - 4], [hr + 3, hy - 7], [hr + 2.5, hy + 4]], shade(sp.cloak || base, -0.05), 1.8); }
   // szyja i głowa
+  if (!prof) {
   poly([[-3, hy + hr - 2], [3, hy + hr - 2], [3, hy + hr + 3.5], [-3, hy + hr + 3.5]], shade(sp.skin, -0.08), 1.4);
   if (!back) {
     const FS = FACE_SHAPES[(sp.face && sp.face.shape) || 'round'] || FACE_SHAPES.round, pointy = sp.face && sp.face.ears === 'pointy';
@@ -243,6 +261,8 @@ export function drawCharacter(g, x, y, sp, o = {}) {
   }
   if (hoodUp && !back) { poly([[-hr - 1.5, hy + 3], [-hr - 1.5, hy - 5], [-hr * 0.7, hy - hr - 2.5], [hr * 0.7, hy - hr - 2.5], [hr + 1.5, hy - 5], [hr + 1.5, hy + 3], [hr - 0.5, hy + 1], [hr - 1.5, hy - 5], [0, hy - 8.5], [-hr + 1.5, hy - 5], [-hr + 0.5, hy + 1]], shade(sp.cloak || base, -0.02), 1.7); }
   if (hoodUp && back) { g.beginPath(); g.arc(hx0, hy - 1, hr + 1.8, Math.PI * 0.9, Math.PI * 2.1); g.fillStyle = shade(sp.cloak || base, -0.04); g.fill(); g.lineWidth = 1.8; g.strokeStyle = OUT; g.stroke(); g.beginPath(); g.arc(hx0, hy + 2, hr + 1.4, 0.05, Math.PI - 0.05); g.fill(); g.stroke(); }
+  }
+  if (prof) profileHead();
   // nakrycia głowy
   const hat = sp.hat;
   if (hat && hat.kind !== 'hood') {
