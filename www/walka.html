@@ -83,6 +83,7 @@ import {DUNGEONS,dungeonLevel,levelAdvice} from '../src/game/dungeons.js';
 import {composeEncounter,spawnEncounter,enemyCap} from '../src/game/encounter.js';
 import {referenceHero} from '../src/game/reference.js';
 import {loadSettings} from '../src/game/settings.js';
+import {shadowOf,LIGHT} from '../src/art/osadzenie.js';
 import {makeArena,ARENA} from '../src/game/arena.js';
 import {loadCharacter,saveCharacter} from '../src/game/save.js';
 import {addXp,chamberReward,newRun,loadRun,saveRun,clearRun,roomSeed,levelFromXp} from '../src/game/run.js';
@@ -134,7 +135,16 @@ function renderBg(){bg.width=cv.width;bg.height=cv.height;const b=bg.getContext(
   b.setTransform(view.s,0,0,view.s,view.ox,view.oy);drawFlagstones(b,grid,7,TH.stone);drawGridLines(b,grid,'rgba(220,200,170,.16)');
   // ślady dawnych walk na kaflach: krew, kości, pęknięcia (stałe, zależne tylko od pozycji)
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const h=(x*73+y*151+17)%11,c=grid.center(x,y);if(h<4&&TH.decals.length)DECALS[TH.decals[h%TH.decals.length]](b,c[0]+(h===0?4:0),c[1]+1,.9,x*7+y*3+h)}
+  // cienie rzucone przeszkód (światło z lewej góry): wypalone w tle, bo przeszkody stoją w miejscu
+  b.setTransform(view.s,0,0,view.s,view.ox,view.oy);
+  for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y),sh=shadowOf((sg,fx,fy)=>obstacle(sg,x,y,fx,fy),{blur:1.4,strength:.75});b.drawImage(sh.canvas,c[0]-sh.fx+0,c[1]+10-sh.fy)}
   b.setTransform(1,0,0,1,0,0);applyMoodStatic(b,bg.width,bg.height,mood)}
+// rodzaj przeszkody zależy od kafla; ta sama funkcja rysuje przeszkodę w grze i jej sylwetkę dla cienia
+function obstacle(g2,x,y,px,py){const t=(x*7+y*3)%3;return t===0?N.rock(g2,px,py,x*9+y,{sc:.9}):t===1?N.stump(g2,px,py-2,x+y*5):N.deadTree(g2,px,py,x*3+y,{sc:.8})}
+// cień rzucony postaci: sylwetka narysowana do małego canvasu, zaczerniona i ścięta wzdłuż kierunku światła
+const SHC=document.createElement('canvas');SHC.width=SHC.height=240;const SHG=SHC.getContext('2d');
+function castShadow(draw,x,y,alpha=.5){SHG.setTransform(1,0,0,1,0,0);SHG.globalCompositeOperation='source-over';SHG.clearRect(0,0,240,240);draw(SHG,120,180);SHG.globalCompositeOperation='source-in';SHG.fillStyle='#000';SHG.fillRect(0,0,240,240);SHG.globalCompositeOperation='source-over';
+  g.save();g.globalAlpha=alpha;g.transform(1,0,-LIGHT.kx,-LIGHT.ky,x,y);g.drawImage(SHC,-120,-180);g.restore()}
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr));
   const bar=$('bar').getBoundingClientRect(),topPad=14*dpr,botPad=14*dpr,rightPad=(bar.width+22)*dpr;
   const availW=cv.width-rightPad,availH=cv.height-botPad-topPad,s=Math.min(availW/WORLD.w,availH/WORLD.h);
@@ -315,11 +325,12 @@ function frame(now){
     if(preview.kind==='cast'){drawCellOutline(g,grid,preview.x,preview.y,'#ffffff',3.4);const c=grid.center(preview.x,preview.y);overlay.push(()=>label(c,`${preview.lo}-${preview.hi}${preview.known?'':'?'}`,'#ffd0a0'))}}
   const items=[];
   for(const kk of state.blocked){const x=kk%grid.cols,y=Math.floor(kk/grid.cols),c=grid.center(x,y);const t=(x*7+y*3)%3;
-    items.push({d:x+y+.5,f:()=>t===0?N.rock(g,c[0],c[1]+10,x*9+y,{sc:.9}):t===1?N.stump(g,c[0],c[1]+8,x+y*5):N.deadTree(g,c[0],c[1]+10,x*3+y,{sc:.8})})}
+    items.push({d:x+y+.5,f:()=>obstacle(g,x,y,c[0],c[1]+10)})}
   for(const cl of state.clouds){const c=grid.center(cl.x,cl.y);items.push({d:cl.x+cl.y+.9,f:()=>ashCloud(g,c[0],c[1]+6,1.1,cl.x*7+cl.y)})}
   for(const gr of state.graves){const c=grid.center(gr.x,gr.y);items.push({d:gr.x+gr.y+.5,f:()=>grave(g,c[0],c[1]+8,1.15)})}
   for(const u of state.units){if(u.hp<=0)continue;const v=visual(u),sp={...look.get(u.id),sc:look.get(u.id).sc*1.25},sh=shake.has(u.id)?Math.sin(shake.get(u.id)*60)*3:0;
     const ring=u.team==='gracz'?'rgb(60,120,255)':'rgb(255,70,70)',csp={...look.get(u.id),sc:look.get(u.id).sc*(u.boss?0.95:1.15)};
+    castShadow((sg,x2,y2)=>u.kind?drawKopacz(sg,x2,y2,csp,{...DIRS[facing.get(u.id)],t:v.walk}):drawCharacter(sg,x2,y2,sp,{...DIRS[facing.get(u.id)],t:v.walk}),v.x+sh,v.y+FEET);
     items.push({d:v.gx+v.gy+.5,f:()=>u.kind?drawKopacz(g,v.x+sh,v.y+FEET,csp,{...DIRS[facing.get(u.id)],t:v.walk,ring}):drawCharacter(g,v.x+sh,v.y+FEET,sp,{...DIRS[facing.get(u.id)],t:v.walk,ring})});
     overlay.push(()=>{const w=34,bx=v.x-w/2,by=v.y-80+FEET-8;g.fillStyle='rgba(0,0,0,.65)';g.fillRect(bx-1,by-1,w+2,7);g.fillStyle=u.team==='gracz'?'#7ab048':'#b02424';g.fillRect(bx,by,w*u.hp/u.maxHp,5);
       if(u.id===cur.id&&!busy&&!state.result){g.fillStyle='#ffe066';const bob=Math.sin(now/220)*3;g.beginPath();g.moveTo(v.x,by-6+bob);g.lineTo(v.x-6,by-14+bob);g.lineTo(v.x+6,by-14+bob);g.closePath();g.fill()}
