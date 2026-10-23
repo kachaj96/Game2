@@ -98,13 +98,13 @@
       stats.scale = k;
     }
 
-    // --- światło z lewej góry: lewa strona ciemniejsza od prawej ---
+    // --- światło z prawej góry: lewa strona ciemniejsza od prawej ---
     if (kind === 'bryla') {
       const t = Math.floor(bw / 3); let sL = 0, nL = 0, sR = 0, nR = 0;
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (eff[i] < 200) continue; const v = lum(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]); if (x < x0 + t) { sL += v; nL++; } else if (x > x1 - t) { sR += v; nR++; } }
       if (nL > 50 && nR > 50) {
         const mL = sL / nL, mR = sR / nR, q = mL / mR;
-        add('swiatlo', q < 0.97 ? 'ok' : q > 1.1 ? 'warn' : 'ok', q > 1.1 ? `Lewa strona jaśniejsza od prawej (${mL.toFixed(0)} do ${mR.toFixed(0)}). Światło ma padać z lewej, czyli lewa ciemniejsza.` : q < 0.97 ? 'Lewa strona ciemniejsza od prawej, zgodnie ze światłem z lewej góry.' : 'Światło płaskie (lewa i prawa podobne), do oceny wzrokiem.');
+        add('swiatlo', q < 0.97 ? 'ok' : q > 1.1 ? 'warn' : 'ok', q > 1.1 ? `Lewa strona jaśniejsza od prawej (${mL.toFixed(0)} do ${mR.toFixed(0)}). Światło pada z prawej góry, czyli lewa ma być ciemniejsza.` : q < 0.97 ? 'Lewa strona ciemniejsza od prawej, zgodnie ze światłem z prawej góry.' : 'Światło płaskie (lewa i prawa podobne), do oceny wzrokiem.');
       }
     }
     return result(checks, stats);

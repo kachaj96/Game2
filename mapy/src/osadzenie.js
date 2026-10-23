@@ -1,6 +1,7 @@
 // Osadzenie sprite'ów w podłożu (mapy/SPEC.md, sekcja 2): jeden kierunek światła, cień rzucony z sylwetki, zaczernienie przy podstawie,
 // trawa nachodząca na dół obiektu. Część czysta (tablice pikseli), więc testowalna w node; rysowanie pomocnicze na końcu.
-export const LIGHT = { kx: 0.55, ky: 0.22 };   // przesunięcie cienia na ekranie na jednostkę wysokości: w prawo i w stronę widza (światło z lewej góry)
+// Światło pada z prawej góry: na obrazach jasna jest prawa ściana, ciemna lewa (mapy/SPEC.md, sekcja 2), więc cień pada w lewo i w stronę widza.
+export const LIGHT = { kx: -0.42, ky: 0.2 };   // przesunięcie cienia na ekranie na jednostkę wysokości
 
 // linia gruntu każdej kolumny: base 'corner' = dolny zarys sylwetki w tej kolumnie (podstawa bryły), 'center' = dolny wiersz sylwetki (pień, słup)
 export function groundLine(alpha, w, h, base = 'center', thr = 128) {
@@ -12,13 +13,13 @@ export function groundLine(alpha, w, h, base = 'center', thr = 128) {
 
 // cień rzucony: każdy piksel sylwetki ląduje na gruncie w odległości proporcjonalnej do wysokości nad linią gruntu; słabnie ku końcowi
 export function shadowMask(alpha, w, h, { base = 'center', kx = LIGHT.kx, ky = LIGHT.ky, thr = 128 } = {}) {
-  const gl = groundLine(alpha, w, h, base, thr), W = w + Math.ceil(h * kx) + 3, H = h + Math.ceil(h * ky) + 3, data = new Uint8ClampedArray(W * H);
+  const gl = groundLine(alpha, w, h, base, thr), ox = kx < 0 ? Math.ceil(-kx * h) + 2 : 0, W = w + Math.ceil(Math.abs(kx) * h) + 4, H = h + Math.ceil(Math.max(0, ky) * h) + 3, data = new Uint8ClampedArray(W * H);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (alpha[y * w + x] < thr || gl[x] < 0) continue;
-    const hp = Math.max(0, gl[x] - y), dx = Math.round(x + hp * kx), dy = Math.round(gl[x] + hp * ky), v = Math.round(255 * (1 - 0.55 * hp / h));
+    const hp = Math.max(0, gl[x] - y), dx = Math.round(x + hp * kx) + ox, dy = Math.round(gl[x] + hp * ky), v = Math.round(255 * (1 - 0.55 * hp / h));
     for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = (dy + oy) * W + dx + ox; if (v > data[i]) data[i] = v; }
   }
-  return { data, w: W, h: H };
+  return { data, w: W, h: H, ox };   // ox: o ile kolumn cień wystaje w lewo poza lewy brzeg sprite'a
 }
 
 // nachodzenie podłoża na dolny pas sprite'a: maska 0..255 na pikselach sylwetki, najmocniejsza przy linii gruntu
@@ -41,7 +42,7 @@ export function flipped(img) { const c = canvas(img.width, img.height), g = c.ge
 export function shadowCanvas(img, base, blur = 1.4, strength = 0.46) {
   const { d } = pixelsOf(img), m = shadowMask(alphaOf(d.data), d.width, d.height, { base }), src = canvas(m.w, m.h), g = src.getContext('2d'), id = g.createImageData(m.w, m.h);
   for (let i = 0; i < m.data.length; i++) id.data[i * 4 + 3] = m.data[i] * strength;
-  g.putImageData(id, 0, 0); const out = canvas(m.w, m.h), og = out.getContext('2d'); og.filter = `blur(${blur}px)`; og.drawImage(src, 0, 0); return out;
+  g.putImageData(id, 0, 0); const out = canvas(m.w, m.h), og = out.getContext('2d'); og.filter = `blur(${blur}px)`; og.drawImage(src, 0, 0); out.ox = m.ox; return out;
 }
 // podłoże nachodzące na dół sprite'a: piksele podłoża z obrazu ground w miejscu sprite'a, przemnożone maską
 export function sunkCanvas(img, base, ground, gx, gy, opt) {

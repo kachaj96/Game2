@@ -42,13 +42,13 @@ for(const o of DEF.objects){const P=objPos(o),fp=P.s.footprint;
  const cx=o.x-fp.w/2,cy=o.y-fp.d/2,k=1.22,pts=[[-fp.w,-fp.d],[0,-fp.d],[0,0],[-fp.w,0]].map(([a,b])=>iso.toScreen(cx+(a+fp.w/2)*k,cy+(b+fp.d/2)*k));
  bg_.save();bg_.filter='blur(9px)';bg_.fillStyle='rgba(8,10,4,.42)';bg_.beginPath();pts.forEach((q,i)=>i?bg_.lineTo(q[0]*2,q[1]*2):bg_.moveTo(q[0]*2,q[1]*2));bg_.closePath();bg_.fill();bg_.restore();
  // cień rzucony z sylwetki
- bg_.drawImage(shadowCanvas(IMG[o.sprite],P.s.base,1.6,.5),P.gx,P.gy);
+ {const sc=shadowCanvas(IMG[o.sprite],P.s.base,1.6,.5);bg_.drawImage(sc,P.gx-sc.ox,P.gy)}
  SUNK[o.sprite]=sunkCanvas(IMG[o.sprite],P.s.base,GP.d,P.gx,P.gy,{band:P.s.base==='center'?16:12,strength:.85})}
 // światło lampy: ciepła plama na ziemi i poświata latarni
 for(const o of DEF.objects.filter(q=>q.sprite==='lampa')){const P=objPos(o);bg_.save();bg_.globalCompositeOperation='screen';
  let r=bg_.createRadialGradient(0,0,0,0,0,150);r.addColorStop(0,'rgba(255,170,60,.38)');r.addColorStop(1,'rgba(255,170,60,0)');bg_.translate(P.x*2,P.y*2);bg_.scale(1,.52);bg_.fillStyle=r;bg_.fillRect(-150,-150,300,300);bg_.restore()}
 // cienie bohatera: dla każdej klatki i lustra
-const HSH=new Map(),hshadow=(img,m)=>{if(!HSH.has(img)){const f=flipped(img);HSH.set(img,{n:{c:shadowCanvas(img,'center',1.1,.5),ax:m.ax},f:{c:shadowCanvas(f,'center',1.1,.5),ax:m.w-m.ax}})}return HSH.get(img)};
+const HSH=new Map(),hshadow=(img,m)=>{if(!HSH.has(img)){const f=flipped(img);const n=shadowCanvas(img,'center',1.1,.5),fl=shadowCanvas(f,'center',1.1,.5);HSH.set(img,{n:{c:n,ax:m.ax+n.ox},f:{c:fl,ax:m.w-m.ax+fl.ox}})}return HSH.get(img)};
 const hero={x:DEF.start[0],y:DEF.start[1],path:[],dir:'SW',t:0,walk:false};
 let showGrid=false,showCol=false,osad=true,view={z:1,ox:0,oy:0},dpr=1,msgT=0;
 const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=.0,2400)};
@@ -91,7 +91,7 @@ function frame(now){
   else{const b=spriteBox(it.o),behind=(hero.x+hero.y)<(it.o.x+it.o.y+(it.bias||0));
    let a=1;if(b.s.fade&&behind&&hs[0]>b.l&&hs[0]<b.r&&hs[1]-80*view.z<b.b&&hs[1]>b.t)a=.45;
    drawImg(IMG[it.o.sprite],b.s,b.x,b.y,{alpha:a});if(osad)drawImg(SUNK[it.o.sprite],b.s,b.x,b.y,{alpha:a})}}
- if(osad){g.save();g.globalCompositeOperation='multiply';const x0=view.ox*dpr,y0=view.oy*dpr,w=768*view.z*dpr,h=512*view.z*dpr,gr=g.createLinearGradient(x0,y0,x0+w,y0+h);gr.addColorStop(0,'rgb(255,250,238)');gr.addColorStop(1,'rgb(205,210,222)');g.globalAlpha=.55;g.fillStyle=gr;g.fillRect(x0,y0,w,h);g.restore()}
+ if(osad){g.save();g.globalCompositeOperation='multiply';const x0=view.ox*dpr,y0=view.oy*dpr,w=768*view.z*dpr,h=512*view.z*dpr,gr=g.createLinearGradient(x0+w,y0,x0,y0+h);gr.addColorStop(0,'rgb(255,250,238)');gr.addColorStop(1,'rgb(205,210,222)');g.globalAlpha=.55;g.fillStyle=gr;g.fillRect(x0,y0,w,h);g.restore()}
 }
 // dotyk: kafel pod palcem, ścieżka A*
 cv.addEventListener('pointerdown',e=>{const wx=(e.clientX-view.ox)/view.z,wy=(e.clientY-view.oy)/view.z,[cx,cy]=iso.cellAt(wx,wy);

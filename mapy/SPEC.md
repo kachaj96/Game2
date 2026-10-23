@@ -9,8 +9,8 @@ Nowy potok map: podłoże + osobne obiekty (PNG) + dane. Gra z kodu (Natalis-sty
 - Pozycje w danych zawsze w kaflach (x, y, poziom), nigdy w pikselach ekranu. Piksele liczy tylko `IsoGrid`.
 
 ## 2. Światło
-- Jedno stałe światło z lewej góry. Lewa ściana ciemniejsza, prawa jaśniejsza, góra najjaśniejsza.
-- Sprite NIE ma cienia na ziemi i nie ma poświaty wokół. Cień rzuca silnik, jednym kierunkiem dla wszystkich (spłaszczona sylwetka skośnie w prawo i w dół), więc zgadza się też na różnych wysokościach.
+- Jedno stałe światło z prawej góry. Prawa ściana jasna, lewa ciemna (w cieniu), góra najjaśniejsza. Cień rzucony pada w lewo i w stronę widza. (Pierwsze wersje promptów mówiły "z lewej góry" przy jasnej prawej ścianie, co się wykluczało. Obrazy pilota są jasne z prawej, więc to jest obowiązujący kierunek.)
+- Sprite NIE ma cienia na ziemi i nie ma poświaty wokół. Cień rzuca silnik, jednym kierunkiem dla wszystkich (spłaszczona sylwetka skośnie w lewo i w dół), więc zgadza się też na różnych wysokościach.
 - Brak cyklu dnia na tych mapach. Mapy w zamkniętych miejscach różnią się paletą, nie kierunkiem światła.
 
 ## 3. Skala (?)
@@ -58,14 +58,14 @@ Decyzja po pilocie. Kolizja z podłoża nie wynika: wolne/blokowane pola ustawia
 - Prawdziwa przezroczystość (alfa). Jeśli generator rysuje szachownicę, generujemy na jednolitym tle `#FF00FF` i usuwamy je w narzędziu (etap 3), czego nie robimy ręcznie.
 - Bez cienia pod obiektem, bez winiety, bez rozmycia krawędzi, bez ramki. Ostra, czysta krawędź.
 - Margines 8 px od brzegu pliku na każdej stronie. Obiekt cały w kadrze.
-- Ta sama izometria 30 stopni i światło z lewej góry. Rzut patrzy z przodu: widać górę, lewą i prawą ścianę.
+- Ta sama izometria 30 stopni i światło z prawej góry. Rzut patrzy z przodu: widać górę, lewą i prawą ścianę.
 - Rozmiar: do 1024 px po dłuższym boku (w skali 2x). Jeden obiekt na plik.
 - Nazwa pliku: `<kategoria>_<opis>_<nr>.png` (np. `dom_chata_01.png`).
 
 ## 9. Szablon promptu dla obiektu
 ```
 True isometric (30 degrees) game asset, single object: {OPIS}.
-View from front, camera 30 degrees, the object seen from above showing the top, the left face (darker) and the right face (lighter). Light from top-left.
+View from front, camera 30 degrees, the object seen from above showing the top, the left face (darker, in shade) and the right face (lighter, lit). Light from the top-right.
 Dark gothic fantasy, muted saturated colors, painterly hand-painted look, dark brown outline.
 Object stands on a footprint of {W}x{D} tiles. Show only the object, no ground, no cast shadow, no vignette, no blur.
 Solid flat magenta background #FF00FF, crisp edges, 8px margin, centered.
@@ -76,7 +76,7 @@ Solid flat magenta background #FF00FF, crisp edges, 8px margin, centered.
 2. Skala zgadza się z tabelą (z tolerancją 10%) względem bohatera.
 3. Odcisk da się wyznaczyć jednoznacznie (podstawa jest czytelna).
 4. Krawędź czysta po usunięciu tła, bez kolorowych obwódek.
-5. Światło z lewej góry, spójne z resztą biblioteki.
+5. Światło z prawej góry (prawa ściana jasna, lewa ciemna), spójne z resztą biblioteki.
 
 Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciągasz PNG, wybierasz rodzaj, odcisk i wysokość). Liczy punkty 1 do 4 (skala jako proporcje i współczynnik skalowania) oraz alfę, margines, rozmiar, cień, obwódkę, a dla podłoża winietę, ostrość i rozdzielczość. Światło (5) tylko orientacyjnie. Kod: `mapy/src/pngcheck.js`, testy `tests/unit/pngcheck.test.mjs`.
 
