@@ -38,12 +38,11 @@ export function logs(g, x, y, sc = 1) {
   }));
 }
 export function pot(g, x, y, sc = 1, seed = 1) {
-  const { poly, circ, blob } = kit(g), r = rng(seed);
-  blob(x + 2, y + 1, 7 * sc, 2.5, '#000', 0.2);
-  poly([[x - 5 * sc, y - 8 * sc], [x + 5 * sc, y - 8 * sc], [x + 3.5 * sc, y], [x - 3.5 * sc, y]], '#c8683a', 1.5);
-  poly([[x - 6 * sc, y - 10 * sc], [x + 6 * sc, y - 10 * sc], [x + 5 * sc, y - 7 * sc], [x - 5 * sc, y - 7 * sc]], '#d87a4a', 1.4);
-  circ(x, y - 14 * sc, 5 * sc, '#4f9a3a', 1.4);
-  for (let i = 0; i < 4; i++) circ(x + (r() - 0.5) * 9 * sc, y - 14 * sc + (r() - 0.7) * 6 * sc, 1.8 * sc, r.pick(['#e8483a', '#f0c83a', '#f07aa8', '#fff']), 0.8);
+  const { circ, blob } = kit(g), r = rng(seed);
+  blob(x + 3, y + 1, 9 * sc, 3.2 * sc, '#0a0614', 0.32);
+  vCyl(g, x, y, 4.2 * sc, 6 * sc, 9 * sc, '#c8683a', { ring: [0.86], ringCol: '#e0885a', ringW: 2.4 * sc, top: '#3a2a1a', lw: 1.3 });
+  for (let i = 0; i < 3; i++) circ(x + (i - 1) * 4.4 * sc, y - 12.5 * sc - (i === 1 ? 2.6 : 0) * sc, 4.4 * sc, i % 2 ? '#4f9a3a' : '#6ab04a', 1.2);
+  for (let i = 0; i < 4; i++) circ(x + (r() - 0.5) * 11 * sc, y - 13 * sc + (r() - 0.7) * 6 * sc, 1.8 * sc, r.pick(['#e8483a', '#f0c83a', '#f07aa8', '#fff']), 0.8);
 }
 // ława wzdłuż osi x: siedzisko z deski, oparcie z dwóch listew, nogi i podpórki jako bryły izometryczne
 export function bench(g, x, y, sc = 1) {
@@ -67,10 +66,14 @@ export function haybale(g, x, y, sc = 1) {
 }
 export function sack(g, x, y, sc = 1) {
   const { blob, ln } = kit(g);
-  blob(x + 2, y + 1, 8 * sc, 2.5, '#000', 0.2);
-  g.beginPath(); g.moveTo(x - 6 * sc, y); g.bezierCurveTo(x - 9 * sc, y - 8 * sc, x - 4 * sc, y - 11 * sc, x - 2 * sc, y - 12 * sc); g.lineTo(x + 2 * sc, y - 12 * sc); g.bezierCurveTo(x + 4 * sc, y - 11 * sc, x + 9 * sc, y - 8 * sc, x + 6 * sc, y); g.closePath();
-  g.fillStyle = '#d8c08a'; g.fill(); g.lineWidth = 1.6; g.strokeStyle = OUT; g.stroke();
-  ln([[x - 3 * sc, y - 11 * sc], [x + 3 * sc, y - 11 * sc]], 1.6, '#8a5a2a');
+  blob(x + 3, y + 1, 10 * sc, 3.2 * sc, '#0a0614', 0.32);
+  const body = () => { g.beginPath(); g.moveTo(x - 6.5 * sc, y); g.bezierCurveTo(x - 10 * sc, y - 8 * sc, x - 4 * sc, y - 11 * sc, x - 2 * sc, y - 13 * sc); g.lineTo(x + 2 * sc, y - 13 * sc); g.bezierCurveTo(x + 4 * sc, y - 11 * sc, x + 10 * sc, y - 8 * sc, x + 6.5 * sc, y); g.closePath(); };
+  body(); const gr = g.createLinearGradient(x - 9 * sc, 0, x + 9 * sc, 0); gr.addColorStop(0, '#ecd8a0'); gr.addColorStop(0.35, '#e0c88c'); gr.addColorStop(1, '#a98a52'); g.fillStyle = gr; g.fill();
+  g.save(); body(); g.clip(); const ao = g.createLinearGradient(0, y - 13 * sc, 0, y); ao.addColorStop(0.6, 'rgba(0,0,0,0)'); ao.addColorStop(1, 'rgba(20,10,30,.3)'); g.fillStyle = ao; g.fillRect(x - 12 * sc, y - 14 * sc, 24 * sc, 15 * sc);
+  for (const dx of [-3, 1.5, 4.5]) ln([[x + dx * sc, y - 3 * sc], [x + (dx + 0.8) * sc, y - 9 * sc]], 0.8, 'rgba(90,60,20,.4)'); g.restore();
+  body(); g.lineWidth = 1.5; g.strokeStyle = OUT; g.stroke();
+  g.beginPath(); g.ellipse(x, y - 12.4 * sc, 3.4 * sc, 1.5 * sc, 0, 0, Math.PI * 2); g.fillStyle = '#b89a62'; g.fill(); g.strokeStyle = OUT; g.lineWidth = 1; g.stroke();
+  ln([[x - 3.2 * sc, y - 11 * sc], [x + 3.2 * sc, y - 11 * sc]], 1.8, '#8a5a2a');
 }
 export function lampPost(g, x, y, sc = 1) {
   const { blob, ln, poly, circ } = kit(g);
