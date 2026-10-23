@@ -60,9 +60,9 @@ test('pełne tło niemagentowe bez alfy to błąd', () => {
   assert.equal(lv(run(box({ bg: [40, 90, 40, 255] }), { kind: 'bryla' }), 'alfa'), 'fail');
 });
 
-test('za duży plik', () => {
+test('duży plik to tylko ostrzeżenie (i tak skalujemy)', () => {
   const im = img(1100, 300); fillPoly(im, [[100, 100], [900, 100], [900, 200], [100, 200]], [200, 0, 0, 255]);
-  assert.equal(lv(run(im, { kind: 'okragly' }), 'rozmiar'), 'fail');
+  assert.equal(lv(run(im, { kind: 'okragly' }), 'rozmiar'), 'warn');
 });
 
 test('podłoże: winieta i rozmycie', () => {
@@ -74,4 +74,11 @@ test('podłoże: winieta i rozmycie', () => {
 
 test('podłoże może mieć więcej niż 1024 px', () => {
   const r = run(img(1536, 1024, [120, 140, 90, 255]), { kind: 'podloze' }); assert.equal(lv(r, 'rozmiar'), undefined); assert.equal(lv(r, 'rozmiar2'), 'ok');
+});
+
+test('krawędź: ostra z antyaliasingiem przechodzi, szeroki gradient jest rozmyty', () => {
+  assert.equal(lv(run(box(), { kind: 'bryla' }), 'krawedz'), 'ok');
+  const im = box(); const { W, H, a } = im; const src = Uint8ClampedArray.from(a);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let s = 0, n = 0; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; s += src[(yy * W + xx) * 4 + 3]; n++; } a[(y * W + x) * 4 + 3] = s / n; }
+  assert.equal(lv(run(im, { kind: 'bryla' }), 'krawedz'), 'warn');
 });

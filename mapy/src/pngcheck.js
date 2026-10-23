@@ -14,7 +14,7 @@
     const checks = [], add = (id, level, msg) => checks.push({ id, level, msg });
     const N = W * H, A = (i) => rgba[i * 4 + 3];
 
-    if (kind !== 'podloze' && Math.max(W, H) > MAXSIDE) add('rozmiar', 'fail', `Za duży plik: ${W}x${H}, dłuższy bok ma mieć najwyżej ${MAXSIDE} px.`);
+    if (kind !== 'podloze' && Math.max(W, H) > MAXSIDE) add('rozmiar', 'warn', `Plik ${W}x${H} px jest większy niż ${MAXSIDE}. Nie szkodzi, zmniejszę go do skali tabeli (patrz skalowanie).`);
     else if (kind !== 'podloze') add('rozmiar', 'ok', `Rozmiar ${W}x${H} px.`);
 
     // --- przezroczystość ---
@@ -49,18 +49,18 @@
     const stats = { W, H, bbox: [x0, y0, x1, y1], bw, bh };
 
     // --- krawędź: obwódka z tła i rozmycie ---
-    let edge = 0, magenta = 0, soft = 0;
+    let edge = 0, magenta = 0, semi = 0;
+    for (let i = 0; i < N; i++) if (eff[i] >= ALPHA_ON && eff[i] <= 240) semi++;
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
       const i = y * W + x; if (eff[i] < ALPHA_ON) continue;
       if (eff[i - 1] >= ALPHA_ON && eff[i + 1] >= ALPHA_ON && eff[i - W] >= ALPHA_ON && eff[i + W] >= ALPHA_ON) continue;
       edge++; const r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2];
       if (r > 150 && b > 150 && g < 110 && r - g > 70 && b - g > 70) magenta++;
-      if (eff[i] < 230) soft++;
     }
     if (edge) {
-      const mf = magenta / edge, sf = soft / edge;
+      const mf = magenta / edge, sf = semi / edge;     // sf = średnia szerokość pasa półprzezroczystego w px
       add('obwodka', mf > 0.05 ? 'fail' : mf > 0.01 ? 'warn' : 'ok', mf > 0.01 ? `Różowa obwódka z tła na ${(mf * 100).toFixed(0)}% krawędzi. Wytnij tło ostrzej.` : 'Brak obwódki z tła.');
-      if (!keyed) add('krawedz', sf > 0.6 ? 'warn' : 'ok', sf > 0.6 ? `Krawędź jest rozmyta (${(sf * 100).toFixed(0)}% półprzezroczystych pikseli). Ma być ostra.` : 'Krawędź jest ostra.');
+      if (!keyed) add('krawedz', sf > 3.5 ? 'warn' : 'ok', sf > 3.5 ? `Krawędź jest rozmyta (pas przejścia ok. ${sf.toFixed(1)} px). Ma być ostra.` : `Krawędź jest ostra (pas przejścia ok. ${sf.toFixed(1)} px).`);
     }
 
     // --- cień pod obiektem (sprite ma być bez cienia) ---
