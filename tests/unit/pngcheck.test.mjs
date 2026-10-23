@@ -8,7 +8,7 @@ const inPoly = (p, x, y) => { let c = false; for (let i = 0, j = p.length - 1; i
 const fillPoly = (im, p, col) => { for (let y = 0; y < im.H; y++) for (let x = 0; x < im.W; x++) if (inPoly(p, x + .5, y + .5)) im.a.set(col, (y * im.W + x) * 4); };
 // bryła izometryczna w skali 2x: odcisk w x d kafli, wysokość hj w j, lewa ściana ciemna, prawa jasna
 function box({ w = 1, d = 1, hj = 64, margin = 12, tilt = 1, bg = [0, 0, 0, 0], left = [70, 60, 50, 255], right = [190, 170, 150, 255], shadow = false } = {}) {
-  const k = 36 * tilt, W = (w + d) * 72 + margin * 2, H = Math.ceil(hj * 2 + (w + d) * k + margin * 2), im = img(W, H, bg);
+  const k = 42 * tilt, W = (w + d) * 72 + margin * 2, H = Math.ceil(hj * 2 + (w + d) * k + margin * 2), im = img(W, H, bg);
   const S = [margin + w * 72, H - margin], L = [S[0] - w * 72, S[1] - w * k], R = [S[0] + d * 72, S[1] - d * k], B = [L[0] + R[0] - S[0], L[1] + R[1] - S[1]], u = hj * 2, up = (p) => [p[0], p[1] - u];
   if (shadow) fillPoly(im, [S, [S[0] + 90, S[1] + 0], [S[0] + 90, S[1] - 40], [S[0] - 90, S[1] - 40], [S[0] - 90, S[1]]], [0, 0, 0, 120]);
   fillPoly(im, [S, L, up(L), up(S)], left); fillPoly(im, [S, R, up(R), up(S)], right); fillPoly(im, [up(S), up(L), up(B), up(R)], [225, 210, 190, 255]);

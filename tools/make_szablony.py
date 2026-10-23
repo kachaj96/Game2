@@ -1,4 +1,4 @@
-# Szablony geometrii dla generatora obrazów (mapy/SPEC.md): szara bryła w rzucie 2:1, odcisk, sylwetka bohatera dla skali.
+# Szablony geometrii dla generatora obrazów (mapy/SPEC.md): szara bryła w izometrii 30 stopni, odcisk, sylwetka bohatera dla skali.
 from PIL import Image, ImageDraw
 import math, os
 SS = 2; N = 1024
@@ -15,7 +15,7 @@ def frame(w, d_, hpx, sc):
     return (N * SS / 2 + (w - d_) * 36 * sc * SS * 0 , N * SS / 2 + top * SS / 2 - (w + d_) * 18 * sc * SS)
 
 def P(s, sc, ox, oy):
-    return lambda x, y, z=0: ((ox + (x * 72 - y * 72) * sc) * SS, (oy + (x * 36 + y * 36) * sc - z * sc) * SS)
+    return lambda x, y, z=0: ((ox + (x * 72 - y * 72) * sc) * SS, (oy + (x * 42 + y * 42) * sc - z * sc) * SS)
 
 def poly(d, pts, fill, line=None):
     d.polygon(pts, fill=fill, outline=line)

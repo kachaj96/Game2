@@ -3,9 +3,9 @@
 Nowy potok map: podłoże + osobne obiekty (PNG) + dane. Gra z kodu (Natalis-styl generatorów) zostaje nietknięta. Ten dokument to umowa: grafika powstaje pod niego, silnik i edytor też. Liczby oznaczone (?) zatwierdzamy w pilocie na 5 obiektach.
 
 ## 1. Rzut i jednostki
-- Rzut izometryczny 2:1, kamera pod 30 stopni. Kafel na ekranie: 72 x 36 j (jednostek logicznych), jak `TW`/`TH` w `src/grid.js`.
-- Pliki PNG rysujemy w skali 2x: kafel ma 144 x 72 px w pliku. Gra skaluje do jednostek, więc telefon z DPR 2 dostaje ostry obraz bez przeliczania.
-- Wysokość: 1 poziom = 36 j (jak `HZ` w `src/world/kraina.js`). Wysokości w danych są liczbami całkowitymi poziomów, 0 to grunt.
+- Prawdziwa izometria: krawędzie podstaw pod kątem 30 stopni, nachylenie 0,577 (generatory obrazów rysują właśnie ten rzut, nie 2:1). Kafel na ekranie: 72 x 42 j (jednostek logicznych). Gra z kodu zostaje przy 2:1 (72 x 36), te mapy mają własną siatkę.
+- Pliki PNG rysujemy w skali 2x: kafel ma 144 x 84 px w pliku. Gra skaluje do jednostek, więc telefon z DPR 2 dostaje ostry obraz bez przeliczania.
+- Wysokość: 1 poziom = 42 j (wysokość kafla). Wysokości w danych są liczbami całkowitymi poziomów, 0 to grunt.
 - Pozycje w danych zawsze w kaflach (x, y, poziom), nigdy w pikselach ekranu. Piksele liczy tylko `IsoGrid`.
 
 ## 2. Światło
@@ -42,7 +42,7 @@ Każdy PNG w bibliotece ma obok `<id>.json`:
 - Bohater sortuje się swoją pozycją. Kafel nie ma osobnej logiki "za/przed": decyduje klucz.
 - Ręczne przesunięcie warstwy to tylko pole `sortBias` na instancji obiektu, dla wyjątków. Jeśli zdarza się często, błąd jest w odcisku, nie w sortowaniu.
 
-## 6. Podłoże (do rozstrzygnięcia w pilocie)
+## 6. Podłoże (rozstrzygnięte: obraz na mapę)
 Dwie drogi, sprawdzamy obie na jednym małym kawałku:
 - A) Tileset: romby 144 x 72 px, kilka wariantów na rodzaj (trawa, ziemia, kamień, woda...), przejścia jako osobne romby. Reużywalny, lekki dla pamięci, ale generator ma kłopot z bezszwowymi rombami.
 - B) Obraz podłoża na mapę, bez obiektów, cięty w grze na kawałki 512 px. Spójny wygląd, ale każdy nowy teren to nowy obraz.
@@ -58,13 +58,13 @@ Decyzja po pilocie. Kolizja z podłoża nie wynika: wolne/blokowane pola ustawia
 - Prawdziwa przezroczystość (alfa). Jeśli generator rysuje szachownicę, generujemy na jednolitym tle `#FF00FF` i usuwamy je w narzędziu (etap 3), czego nie robimy ręcznie.
 - Bez cienia pod obiektem, bez winiety, bez rozmycia krawędzi, bez ramki. Ostra, czysta krawędź.
 - Margines 8 px od brzegu pliku na każdej stronie. Obiekt cały w kadrze.
-- Ten sam rzut 2:1 i światło z lewej góry. Rzut patrzy z przodu: widać górę, lewą i prawą ścianę.
+- Ta sama izometria 30 stopni i światło z lewej góry. Rzut patrzy z przodu: widać górę, lewą i prawą ścianę.
 - Rozmiar: do 1024 px po dłuższym boku (w skali 2x). Jeden obiekt na plik.
 - Nazwa pliku: `<kategoria>_<opis>_<nr>.png` (np. `dom_chata_01.png`).
 
 ## 9. Szablon promptu dla obiektu
 ```
-Isometric 2:1 dimetric game asset, single object: {OPIS}.
+True isometric (30 degrees) game asset, single object: {OPIS}.
 View from front, camera 30 degrees, the object seen from above showing the top, the left face (darker) and the right face (lighter). Light from top-left.
 Dark gothic fantasy, muted saturated colors, painterly hand-painted look, dark brown outline.
 Object stands on a footprint of {W}x{D} tiles. Show only the object, no ground, no cast shadow, no vignette, no blur.
@@ -72,7 +72,7 @@ Solid flat magenta background #FF00FF, crisp edges, 8px margin, centered.
 ```
 
 ## 10. Test akceptacji sprite'a (pilot)
-1. Rzut zgadza się z siatką: poziome krawędzie podstawy mają nachylenie 1:2.
+1. Rzut zgadza się z siatką: krawędzie podstawy mają nachylenie około 0,58 (tolerancja plus minus 0,1; do 0,2 tylko dla drobnych rekwizytów).
 2. Skala zgadza się z tabelą (z tolerancją 10%) względem bohatera.
 3. Odcisk da się wyznaczyć jednoznacznie (podstawa jest czytelna).
 4. Krawędź czysta po usunięciu tła, bez kolorowych obwódek.
@@ -82,8 +82,14 @@ Automat: `mapy/sprawdz.html` (otwierasz z pliku lub przez `npm start`, przeciąg
 
 ## 11. Otwarte
 - Czy bohater i NPC też przechodzą na PNG, czy zostają z generatora (domyślnie: zostają).
-- Wielkość mapy: proponuję 48 x 48 kafli na mapę, ze strefą przejścia na krawędziach (?).
-- Format sąsiednich map: wyjście = para (mapa, kafel startu), bez płynnego łączenia obrazów.
+- Wielkość mapy: jedna mapa to jeden prostokątny ekran, czyli jeden obraz podłoża (do 1536 x 1024 z generatora), z siatką kafli przyciętą do prostokąta (jak w Dofusie), około 10 do 14 kafli szerokości. Większe mapy zszywamy z kilku obrazów dopiero w razie potrzeby.
+- Przejście do sąsiedniej mapy: strefa na krawędzi (zestaw kafli) z danymi `{mapa, kafel startu}`. Wchodzisz w strefę i jesteś przenoszony od razu, bez przycisku. Strefy i cele wyznacza autor w edytorze.
 
 ## 12. Szablony geometrii dla generatora
-`mapy/szablony/*.png` (tworzone przez `tools/make_szablony.py`): szara bryła w rzucie 2:1 z odciskiem i sylwetką bohatera dla skali. Wgrywasz szablon do generatora jako obraz referencyjny i prosisz o przemalowanie dokładnie tego kształtu. Drugim obrazem dajesz wzorzec stylu (Twój najlepszy dotychczasowy obraz).
+`mapy/szablony/*.png` (tworzone przez `tools/make_szablony.py`): szara bryła w izometrii 30 stopni z odciskiem i sylwetką bohatera dla skali. Wgrywasz szablon do generatora jako obraz referencyjny i prosisz o przemalowanie dokładnie tego kształtu. Drugim obrazem dajesz wzorzec stylu (Twój najlepszy dotychczasowy obraz).
+
+## 13. Postacie (bohater, NPC, zwierzęta, wrogowie)
+- Postać to billboard: sprite stoi na jednym kaflu, 64 j wysokości dla człowieka (128 px w pliku 2x), kotwica pod stopami.
+- Rysujemy tylko dwa kierunki: SE (twarzą do widza, w prawo) i NE (tyłem, w prawo). SW i NW to lustro SE i NE, jak w grze z kodu.
+- Chód: klatki cyklu (docelowo 6 do 8 klatek na kierunek), stały rozmiar klatki, kotwica w tym samym punkcie.
+- Test pilota: jeden bohater (Grabarz) w dwóch kierunkach na jednym arkuszu, sprawdzamy czy to ta sama postać i czy skala jest ta sama.

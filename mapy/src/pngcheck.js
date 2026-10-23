@@ -2,7 +2,8 @@
 // bez DOM. Działa w przeglądarce jako zwykły skrypt (globalThis.PngCheck), więc strona sprawdz.html działa też otwarta z pliku,
 // a w node wystarczy `import` dla efektu ubocznego i odczyt globalThis.PngCheck.
 (function () {
-  const TW = 72, TH = 36, S = 2;                  // kafel w j; pliki są w skali 2x
+  const TW = 72, TH = 42, S = 2;                  // kafel w j (izometria 30 stopni); pliki są w skali 2x
+  const ISO = TH / TW;                            // oczekiwane nachylenie krawędzi podstawy (0,583)
   const MARGIN = 8, MAXSIDE = 1024, ALPHA_ON = 16;
 
   const isKey = (r, g, b) => r > 200 && b > 200 && g < 90;            // tło #FF00FF (z tolerancją)
@@ -69,7 +70,7 @@
     const sh = shadow / Math.max(1, bw * (y1 - by0 + 1));
     add('cien', sh > 0.04 ? 'warn' : 'ok', sh > 0.04 ? 'Wygląda na to, że pod obiektem jest cień rzucony na ziemię. Ma go nie być, cień rysuje silnik.' : 'Brak cienia pod obiektem.');
 
-    // --- rzut 2:1: nachylenie podstawy (tylko bryły) ---
+    // --- rzut (izometria 30 stopni): nachylenie podstawy (tylko bryły) ---
     if (kind === 'bryla') {
       const yb = new Int32Array(W).fill(-1);
       for (let x = x0; x <= x1; x++) for (let y = y1; y >= y0; y--) if (eff[y * W + x] >= 128) { yb[x] = y; break; }
@@ -77,11 +78,11 @@
       const xs = []; for (let x = x0; x <= x1; x++) if (yb[x] >= ymax - 1) xs.push(x);
       const xl = xs[0], xr = xs[xs.length - 1], span = Math.min(Math.floor(bw * 0.3), 90);
       const sl = slope(yb, Math.max(x0, xl - span), xl - 2), sr = slope(yb, xr + 2, Math.min(x1, xr + span));
-      if (sl === null || sr === null || xl - span < x0 + 10) add('rzut', 'warn', 'Za mało krawędzi podstawy, żeby zmierzyć nachylenie 2:1.');
+      if (sl === null || sr === null || xl - span < x0 + 10) add('rzut', 'warn', 'Za mało krawędzi podstawy, żeby zmierzyć nachylenie podstawy.');
       else {
-        const L = Math.abs(sl), R = Math.abs(sr), worst = Math.max(Math.abs(L - 0.5), Math.abs(R - 0.5)), good = sl > 0 && sr < 0;
-        add('rzut', !good || worst > 0.15 ? 'fail' : worst > 0.07 ? 'warn' : 'ok',
-          `Nachylenie podstawy: lewa ${L.toFixed(2)}, prawa ${R.toFixed(2)} (ma być 0,50).` + (worst > 0.07 ? ' Rzut odbiega od izometrii 2:1.' : ''));
+        const L = Math.abs(sl), R = Math.abs(sr), worst = Math.max(Math.abs(L - ISO), Math.abs(R - ISO)), good = sl > 0 && sr < 0;
+        add('rzut', !good || worst > 0.2 ? 'fail' : worst > 0.1 ? 'warn' : 'ok',
+          `Nachylenie podstawy: lewa ${L.toFixed(2)}, prawa ${R.toFixed(2)} (ma być ${ISO.toFixed(2)}).` + (worst > 0.1 ? ' Rzut odbiega od izometrii 30 stopni.' : ''));
       }
       stats.slopes = [sl, sr];
     }
