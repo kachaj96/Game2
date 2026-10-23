@@ -1,0 +1,21 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Figury 3D</title>
+<style>body{margin:0;background:#2a221c;color:#e8dcc4;font:13px system-ui,sans-serif}h2{margin:10px 14px 2px;font-size:14px;color:#e8a860}.row{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px}.c{background:#3a2e26;border:1px solid #4a3c30}canvas{display:block}small{display:block;text-align:center;color:#9a8c78}</style></head><body>
+<h2>Grabarz z brył 3D: cztery kierunki (postój)</h2><div class="row" id="dirs"></div>
+<h2>Chód, kierunek SE, 8 klatek</h2><div class="row" id="walk"></div>
+<h2>Kreator: płeć, skóra, broda, głowa</h2><div class="row" id="var"></div>
+<h2>Dla porównania: obecna postać z kodu</h2><div class="row" id="old"></div>
+<script type="module">
+import {renderGrabarz} from '../src/art/grabarz3d.js';
+import {heroSpec} from '../src/art/classes.js';
+import {drawCharacter,DIRS} from '../src/art/characters.js';
+const Q=new URLSearchParams(location.search),Z=Number(Q.get('z')||2),PPU=Number(Q.get('ppu')||1);
+function add(host,sp,o,label){const r=renderGrabarz(sp,{...o,ppu:PPU,w:220*PPU,h:260*PPU}),c=document.createElement('canvas');c.width=r.w;c.height=r.h;const g=c.getContext('2d');g.putImageData(new ImageData(r.data,r.w,r.h),0,0);c.style.width=r.w/2/PPU*Z+'px';c.style.height=r.h/2/PPU*Z+'px';const d=document.createElement('div');d.className='c';d.append(c);const s=document.createElement('small');s.textContent=label;d.append(s);host.append(d)}
+const base=heroSpec('grabarz',{seed:3,hair:'#4a2c18',beard:'full'});
+for(const d of ['SE','SW','NE','NW'])add(document.getElementById('dirs'),base,{dir:d},d);
+for(let i=0;i<8;i++)add(document.getElementById('walk'),base,{dir:'SE',t:i/8},'klatka '+(i+1));
+add(document.getElementById('var'),heroSpec('grabarz',{seed:3,female:true,hairStyle:'long',skin:'#f8d9ba',hair:'#a8381e',face:1}),{dir:'SE'},'kobieta');
+add(document.getElementById('var'),heroSpec('grabarz',{seed:3,skin:'#5e3c26',beard:null,face:2}),{dir:'SE'},'ciemna skóra');
+add(document.getElementById('var'),heroSpec('grabarz',{seed:3,skin:'#dba878',beard:'stubble',colors:['#3f5a3c','#c8a050','#e8a040'],face:3}),{dir:'SE'},'zielony płaszcz');
+add(document.getElementById('var'),heroSpec('grabarz',{seed:3,colors:['#7a2a2a','#c8c8c8','#ff9a4a'],face:4}),{dir:'SE'},'czerwony płaszcz');
+for(const d of ['SE','SW','NE','NW']){const c=document.createElement('canvas');c.width=220;c.height=260;const g=c.getContext('2d');g.translate(110,200);g.scale(2,2);drawCharacter(g,0,0,heroSpec('grabarz',{seed:3,beard:'full'}),{...DIRS[d]});c.style.width=110*Z+'px';c.style.height=130*Z+'px';const w=document.createElement('div');w.className='c';w.append(c);document.getElementById('old').append(w)}
+</script></body></html>
