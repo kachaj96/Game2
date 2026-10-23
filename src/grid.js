@@ -5,15 +5,16 @@
 export const TW = 72, TH = 36;
 
 export class IsoGrid {
-  constructor(cols, rows, origin = { x: 0, y: 0 }) {
-    this.cols = cols; this.rows = rows; this.ox = origin.x; this.oy = origin.y;
+  // tw, th: rozmiar kafla (domyślnie 72 x 36, rzut 2:1); mapy v3 używają th = 42 (izometria 30 stopni)
+  constructor(cols, rows, origin = { x: 0, y: 0 }, { tw = TW, th = TH } = {}) {
+    this.tw = tw; this.th = th; this.cols = cols; this.rows = rows; this.ox = origin.x; this.oy = origin.y;
     this.blocked = new Set();
   }
   // punkt siatki (może być ułamkowy) na ekran
-  toScreen(gx, gy) { return [this.ox + (gx - gy) * TW / 2, this.oy + (gx + gy) * TH / 2]; }
+  toScreen(gx, gy) { return [this.ox + (gx - gy) * this.tw / 2, this.oy + (gx + gy) * this.th / 2]; }
   // ekran na punkt siatki (ułamkowy)
   toGrid(sx, sy) {
-    const a = (sx - this.ox) / (TW / 2), b = (sy - this.oy) / (TH / 2);
+    const a = (sx - this.ox) / (this.tw / 2), b = (sy - this.oy) / (this.th / 2);
     return [(a + b) / 2, (b - a) / 2];
   }
   // komórka pod punktem ekranu albo null poza planszą
