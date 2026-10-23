@@ -22,6 +22,13 @@ Wszystko rysuje kod, bez plików graficznych. Każdy obiekt ma ziarno, więc ta 
 ## Gra w przeglądarce (GitHub Pages)
 Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root). Adres: `https://kachaj96.github.io/Game2/`. Walka: `www/walka.html` (najlepiej w poziomie). Pasek z wieloma czarami: `?spells=all` (5 czarów testowych z innych żywiołów). Ze scenariuszami: `?scenario=cast`, `?scenario=push&hero=grabarz`, `?hero=tropiciel`, `?mood=zmierzch`.
 
+## Pętla gry i APK
+Menu (`www/index.html`) prowadzi do kreatora postaci (nowa gra) albo do świata (kontynuacja). W świecie wejście do lochu otwiera kartę, a "Wejdź" zaczyna podejście: kilka komnat, w każdej walka, boss w ostatniej (`src/game/run.js`, `chambers` w `src/game/dungeons.js`). Za wygraną komnatę jest XP (krzywa 60 razy poziom), poziom daje punkty cech i czarów do rozdania na karcie postaci, porażka niczego nie zabiera. Po lochu wracasz do świata przy wejściu. Test całej pętli: `tests/e2e/petla.mjs`.
+
+Grafika świata jest zamrożona na czas testów pętli (decyzja autora): nowe poprawki wyglądu dopiero po graniu.
+
+**APK na Androida** (Capacitor, projekt w `android/`, tylko poziom, pełny ekran): workflow `APK` (`.github/workflows/apk.yml`) buduje podpisany `arena-iso.apk` i publikuje go w wydaniu `apk-latest` (stały adres: https://github.com/kachaj96/Game2/releases/tag/apk-latest). Instalacja: pobierz plik na telefon, zezwól na instalację z nieznanych źródeł. Kolejne wersje aktualizują grę z zachowaniem zapisu (ten sam klucz podpisu w `tools/android/arena-iso.keystore`, publiczny, więc to tylko do własnych testów, nie do sklepu). Budowa ręcznie: Actions, APK, Run workflow. Ikony: `node tools/make-icons.mjs`, aplikacja webowa: `node tools/build-app.mjs`.
+
 ## Uruchomienie
 ```
 npm test          # testy jednostkowe (Node 22, bez zależności)
