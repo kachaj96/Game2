@@ -1,0 +1,99 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Wioska Kopiec (mapa z obrazu)</title>
+<style>
+html,body{margin:0;height:100%;background:#0a0908;color:#f1e7d3;font:15px Georgia,serif;overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.pill{position:fixed}
+#hud{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:14px;white-space:nowrap}
+#hud small{color:#b8a98f;font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0}
+#menu{position:fixed;left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 54px);display:flex;gap:6px;z-index:3}
+#menu a{position:static;color:#e6dcc8;text-decoration:none;font:700 13px Georgia,serif;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;min-height:36px;display:flex;align-items:center}
+.zb{position:fixed;right:max(10px,env(safe-area-inset-right));width:44px;height:44px;border:1px solid #0a0806;background:linear-gradient(180deg,#3a3228,#221d16);color:#e8dcc2;font:700 20px system-ui;padding:0;box-shadow:inset 0 1px 0 #5a4a34}
+#zin{bottom:70px}#zout{bottom:18px}
+#hint{bottom:18px;left:50%;transform:translateX(-50%);max-width:70vw;text-align:center;font-size:13px;color:#d8cdb4;pointer-events:none}
+#hint:empty{display:none}
+#bubble{position:fixed;left:50%;top:22%;transform:translateX(-50%);width:min(62vw,540px);display:none;z-index:4}
+#choices{position:fixed;left:50%;top:calc(22% + 112px);transform:translateX(-50%);width:min(62vw,540px);display:none;z-index:4}
+#leave{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;min-width:300px;z-index:4}
+#leave .row{display:flex;gap:8px;margin-top:10px}#leave .row button{flex:1;min-height:44px;font:700 14px Georgia,serif}
+#rotate{display:none;position:fixed;inset:0;z-index:9;background:#0a0908;align-items:center;justify-content:center;text-align:center;font:700 20px Georgia,serif;padding:24px}
+@media (orientation:portrait){#rotate{display:flex}}
+</style><link rel="stylesheet" href="ui.css"></head><body>
+<canvas id="c"></canvas>
+<div id="hud" class="pill">Kopiec<small>mapa z obrazu (test)</small></div>
+<div id="menu"><a class="pill" href="postac.html?back=wioska-mapa.html">Postać</a><a class="pill" href="index.html">Menu</a></div>
+<button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
+<div id="bubble" class="bubble"><div class="scroll" id="bname"></div><button class="x" id="bclose" type="button" aria-label="Zamknij">×</button><div id="btext"></div></div>
+<div id="choices" class="choices"><h3 id="cname"></h3><div id="copts"></div></div>
+<div id="leave" class="win"><div class="wh" id="lname"></div><div class="wb"><p id="ltext" style="margin:4px 0"></p><div class="row"><button id="lstay" class="btn-sec" type="button">Zostań</button><button id="lgo" class="btn-go" type="button">Idź</button></div></div></div>
+<div id="hint" class="pill nr"></div>
+<div id="rotate">Obróć telefon do poziomu</div>
+<script type="module">
+import {installFrames} from '../src/art/ui.js';installFrames();
+import {genCharacter,drawCharacter,DIRS8,dir8} from '../src/art/characters.js';
+import {heroSpec} from '../src/art/classes.js';
+import {loadCharacter} from '../src/game/save.js';
+import {buildScene,OBJECTS,EXITS,NPCS} from '../src/world/wioska.js';
+import {findPath,newWalker,setPath,stepWalker,freeAt} from '../src/world/scene.js';
+const $=id=>document.getElementById(id),Q=new URLSearchParams(location.search),cv=$('c'),g=cv.getContext('2d');
+const sc=buildScene(),S=72/sc.proj.tileSize(13,14)[0];     // skala świata: kafel obrazu (ok. 44 px) = 72 px świata, jak w reszcie gry
+const img=new Image();img.src=sc.image;let ready=false;img.onload=()=>{ready=true};
+const SAVED=loadCharacter(),hspec=SAVED?heroSpec(SAVED.classId,{...SAVED.look,seed:3}):heroSpec('zalobnik',{face:1,hairStyle:'long',hair:'#c8c8d0',skin:'#f0c49a'});
+const hero=newWalker(...sc.start);let face='SE';
+const npcs=NPCS.map(n=>({...n,gp:sc.proj.toGrid(...n.at),spec:{...genCharacter(n.seed,n.role),sc:1}}));
+// obiekty z sylwetką (dach nad postacią, gdy stoi za budynkiem)
+const occ=OBJECTS.filter(o=>o.sil).map(o=>({...o,base:Math.max(...o.foot.map(p=>p[1])),bx:[Math.min(...o.sil.map(p=>p[0])),Math.max(...o.sil.map(p=>p[0]))]}));
+let zoom=Number(Q.get('zoom'))||0.9,zoomT=zoom,CW=0,CH=0,dpr=1,cam={x:0,y:0},pending=null,marker=null,down=null;
+const ZMIN=0.8;
+function resize(){dpr=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr)}
+addEventListener('resize',resize);resize();
+const feet=(gx,gy)=>sc.proj.toImage(gx,gy);                               // piksele obrazu
+const wp=(gx,gy)=>{const p=feet(gx,gy);return[p[0]*S,p[1]*S]};            // piksele świata
+{const p=wp(hero.x,hero.y);cam.x=p[0];cam.y=p[1]-40}
+const say=t=>{$('hint').textContent=t};const toWorld=(cx,cy)=>[cam.x+(cx-CW/2)/zoom,cam.y+(cy-CH/2)/zoom];
+const toGridFromScreen=(cx,cy)=>{const [wx,wy]=toWorld(cx,cy);return sc.proj.toGrid(wx/S,wy/S)};
+function closeTalk(){$('bubble').style.display='none';$('choices').style.display='none'}
+function npcSay(n){$('bname').textContent=n.name;$('btext').textContent=n.line;$('cname').textContent=SAVED?SAVED.name:'Bohater';const o=$('copts');o.innerHTML='';
+  const b2=document.createElement('button');b2.textContent='Żegnaj';b2.onclick=closeTalk;o.append(b2);$('bubble').style.display='block';$('choices').style.display='block'}
+$('bclose').onclick=closeTalk;
+function resolveTap(cx,cy){const [gx,gy]=toGridFromScreen(cx,cy);
+  for(const n of npcs)if(Math.hypot(gx-n.gp[0],gy-n.gp[1])<1.3)return{kind:'npc',n,target:[n.gp[0]+0.9,n.gp[1]+1.1]};
+  for(const e of EXITS){const eg=sc.proj.toGrid(...e.at);if(Math.hypot(gx-eg[0],gy-eg[1])<2)return{kind:'exit',e,target:eg}}
+  return{kind:'ground',target:[gx,gy]}}
+function goTo(cx,cy,hold=false){closeTalk();$('leave').style.display='none';let tp=resolveTap(cx,cy);if(hold&&tp.kind!=='ground')tp={kind:'ground',target:tp.target};
+  const path=findPath(sc,[hero.x,hero.y],tp.target);if(!path){if(!hold)say('Tam nie da się dojść.');return}
+  setPath(hero,path);pending=tp.kind==='ground'?null:tp;say('');marker={x:tp.target[0],y:tp.target[1],t:0};if(!hero.moving&&pending)arrive()}
+function arrive(){const p=pending;pending=null;if(!p)return;if(p.kind==='npc')npcSay(p.n);else if(p.kind==='exit'){$('lname').textContent=p.e.name;$('ltext').textContent='Droga prowadzi dalej. Wyjść z wioski?';$('lgo').onclick=()=>{location.href=p.e.to};$('leave').style.display='block'}}
+$('lstay').onclick=()=>{$('leave').style.display='none'};
+const rel=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}const [x,y]=rel(e);down={t:performance.now(),x:e.clientX,y:e.clientY,hold:false,last:performance.now(),cur:[x,y]};goTo(x,y);e.preventDefault()});
+cv.addEventListener('pointermove',e=>{if(!down)return;down.cur=rel(e);if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)down.hold=true});
+const up=()=>{down=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+$('zin').onclick=()=>{zoomT=Math.min(1.8,zoomT*1.2)};$('zout').onclick=()=>{zoomT=Math.max(ZMIN,zoomT/1.2)};
+const inPoly=(x,y,p)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [xi,yi]=p[i],[xj,yj]=p[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c};
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(down){const n=performance.now();if(n-down.t>350)down.hold=true;if(down.hold&&n-down.last>130){down.last=n;goTo(down.cur[0],down.cur[1],true)}}
+  zoom+=(zoomT-zoom)*(1-Math.exp(-dt*10));
+  const was=hero.moving;stepWalker(sc,hero,dt);if(hero.moving||was)face=dir8(hero.dx,hero.dy);if(hero.arrived){hero.arrived=false;arrive()}
+  const hp=wp(hero.x,hero.y),k=1-Math.exp(-dt*6);cam.x+=(hp[0]-cam.x)*k;cam.y+=(hp[1]-40-cam.y)*k;
+  const s=zoom*dpr;g.setTransform(1,0,0,1,0,0);g.fillStyle='#0a0908';g.fillRect(0,0,cv.width,cv.height);
+  g.setTransform(s,0,0,s,cv.width/2-cam.x*s,cv.height/2-cam.y*s);
+  if(ready){g.imageSmoothingQuality='high';g.drawImage(img,0,0,sc.iw*S,sc.ih*S)}
+  // postacie od tyłu do przodu (po współrzędnej stóp na obrazie)
+  const ents=[{gx:hero.x,gy:hero.y,draw:(x,y)=>drawCharacter(g,x,y,{...hspec,sc:hspec.sc||1},{...DIRS8[face],t:hero.moving?hero.t:undefined})},
+    ...npcs.map(n=>({gx:n.gp[0],gy:n.gp[1],draw:(x,y)=>{const f=Math.hypot(hero.x-n.gp[0],hero.y-n.gp[1])<7?dir8(hero.x-n.gp[0],hero.y-n.gp[1]):'SW';drawCharacter(g,x,y,n.spec,{...DIRS8[f]})}}))];
+  for(const e of ents)e.f=feet(e.gx,e.gy);ents.sort((a,b)=>a.f[1]-b.f[1]);
+  for(const e of ents){e.draw(e.f[0]*S,e.f[1]*S)}
+  // obiekty nad postacią: gdy stopy są za podstawą obiektu i pod jego sylwetką, dorysowujemy wycinek obrazu
+  if(ready)for(const o of occ)for(const e of ents){const [fx,fy]=e.f;if(fy<o.base-6&&fx>o.bx[0]-30&&fx<o.bx[1]+30&&inPoly(fx,fy-18,o.sil)||fy<o.base-6&&inPoly(fx,fy-40,o.sil)){
+      g.save();g.beginPath();o.sil.forEach(([x,y],i)=>i?g.lineTo(x*S,y*S):g.moveTo(x*S,y*S));g.closePath();g.clip();g.drawImage(img,0,0,sc.iw*S,sc.ih*S);g.restore();break}}
+  if(marker){marker.t+=dt;if(marker.t>0.7)marker=null;else{const p=wp(marker.x,marker.y),f=marker.t/0.7;g.strokeStyle=`rgba(255,180,90,${1-f})`;g.lineWidth=3/zoom;g.beginPath();g.ellipse(p[0],p[1],10+26*f,5+13*f,0,0,7);g.stroke()}}
+  // lekka winieta na krawędziach ekranu
+  g.setTransform(1,0,0,1,0,0);const v=g.createRadialGradient(cv.width/2,cv.height/2,Math.min(cv.width,cv.height)*0.35,cv.width/2,cv.height/2,Math.max(cv.width,cv.height)*0.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.45)');g.fillStyle=v;g.fillRect(0,0,cv.width,cv.height);
+  requestAnimationFrame(frame)}
+say('Dotknij ziemi, by tam pójść. Przytrzymaj palec, by iść za nim. Drogi na krawędziach prowadzą dalej.');setTimeout(()=>say(''),8000);
+requestAnimationFrame(frame);
+window.__wioska={sc,hero,get zoom(){return zoom},css:(gx,gy)=>{const p=wp(gx,gy);return[CW/2+(p[0]-cam.x)*zoom,CH/2+(p[1]-cam.y)*zoom]},get ready(){return ready},npcs,get face(){return face}};
+</script></body></html>
