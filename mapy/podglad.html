@@ -1,0 +1,88 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Podgląd mapy v3</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0a0908;color:#f1e7d3;font:14px system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#bar{position:fixed;right:8px;top:8px;display:flex;gap:6px;z-index:3}
+#bar button{min-height:40px;padding:0 12px;border:1px solid #5a4a34;background:rgba(42,35,24,.9);color:#f1e7d3;font:600 13px system-ui}
+#bar button.on{background:#a8481a;border-color:#ffb070}
+#msg{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(18,15,12,.92);border:1px solid #3a3126;padding:6px 12px;z-index:3;max-width:80vw;text-align:center}
+#err{display:none;position:fixed;left:8px;right:8px;top:8px;z-index:9;background:#5a1a14;border:1px solid #ff7050;padding:10px}
+</style></head><body>
+<canvas id="c"></canvas><div id="err"></div>
+<div id="bar"><button id="bg">Siatka</button><button id="bc">Kolizje</button></div>
+<div id="msg">Dotknij ziemi, by tam pójść.</div>
+<script type="module">
+import {Iso, TW, TH} from './src/iso.js';
+import {buildMap} from './src/mapdata.js';
+addEventListener('error',e=>{const b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+e.message+'. Strona wymaga serwera (npm start) albo adresu https, nie pliku z dysku.'});
+const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d');
+const LIB=window.__LIB||await (await fetch('gra/biblioteka.json')).json();
+const url=p=>(window.__ASSETS&&window.__ASSETS[p])||('gra/'+p);
+const load=p=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('brak pliku '+p));i.src=url(p)});
+// mapa pilotowa: prostokąt 768 x 512 j (obraz podłoża 1536 x 1024 px w skali 2x); kafel 72 x 42, siatka przycięta do prostokąta
+const DEF={id:'pilot',size:[768,512],origin:[384,0],sprites:{},objects:[
+ {sprite:'chata',x:9,y:3},{sprite:'dab',x:3,y:9},{sprite:'studnia',x:9,y:9},{sprite:'lampa',x:10,y:7},{sprite:'skrzynia',x:8,y:11}],
+ exits:[],start:[10.5,10]};
+for(const [k,s] of Object.entries(LIB.sprites))DEF.sprites[k]={footprint:s.footprint,height:s.height};
+const probe=new Iso({ox:384,oy:0,w:768,h:512});
+DEF.exits=[{cells:probe.cells().filter(([x,y])=>probe.center(x,y)[0]>=690),to:{map:'las',x:2,y:2}}];
+const M=buildMap(DEF),iso=M.iso;
+const [ground,...rest]=await Promise.all([load(LIB.ground.file),...Object.values(LIB.sprites).map(s=>load(s.file)),load(LIB.hero.idle_sw.file),load(LIB.hero.idle_ne.file),...LIB.hero.walk_w.map(f=>load(f.file))]);
+const names=Object.keys(LIB.sprites),IMG={};names.forEach((n,i)=>IMG[n]=rest[i]);
+const IDLE={sw:rest[names.length],ne:rest[names.length+1]},WALK=rest.slice(names.length+2);
+const hero={x:DEF.start[0],y:DEF.start[1],path:[],dir:'SW',t:0,walk:false};
+let showGrid=false,showCol=false,view={z:1,ox:0,oy:0},dpr=1,msgT=0;
+const toast=t=>{const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(()=>m.style.opacity=.0,2400)};
+function resize(){dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.round(innerWidth*dpr);cv.height=Math.round(innerHeight*dpr);const z=Math.min(innerWidth/768,innerHeight/512);view={z,ox:(innerWidth-768*z)/2,oy:(innerHeight-512*z)/2}}
+addEventListener('resize',resize);resize();
+const S2=(x,y,z=0)=>{const p=iso.toScreen(x,y,z);return [view.ox+p[0]*view.z,view.oy+p[1]*view.z]};
+// kierunek ruchu na ekranie -> sprite (W ma prawdziwy chód, reszta to widoki spoczynkowe z lekkim podskokiem)
+function sector(vx,vy){const a=Math.atan2(vy,vx)*180/Math.PI,A=Math.abs(a);if(A<=22.5)return 'E';if(A>=157.5)return 'W';const s=a>0?'S':'N';return A<67.5?s+'E':A>112.5?s+'W':s}
+function heroSprite(){const d=hero.dir;
+ if(hero.walk&&(d==='W'||d==='E')){const i=Math.floor(hero.t*8)%6,m=LIB.hero.walk_w[i];return {img:WALK[i],m,mir:d==='E',bob:0}}
+ const back=d==='N'||d==='NE'||d==='NW',key=back?'ne':'sw',m=LIB.hero['idle_'+key];
+ return {img:IDLE[key],m,mir:back?d==='NW':(d==='SE'||d==='E'),bob:hero.walk?Math.abs(Math.sin(hero.t*8))*2.2:0}}
+function drawShadow(x,y,rx,ry,a=.35){const p=S2(x,y);g.save();g.translate(p[0]*dpr,p[1]*dpr);g.scale(1,ry/rx);g.fillStyle='rgba(0,0,0,'+a+')';g.beginPath();g.arc(0,0,rx*view.z*dpr,0,7);g.fill();g.restore()}
+function drawImg(img,m,x,y,{mir=false,alpha=1,glow=false,bob=0}={}){
+ const w=m.w/2*view.z*dpr,h=m.h/2*view.z*dpr,ax=(m.ax!==undefined?m.ax:m.w/2)/2*view.z*dpr;
+ g.save();g.globalAlpha=alpha;if(glow){g.shadowColor='rgba(255,226,170,.6)';g.shadowBlur=7*dpr}
+ g.translate(x*dpr,(y-bob*view.z)*dpr);if(mir)g.scale(-1,1);g.drawImage(img,-ax,-h,w,h);g.restore()}
+function spriteBox(o){const s=LIB.sprites[o.sprite],c=s.base==='center'?S2(o.x-.5,o.y-.5):S2(o.x,o.y);return {s,x:c[0],y:c[1],l:c[0]-s.w/4*view.z,t:c[1]-s.h/2*view.z,r:c[0]+s.w/4*view.z,b:c[1]}}
+function frame(now){
+ requestAnimationFrame(frame);const dt=Math.min(.05,(now-(frame.l||now))/1000);frame.l=now;
+ // ruch bohatera po ścieżce kafli
+ hero.walk=false;
+ if(hero.path.length){const [tx,ty]=hero.path[0],dx=tx-hero.x,dy=ty-hero.y,d=Math.hypot(dx,dy),sp=2.7*dt;
+  if(d<=sp){hero.x=tx;hero.y=ty;hero.path.shift();if(!hero.path.length){const ex=M.exitAt(Math.floor(hero.x),Math.floor(hero.y));if(ex)toast('Przejście do mapy "'+ex.map+'" (tu nastąpiłoby przeniesienie)')}}
+  else{hero.x+=dx/d*sp;hero.y+=dy/d*sp;hero.walk=true;hero.t+=dt;hero.dir=sector((dx-dy)*TW/2,(dx+dy)*TH/2)}}
+ g.setTransform(1,0,0,1,0,0);g.fillStyle='#0a0908';g.fillRect(0,0,cv.width,cv.height);
+ g.drawImage(ground,view.ox*dpr,view.oy*dpr,768*view.z*dpr,512*view.z*dpr);
+ if(showGrid||showCol)for(const [cx,cy] of iso.cells()){const c=[[cx,cy],[cx+1,cy],[cx+1,cy+1],[cx,cy+1]].map(([a,b])=>S2(a,b)),bl=M.blocked(cx,cy),ex=M.exitAt(cx,cy);
+  g.beginPath();c.forEach((p,i)=>i?g.lineTo(p[0]*dpr,p[1]*dpr):g.moveTo(p[0]*dpr,p[1]*dpr));g.closePath();
+  if(showCol&&bl){g.fillStyle='rgba(255,40,40,.35)';g.fill()}if(showCol&&ex){g.fillStyle='rgba(60,160,255,.35)';g.fill()}
+  if(showGrid){g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=dpr;g.stroke()}}
+ // cienie kontaktowe
+ for(const o of DEF.objects){const s=LIB.sprites[o.sprite],cx=o.x-s.footprint.w/2,cy=o.y-s.footprint.d/2;drawShadow(cx,cy,s.footprint.w*34+8,s.footprint.w*14+6,o.sprite==='lampa'?.2:.3)}
+ drawShadow(hero.x,hero.y,22,8,.4);
+ // rysowanie od najdalszych: obiekty mapy i bohater według klucza głębi
+ const list=DEF.objects.map(o=>({o,x:o.x,y:o.y,bias:LIB.sprites[o.sprite].base==='center'?-1:0,kind:'o'}));list.push({x:hero.x,y:hero.y,kind:'h'});
+ list.sort((a,b)=>(a.x+a.y+(a.bias||0))-(b.x+b.y+(b.bias||0)));
+ const hs=S2(hero.x,hero.y);
+ for(const it of list){
+  if(it.kind==='h'){const hsp=heroSprite();drawImg(hsp.img,hsp.m,hs[0],hs[1],{mir:hsp.mir,glow:true,bob:hsp.bob})}
+  else{const b=spriteBox(it.o),behind=(hero.x+hero.y)<(it.o.x+it.o.y+(it.bias||0));
+   let a=1;if(b.s.fade&&behind&&hs[0]>b.l&&hs[0]<b.r&&hs[1]-80*view.z<b.b&&hs[1]>b.t)a=.45;
+   drawImg(IMG[it.o.sprite],b.s,b.x,b.y,{alpha:a})}}
+}
+// dotyk: kafel pod palcem, ścieżka A*
+cv.addEventListener('pointerdown',e=>{const wx=(e.clientX-view.ox)/view.z,wy=(e.clientY-view.oy)/view.z,[cx,cy]=iso.cellAt(wx,wy);
+ if(M.blocked(cx,cy)){toast('Tu nie wejdziesz.');return}
+ const p=M.findPath([Math.floor(hero.x),Math.floor(hero.y)],[cx,cy]);if(!p){toast('Nie da się tam dojść.');return}
+ hero.path=p.slice(1).map(([x,y])=>[x+.5,y+.5]);if(!hero.path.length)hero.path=[[cx+.5,cy+.5]]});
+const tg=(b,get,set)=>{$(b).onclick=()=>{set(!get());$(b).classList.toggle('on',get())}};
+tg('bg',()=>showGrid,v=>showGrid=v);tg('bc',()=>showCol,v=>showCol=v);
+addEventListener('keydown',e=>{if(e.key==='g')$('bg').click();if(e.key==='c')$('bc').click()});
+window.__podglad={hero,M,view:()=>view,go:(cx,cy)=>{const p=M.findPath([Math.floor(hero.x),Math.floor(hero.y)],[cx,cy]);if(p)hero.path=p.slice(1).map(([x,y])=>[x+.5,y+.5]);return !!p}};
+requestAnimationFrame(frame);
+</script></body></html>
