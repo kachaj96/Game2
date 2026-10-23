@@ -1113,7 +1113,7 @@
     1060,
     610
    ],
-   "to": "swiat.html?at=las"
+   "to": "wioska-mapa.html?map=las&from=zachod"
   }
  ],
  "npcs": [
@@ -1143,5 +1143,6 @@
  "tiles": {
   "block": [],
   "free": []
- }
+ },
+ "name": "Kopiec"
 }

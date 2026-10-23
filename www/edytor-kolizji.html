@@ -26,21 +26,29 @@ small{color:#9a8f7c;display:block;margin:4px 0;line-height:1.35}
 <h4>Edycja</h4><button class="b" id="undo">Cofnij</button><button class="b" id="redo">Ponów</button>
 <h4>Dane</h4>
 <button class="b" id="save">Zapisz roboczą</button><button class="b" id="dl">Pobierz JSON</button><button class="b" id="cp">Kopiuj JSON</button><button class="b" id="ld">Wczytaj plik</button><button class="b" id="orig">Wróć do pliku</button>
-<a class="b" id="test" href="wioska-mapa.html?draft=1" target="_blank" style="display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;margin-top:6px">Testuj w grze</a>
+<a class="b" id="test" href="wioska-mapa.html?map=wioska&draft=1" target="_blank" style="display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;margin-top:6px">Testuj w grze</a>
 <input type="file" id="file" accept=".json,application/json" style="display:none">
 <small id="stat"></small>
 </div>
+<div id="err" style="display:none;position:fixed;left:240px;right:8px;top:8px;z-index:10;background:#5a1a14;border:1px solid #ff7050;padding:10px;line-height:1.4"></div>
+<script>
+addEventListener('error',function(e){var b=document.getElementById('err');b.style.display='block';b.textContent='Błąd: '+(e.message||'nie załadowano skryptu')+'. Jeśli przyciski nie działają, strona prawdopodobnie jest otwarta z pliku (file://). Otwórz ją przez adres https lub serwer (npm start).'});
+setTimeout(function(){if(!window.__edytor){var b=document.getElementById('err');b.style.display='block';b.textContent='Skrypt edytora się nie uruchomił, dlatego przyciski nie działają. Otwórz stronę przez adres https (GitHub Pages) albo lokalny serwer (npm start), nie z pliku.'}},2500);
+</script>
 <div id="msg"></div>
 <script type="module">
 import {buildMap} from '../src/world/mapdata.js';
-const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d'),KEY='arena.mapdraft.wioska';
+const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d'),MAPID=new URLSearchParams(location.search).get('map')||'wioska',KEY='arena.mapdraft.'+MAPID,FILE='maps/'+MAPID+'.json';$('test').href='wioska-mapa.html?map='+MAPID+'&draft=1';
 let D=null,M=null,img=new Image(),imgOk=false,mode='tiles',tileMode='block',sel=0,part='foot',delMode=false,view={x:0,y:0,z:1},dirty=true,undo=[],redo=[],pm=null;
+
+function dlg(text,def,withInput){return new Promise(res=>{const w=document.createElement('div');w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9;display:flex;align-items:center;justify-content:center';const b=document.createElement('div');b.style.cssText='background:#1c1814;border:1px solid #5a4a34;padding:14px;width:min(420px,90vw)';const p=document.createElement('div');p.textContent=text;b.append(p);let i=null;if(withInput){i=document.createElement('input');i.type='text';i.value=def||'';b.append(i)}const row=document.createElement('div');row.style.marginTop='10px';const mk=(t,v)=>{const x=document.createElement('button');x.className='b';x.textContent=t;x.onclick=()=>{w.remove();res(v)};row.append(x)};mk('OK',withInput?null:true);mk('Anuluj',withInput?'':false);b.append(row);w.append(b);document.body.append(w);if(i){i.focus();i.select();row.firstChild.onclick=()=>{w.remove();res(i.value)}}})}
+const ask=(t,d)=>dlg(t,d,true),yes=t=>dlg(t,'',false);
 const toast=t=>{const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>m.style.display='none',2400)};
 const snap=()=>JSON.stringify(D);
 function push(){undo.push(snap());if(undo.length>60)undo.shift();redo=[];}
 function changed(save=true){M=buildMap(D);if(save)try{localStorage.setItem(KEY,snap())}catch(_){}dirty=true;stat()}
 function load(d){D=d;M=buildMap(D);img=new Image();img.onload=()=>{imgOk=true;fit();dirty=true};img.src=D.image;sel=0;part='foot';ui()}
-async function init(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(_){}if(!d||!d.blocks){d=await fetch('maps/wioska.json').then(r=>r.json())}else toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');load(d)}
+async function init(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(_){}if(!d||!d.blocks){d=await fetch(FILE).then(r=>r.json())}else toast('Wczytano wersję roboczą (Wróć do pliku = oryginał)');load(d)}
 // ---- widok ----
 const dpr=()=>Math.min(2,devicePixelRatio||1);
 function resize(){const r=cv.getBoundingClientRect();cv.width=Math.round(r.width*dpr());cv.height=Math.round(r.height*dpr());dirty=true}
@@ -118,8 +126,8 @@ function ui(){document.querySelectorAll('#modes .b').forEach(b=>b.classList.togg
   if(mode==='obj'||mode==='walk'){btn('Usuń punkty',delMode,()=>{delMode=!delMode;ui()},'danger');btn('− ostatni',false,()=>{const p=curPts();if(p&&p.length){push();p.pop();changed()}})}
   if(mode==='obj'){const s=document.createElement('select');D.blocks.forEach((o,i)=>{const op=document.createElement('option');op.value=i;op.textContent=o.id+(o.sil?' (+sylwetka)':'');if(i===sel)op.selected=true;s.append(op)});s.onchange=()=>{sel=+s.value;dirty=true;ui()};sub.append(s);
     btn('Podstawa',part==='foot',()=>{part='foot';ui();dirty=true});btn('Sylwetka',part==='sil',()=>{part='sil';ui();dirty=true});
-    btn('Nowy obiekt',false,()=>{const id=prompt('Nazwa obiektu (np. chata_3)','obiekt'+(D.blocks.length+1));if(!id)return;push();D.blocks.push({id,foot:[],sil:null});sel=D.blocks.length-1;part='foot';changed();ui()});
-    btn('Usuń obiekt',false,()=>{if(!D.blocks[sel]||!confirm('Usunąć '+D.blocks[sel].id+'?'))return;push();D.blocks.splice(sel,1);sel=Math.max(0,sel-1);changed();ui()},'danger');
+    btn('Nowy obiekt',false,async()=>{const id=await ask('Nazwa obiektu (np. chata_3)','obiekt'+(D.blocks.length+1));if(!id)return;push();D.blocks.push({id,foot:[],sil:null});sel=D.blocks.length-1;part='foot';changed();ui()});
+    btn('Usuń obiekt',false,async()=>{if(!D.blocks[sel]||!(await yes('Usunąć '+D.blocks[sel].id+'?')))return;push();D.blocks.splice(sel,1);sel=Math.max(0,sel-1);changed();ui()},'danger');
     btn('Usuń sylwetkę',false,()=>{const o=D.blocks[sel];if(o&&o.sil){push();o.sil=null;changed();ui()}},'danger')}
   stat()}
 function stat(){if(!D)return;const blocked=M.mask.reduce((a,v)=>a+v,0);$('stat').textContent=`${D.cols}×${D.rows} kafli, zajętych ${blocked}, obiektów ${D.blocks.length}, ręcznych poprawek ${D.tiles.block.length+D.tiles.free.length}`}
@@ -131,9 +139,9 @@ $('undo').onclick=()=>{if(!undo.length)return;redo.push(snap());D=JSON.parse(und
 $('redo').onclick=()=>{if(!redo.length)return;undo.push(snap());D=JSON.parse(redo.pop());changed();ui()};
 $('save').onclick=()=>{try{localStorage.setItem(KEY,snap());toast('Zapisano wersję roboczą w przeglądarce. "Testuj w grze" ją użyje.')}catch(_){toast('Nie udało się zapisać (pamięć przeglądarki).')}};
 $('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:'application/json'}));a.download=D.id+'.json';a.click();toast('Pobrano '+D.id+'.json. Wyślij mi ten plik, żeby wszedł do gry.')};
-$('cp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(D));toast('Skopiowano JSON do schowka')}catch(_){prompt('Skopiuj JSON:',JSON.stringify(D))}};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(D));toast('Skopiowano JSON do schowka')}catch(_){await ask('Skopiuj JSON (zaznacz wszystko):',JSON.stringify(D))}};
 $('ld').onclick=()=>$('file').click();$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.blocks)throw 0;push();load(d);changed();toast('Wczytano plik')}catch(_){toast('To nie jest poprawny plik mapy')}};
-$('orig').onclick=async()=>{if(!confirm('Usunąć wersję roboczą i wczytać oryginał z pliku?'))return;try{localStorage.removeItem(KEY)}catch(_){}load(await fetch('maps/wioska.json').then(r=>r.json()));undo=[];redo=[]};
+$('orig').onclick=async()=>{if(!(await yes('Usunąć wersję roboczą i wczytać oryginał z pliku?')))return;try{localStorage.removeItem(KEY)}catch(_){}load(await fetch(FILE).then(r=>r.json()));undo=[];redo=[]};
 window.__edytor={get D(){return D},get M(){return M},css,unc,get mode(){return mode},setMode:m=>{mode=m;ui()},get view(){return view}};
 init();
 </script></body></html>

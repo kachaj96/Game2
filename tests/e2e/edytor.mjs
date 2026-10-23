@@ -5,7 +5,6 @@ let chromium; try { ({ chromium } = await import('playwright')); } catch { ({ ch
 const server = await startServer(8165), browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 }, hasTouch: false, deviceScaleFactor: 1 });
 const page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text()); });
-page.on('dialog', (d) => d.accept('test_obiekt'));
 await page.goto('http://127.0.0.1:8165/www/edytor-kolizji.html'); await page.waitForFunction(() => window.__edytor && window.__edytor.D && window.__edytor.M);
 const stat0 = await page.evaluate(() => window.__edytor.M.mask.reduce((a, v) => a + v, 0));
 // 1. malowanie kafla w trybie Kafle: kafel przy starcie (wolny) staje się zablokowany
@@ -16,7 +15,7 @@ const blocked = await page.evaluate((k) => window.__edytor.M.mask[k], tile.k); a
 await page.locator('#undo').click(); assert.equal(await page.evaluate((k) => window.__edytor.M.mask[k], tile.k), 0, 'cofnięcie');
 await page.mouse.click(tile.x, tile.y);
 // 2. nowy obiekt z podstawą (trzy kliknięcia) blokuje kafle pod sobą
-await page.locator('[data-m=obj]').click(); await page.getByText('Nowy obiekt').click();
+await page.locator('[data-m=obj]').click(); await page.getByText('Nowy obiekt').click(); await page.locator('input[type=text]').last().fill('test_obiekt'); await page.getByRole('button',{name:'OK'}).click();
 const spot = await page.evaluate(() => { const e = window.__edytor, p = e.M.proj.toImage(5.5, 20.5), c = e.css(p[0], p[1]); const r = document.getElementById('c').getBoundingClientRect(); return { x: r.left + c[0], y: r.top + c[1], k: 20 * e.D.cols + 5 }; });
 const before = await page.evaluate((k) => window.__edytor.M.mask[k], spot.k);
 for (const [dx, dy] of [[-40, 0], [40, 0], [40, 40], [-40, 40]]) { await page.mouse.click(spot.x + dx, spot.y + dy - 20); }
