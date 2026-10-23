@@ -11,7 +11,7 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 #pause{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(6,6,8,.55)}#pause.on{display:flex}#pbox{position:static;pointer-events:auto;padding:8px 14px 12px;min-width:min(86vw,460px)}#pbox h2{margin:2px 0 8px;font:400 22px Georgia,serif}
 .opt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;font-size:14px}.seg{display:flex;gap:4px}.seg button{min-height:38px;padding:0 12px;border:0;border-radius:8px;background:#2a2425;color:#d8cdb4;font:600 13px system-ui}.seg button.on{background:#b4501c;color:#fff}
 #pbox .row{display:flex;gap:8px;margin-top:10px}#pbox .row a,#pbox .row button{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:#3a2c26;color:#fff;text-decoration:none;font:700 14px system-ui}#pbox .row .go{background:#b4501c}
-#fps{right:max(8px,env(safe-area-inset-right));top:calc(max(8px,env(safe-area-inset-top)) + 100px);font:600 12px ui-monospace,monospace;padding:2px 8px;display:none}
+#fps{right:max(8px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 130px);font:600 12px ui-monospace,monospace;padding:2px 8px;display:none}
 #menu{position:fixed;left:max(8px,env(safe-area-inset-left));top:calc(max(8px,env(safe-area-inset-top)) + 62px);display:flex;gap:6px}#menu{z-index:3}#menu a,#menu button{pointer-events:auto;position:static;color:#e6dcc8;text-decoration:none;font:600 13px system-ui;padding:8px 14px;min-height:40px;display:flex;align-items:center}
 #toast{top:calc(max(8px,env(safe-area-inset-top)) + 4px);left:50%;transform:translateX(-50%);font:400 22px Georgia,serif;letter-spacing:.04em;opacity:0;transition:opacity .5s}
 #toast.on{opacity:1}
@@ -19,8 +19,8 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 #hint:empty{display:none}
 #bubble{left:50%;top:38%;transform:translateX(-50%);max-width:min(60vw,520px);text-align:center;font-size:14px;line-height:1.4;display:none}
 #bubble b{display:block;color:#e0b44a;margin-bottom:2px}
-#mini{position:fixed;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:176px;height:96px;pointer-events:none}
-#mini canvas{width:176px;height:96px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
+#mini{position:fixed;right:max(10px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));width:124px;height:124px;pointer-events:none}
+#mini canvas{width:124px;height:124px;display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
 .zb{position:fixed;right:max(8px,env(safe-area-inset-right));width:44px;height:44px;border:7px solid transparent;border-image:var(--f-btn) 16 fill/7px stretch;background:#2a2425;font:700 20px system-ui;padding:0}
 #zin{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 50px)}#zout{bottom:max(8px,env(safe-area-inset-bottom))}
 #card{left:50%;top:50%;transform:translate(-50%,-50%);display:none;pointer-events:auto;min-width:260px;max-width:min(78vw,430px);padding:6px 10px 10px}
@@ -35,9 +35,9 @@ button{font-family:inherit;color:inherit;touch-action:manipulation}
 <canvas id="c"></canvas>
 <div id="hud" class="pill"><span id="reg">Kopiec</span><small id="lvl"></small><i id="xpb"><b></b></i></div>
 <div id="menu"><a class="pill" id="mchar" href="postac.html?back=swiat.html">Postać</a><button class="pill" id="mmenu" type="button">Menu</button></div>
-<div id="pause"><div class="pill" id="pbox"><h2>Menu</h2><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div><div id="fps" class="pill"></div>
+<div id="pause"><div class="pill" id="pbox"><h2>Menu</h2><div class="opt"><span>Jakość grafiki</span><div class="seg" id="oq"></div></div><div class="opt"><span>Pora dnia</span><div class="seg" id="ot"></div></div><div class="opt"><span>Minimapa</span><div class="seg" id="om"></div></div><div class="opt"><span>Licznik FPS</span><div class="seg" id="of"></div></div><div class="row"><button id="presume" class="go" type="button">Wznów</button><a href="postac.html?back=swiat.html">Postać</a><a href="index.html">Menu główne</a></div></div></div><div id="fps" class="pill"></div>
 <div id="toast" class="pill"></div>
-<div id="mini"><canvas id="mm" width="352" height="192"></canvas></div>
+<div id="mini"><canvas id="mm" width="240" height="240"></canvas></div>
 <button class="zb" id="zin" aria-label="Przybliż">+</button><button class="zb" id="zout" aria-label="Oddal">−</button>
 <div id="bubble" class="pill"></div>
 <div id="card" class="pill"></div>
@@ -49,7 +49,7 @@ import {generateWorld,N,REGIONS,HZ} from '../src/world/kraina.js';
 import {heightAt,findPath,newWalker,setPath,stepWalker,freeAt} from '../src/world/nav.js';
 import {WorldView} from '../src/art/worldview.js';
 import {genCharacter,drawCharacter,DIRS,DIRS8,dir8} from '../src/art/characters.js';
-import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES} from '../src/game/settings.js';
+import {loadSettings,saveSettings,QUALITY,QUALITY_IDS,TIME_MODES,TIME_NAMES,MINIMAPS,MINIMAP_NAMES} from '../src/game/settings.js';
 import {darkness,drawNight} from '../src/art/daylight.js';
 import {heroSpec} from '../src/art/classes.js';
 import {applyMood} from '../src/art/mood.js';
@@ -67,7 +67,7 @@ const hero=newWalker(...world.start);let face='SE';
 const AT={krypta:world.entrances[0].approach,jama:world.entrances[1].approach,start:world.start,bród:world.roads.east[2],ford:world.roads.east[2],trakt:world.roads.west[3],wzgorze:world.roads.up[2],las:world.roads.east[4],plac:[world.start[0]-4,world.start[1]-9],studnia:(()=>{const o=world.objects.find(q=>q.k==='well');return o?[o.x-1.5,o.y+2.5]:world.start})(),plot:(()=>{const o=world.objects.find(q=>q.k==='fence');return o?[o.x-2,o.y+2]:world.start})()};
 if(Q.get('at')&&AT[Q.get('at')]){hero.x=AT[Q.get('at')][0];hero.y=AT[Q.get('at')][1]}
 const npcSpec=world.npcs.map(n=>({...genCharacter(n.seed,n.role),sc:1.0}));
-const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');
+const SET=loadSettings();if(Q.get('quality')&&QUALITY[Q.get('quality')])SET.quality=Q.get('quality');if(Q.get('time')&&TIME_MODES.includes(Q.get('time')))SET.time=Q.get('time');if(Q.get('minimap')&&MINIMAPS.includes(Q.get('minimap')))SET.minimap=Q.get('minimap');
 wv.setQuality(QUALITY[SET.quality]);const night=document.createElement('canvas');
 let zoom=Number(Q.get('zoom'))||0.8,dpr=1,CW=0,CH=0,cam={x:0,y:0},pending=null,bubbleT=0,lastReg=-1,t0=performance.now();
 // malarskie światło: ciepła poświata z lewej góry i ukośne smugi słońca przebijające przez korony (mocniejsze w lesie), zakotwiczone w świecie
@@ -92,25 +92,55 @@ let vig=null;function drawVig(){if(!vig||vig.width!==cv.width||vig.height!==cv.h
 function resize(){dpr=Math.min(QUALITY[SET.quality].dprMax,devicePixelRatio||1);const r=cv.getBoundingClientRect();CW=r.width;CH=r.height;cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr);night.width=cv.width;night.height=cv.height;vig=null}
 addEventListener('resize',resize);resize();
 {const p=wv.pos(hero.x,hero.y);cam.x=p[0];cam.y=p[1]-30}
-// minimapa: romb jak świat w grze, jedna płótno; tło (teren, ramka) rysowane raz, na nim wejścia i bohater
-const MW=352,MH=192,MR=6,mmc=$('mm').getContext('2d'),mbg=document.createElement('canvas');mbg.width=MW;mbg.height=MH;
-const mpt=(x,y)=>[MW/2+(x-y)/N*(MW/2-MR),MR+(x+y)/N*(MH/2-MR)];
-{const base=document.createElement('canvas');base.width=base.height=N;const m=base.getContext('2d'),im=m.createImageData(N,N),B=[[98,.5,.5],[88,.55,.56],[128,.34,.32],[62,.4,.46],[32,.08,.44],[38,.42,.62],[40,.1,.55],[48,.45,.68],[205,.5,.42],[30,.3,.3],[20,.12,.07]];
+// minimapa w okręgu: wokół bohatera, północ u góry; mapa terenu jest rysowana raz (w rzucie izometrycznym jak świat), a ramka zależy od wybranego stylu
+const MS=240,MC=MS/2,PXT=3,mmc=$('mm').getContext('2d');
+const base=document.createElement('canvas');base.width=base.height=N;
+{const m=base.getContext('2d'),im=m.createImageData(N,N),B=[[98,.5,.5],[88,.55,.56],[128,.34,.32],[62,.4,.46],[32,.08,.44],[38,.42,.62],[40,.1,.55],[48,.45,.68],[205,.5,.42],[30,.3,.3],[20,.12,.07]];
   const hsl2=(h,s,l)=>{const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[f(0),f(8),f(4)].map(v=>Math.round(v*255))};
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const kind=world.cellKind[y*N+x],b=B[kind],h=heightAt(world,x+.5,y+.5),rgb=hsl2(b[0],b[1],Math.max(.1,Math.min(.8,b[2]+h*.03)));const i=(y*N+x)*4;im.data[i]=rgb[0];im.data[i+1]=rgb[1];im.data[i+2]=rgb[2];im.data[i+3]=255}
-  m.putImageData(im,0,0);
-  const g=mbg.getContext('2d'),dia=()=>{g.beginPath();g.moveTo(MW/2,MR);g.lineTo(MW-MR,MH/2);g.lineTo(MW/2,MH-MR);g.lineTo(MR,MH/2);g.closePath()};
-  g.save();dia();g.clip();g.setTransform((MW/2-MR)/N,(MH/2-MR)/N,-(MW/2-MR)/N,(MH/2-MR)/N,MW/2,MR);g.imageSmoothingEnabled=true;g.drawImage(base,0,0);g.restore();
-  g.save();dia();g.clip();const sh=g.createLinearGradient(0,0,0,MH);sh.addColorStop(0,'rgba(255,255,255,.1)');sh.addColorStop(1,'rgba(0,0,20,.22)');g.fillStyle=sh;g.fillRect(0,0,MW,MH);g.restore();
-  dia();g.lineJoin='round';g.lineWidth=7;g.strokeStyle='#15110f';g.stroke();g.lineWidth=3.2;g.strokeStyle='#b08a3a';g.stroke();g.lineWidth=1;g.strokeStyle='#e8d29a';g.stroke()}
-function mini(){mmc.clearRect(0,0,MW,MH);mmc.drawImage(mbg,0,0);
-  for(const e of world.entrances){const p=mpt(e.at[0],e.at[1]);mmc.fillStyle='#ffd24a';mmc.beginPath();mmc.arc(p[0],p[1],5,0,7);mmc.fill();mmc.strokeStyle='#15110f';mmc.lineWidth=2;mmc.stroke()}
-  const h=mpt(hero.x,hero.y);mmc.fillStyle='#ff4a3a';mmc.beginPath();mmc.arc(h[0],h[1],6,0,7);mmc.fill();mmc.strokeStyle='#fff';mmc.lineWidth=2.2;mmc.stroke()}
+  m.putImageData(im,0,0)}
+const MMST={
+  a:{name:'Pergamin',tint:['multiply','rgb(250,232,190)'],wash:'rgba(150,100,40,.1)',bg:'#d8c08a',dot:'#ffd24a',dotLine:'#3a2410',me:'#b4281c'},
+  b:{name:'Kryształ',tint:['multiply','rgb(150,190,235)'],wash:'rgba(10,20,60,.22)',bg:'#0b1226',dot:'#ffe38a',dotLine:'#0b1226',me:'#7ff0ff'},
+  c:{name:'Kompas',tint:['multiply','rgb(205,218,190)'],wash:'rgba(40,30,20,.14)',bg:'#2a2622',dot:'#ffb84a',dotLine:'#1a1410',me:'#ff5a3a'}};
+let mmBig=null,mmFrame=null,mmKey='';
+function buildMM(key){
+  const st=MMST[key]||MMST.a,W=N*PXT*2,H=N*PXT,c=document.createElement('canvas');c.width=W;c.height=H;const q=c.getContext('2d');
+  q.fillStyle=st.bg;q.fillRect(0,0,W,H);q.imageSmoothingEnabled=true;q.setTransform(PXT,PXT/2,-PXT,PXT/2,N*PXT,0);q.drawImage(base,0,0);q.setTransform(1,0,0,1,0,0);
+  q.globalCompositeOperation=st.tint[0];q.fillStyle=st.tint[1];q.fillRect(0,0,W,H);q.globalCompositeOperation='source-over';q.fillStyle=st.wash;q.fillRect(0,0,W,H);
+  if(key==='a'){for(let i=0;i<900;i++){const x=Math.abs(Math.sin(i*12.9898)*43758.5453)%1*W,y=Math.abs(Math.sin(i*78.233)*12345.6789)%1*H;q.fillStyle=`rgba(90,60,20,${0.03+0.05*((i*7)%5)/5})`;q.fillRect(x,y,1.5+(i%3),1.5)}}
+  mmBig=c;
+  // ramka i dekoracje (rysowane raz)
+  const f=document.createElement('canvas');f.width=f.height=MS;const g2=f.getContext('2d');
+  const ring=(r,w,col)=>{g2.beginPath();g2.arc(MC,MC,r,0,7);g2.lineWidth=w;g2.strokeStyle=col;g2.stroke()};
+  if(key==='a'){const vg=g2.createRadialGradient(MC,MC,MC*0.6,MC,MC,MC);vg.addColorStop(0,'rgba(60,35,10,0)');vg.addColorStop(1,'rgba(60,35,10,.55)');g2.fillStyle=vg;g2.beginPath();g2.arc(MC,MC,MC-2,0,7);g2.fill();
+    ring(MC-4,9,'#15110f');const mg=g2.createLinearGradient(0,0,MS,MS);mg.addColorStop(0,'#f0d27a');mg.addColorStop(0.5,'#b08a3a');mg.addColorStop(1,'#7a5a22');ring(MC-4,6,mg);ring(MC-9,1.2,'rgba(255,240,190,.6)');ring(MC-0.8,1.5,'#15110f');
+    for(let i=0;i<4;i++){g2.save();g2.translate(MC,MC);g2.rotate(i*Math.PI/2);g2.fillStyle=i?'#e8d29a':'#c43a2a';g2.strokeStyle='#15110f';g2.lineWidth=1.5;g2.beginPath();g2.moveTo(0,-MC+4);g2.lineTo(8,-MC+20);g2.lineTo(-8,-MC+20);g2.closePath();g2.fill();g2.stroke();g2.restore()}
+    g2.fillStyle='#15110f';g2.font='700 15px Georgia,serif';g2.textAlign='center';g2.fillText('N',MC,MC-MC+36)}
+  else if(key==='b'){const vg=g2.createRadialGradient(MC,MC,MC*0.4,MC,MC,MC);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(0.85,'rgba(5,10,30,.5)');vg.addColorStop(1,'rgba(5,10,30,.85)');g2.fillStyle=vg;g2.beginPath();g2.arc(MC,MC,MC-2,0,7);g2.fill();
+    ring(MC-3,6,'#0a0e1c');const sg=g2.createLinearGradient(0,0,MS,MS);sg.addColorStop(0,'#e8f0ff');sg.addColorStop(0.5,'#7a8aa8');sg.addColorStop(1,'#3a4660');ring(MC-3,3.4,sg);ring(MC-8,1,'rgba(160,230,255,.5)');
+    const hl=g2.createLinearGradient(MC*0.4,0,MC*1.2,MC);hl.addColorStop(0,'rgba(255,255,255,.28)');hl.addColorStop(1,'rgba(255,255,255,0)');g2.fillStyle=hl;g2.beginPath();g2.ellipse(MC*0.8,MC*0.55,MC*0.62,MC*0.3,-0.5,0,7);g2.fill();
+    g2.fillStyle='#bfe9ff';g2.font='700 13px system-ui';g2.textAlign='center';g2.fillText('N',MC,26)}
+  else{ring(MC-3,8,'#14100e');const bg2=g2.createLinearGradient(0,0,MS,MS);bg2.addColorStop(0,'#c89a5a');bg2.addColorStop(1,'#6a4a28');ring(MC-3,5,bg2);
+    for(let i=0;i<72;i++){const a=i*Math.PI/36,long=i%6===0,r0=MC-9,r1=r0-(long?9:4);g2.beginPath();g2.moveTo(MC+Math.sin(a)*r0,MC-Math.cos(a)*r0);g2.lineTo(MC+Math.sin(a)*r1,MC-Math.cos(a)*r1);g2.lineWidth=long?1.6:0.8;g2.strokeStyle=long?'#f0d8a0':'rgba(240,216,160,.6)';g2.stroke()}
+    g2.fillStyle='#f0d8a0';g2.font='700 14px Georgia,serif';g2.textAlign='center';g2.textBaseline='middle';for(const [t,a] of [['N',0],['E',90],['S',180],['W',270]]){const r=MC-30,aa=a*Math.PI/180;g2.fillText(t,MC+Math.sin(aa)*r,MC-Math.cos(aa)*r)}}
+  mmFrame=f;mmKey=key}
+function mini(){
+  if(mmKey!==SET.minimap)buildMM(SET.minimap);const st=MMST[SET.minimap]||MMST.a;
+  mmc.clearRect(0,0,MS,MS);mmc.save();mmc.beginPath();mmc.arc(MC,MC,MC-4,0,7);mmc.clip();
+  const hx=N*PXT+(hero.x-hero.y)*PXT,hy=(hero.x+hero.y)*PXT/2;mmc.drawImage(mmBig,MC-hx,MC-hy);
+  for(const e of world.entrances){const ex=N*PXT+(e.at[0]-e.at[1])*PXT-hx+MC,ey=(e.at[0]+e.at[1])*PXT/2-hy+MC,dx=ex-MC,dy=ey-MC,d=Math.hypot(dx,dy),lim=MC-18,k=d>lim?lim/d:1,px=MC+dx*k,py=MC+dy*k;
+    mmc.fillStyle=st.dot;mmc.strokeStyle=st.dotLine;mmc.lineWidth=2;mmc.beginPath();mmc.moveTo(px,py-7);mmc.lineTo(px+6,py);mmc.lineTo(px,py+7);mmc.lineTo(px-6,py);mmc.closePath();mmc.fill();mmc.stroke();if(k<1){mmc.globalAlpha=.7;mmc.stroke();mmc.globalAlpha=1}}
+  mmc.restore();mmc.drawImage(mmFrame,0,0);
+  // bohater: punkt z klinem w stronę ruchu (na ekranie)
+  const ang=lanternA??0;mmc.save();mmc.translate(MC,MC);mmc.rotate(ang);mmc.fillStyle=st.me;mmc.globalAlpha=.55;mmc.beginPath();mmc.moveTo(0,0);mmc.arc(0,0,20,-0.5,0.5);mmc.closePath();mmc.fill();mmc.globalAlpha=1;mmc.restore();
+  mmc.fillStyle=st.me;mmc.strokeStyle='#fff';mmc.lineWidth=2.4;mmc.beginPath();mmc.arc(MC,MC,6,0,7);mmc.fill();mmc.stroke()}
 const say=t=>{$('hint').textContent=t};
 function buildOpts(){
   const seg=(id,items,cur,fn)=>{const el=$(id);el.innerHTML='';for(const [k,name] of items){const b=document.createElement('button');b.type='button';b.textContent=name;b.className=k===cur?'on':'';b.onclick=()=>{fn(k);buildOpts()};el.append(b)}};
   seg('oq',QUALITY_IDS.map(k=>[k,QUALITY[k].name]),SET.quality,k=>{SET.quality=k;saveSettings(SET);wv.setQuality(QUALITY[k]);resize()});
   seg('ot',TIME_MODES.map(k=>[k,TIME_NAMES[k]]),SET.time,k=>{SET.time=k;saveSettings(SET)});
+  seg('om',MINIMAPS.map(k=>[k,MINIMAP_NAMES[k]]),SET.minimap,k=>{SET.minimap=k;saveSettings(SET)});
   seg('of',[[false,'Wył.'],[true,'Wł.']],SET.fps,k=>{SET.fps=k;saveSettings(SET)});
 }
 let paused=false;const setPause=v=>{paused=v;$('pause').classList.toggle('on',v);if(v)buildOpts()};
