@@ -1,7 +1,7 @@
 // Generator budynków. genBuilding(ziarno, rodzaj) losuje specyfikację, drawBuilding rysuje ją w rzucie izometrycznym.
 // (X,Y) to przedni dolny róg budynku (róg S). Lewa ściana patrzy w lewo-dół (cień), prawa w prawo-dół (światło).
 import { rng } from './rng.js';
-import { kit, OUT, plane, planeEllipse, RECEDE } from './kit.js';
+import { kit, OUT, plane, planeEllipse, RECEDE, leafClump } from './kit.js';
 import { TW, TH } from '../grid.js';
 import { shade, mix } from './color.js';
 import { PROPS } from './props.js';
@@ -14,7 +14,7 @@ export const KINDS = ['cottage', 'townhouse', 'tavern', 'shop', 'tower', 'farmho
 const PLASTER = ['#f6ecc9', '#efd9a0', '#f1dfc8', '#e9e2cf', '#f4d9b8', '#dfe6d8', '#e8cfa8', '#f2c9b0', '#f8f2e0'];
 const TIMBER = ['#6a3f1c', '#4a2e1a', '#7a4a26', '#5a3a2a', '#3e3a36'];
 const STONE = ['#b9b1a0', '#a29a8a', '#c4b898', '#9a9e98', '#b0a48c'];
-const ROOF = ['#c0582c', '#a8452a', '#7a8a98', '#6a8a6a', '#8a5a3a', '#b04a3a', '#5a6a86', '#c07a3a', '#9a6a4a'];
+const ROOF = ['#c0582c', '#a8452a', '#7a8a98', '#6a8a6a', '#8a5a3a', '#b04a3a', '#5a6a86', '#c07a3a', '#9a6a4a', '#d8742a', '#2f8aa0', '#c84a5a', '#4a7ac0', '#d89a2a'];
 const SHUT = ['#2f6a4a', '#a8352a', '#2a5a8a', '#6a3f1c', '#7a4a8a', '#c08a2a'];
 const FLOWER = ['#e8483a', '#f0c83a', '#f07aa8', '#ffffff', '#a86ae0', '#ff9a3a'];
 const AWN = [['#c8382a', '#fff3d8'], ['#2a6aa8', '#fff3d8'], ['#2f8a4a', '#fff3d8'], ['#d89a1a', '#fff3d8'], ['#8a3a8a', '#fff3d8']];
@@ -201,6 +201,8 @@ export function drawBuilding(g, X, Y, s) {
   // pas wysunięcia piętra (jetty)
   if (s.jetty && s.floors >= 2) for (const id of ['L', 'R']) { const f = faces[id], { F } = fo(id), v = s.fh; const nn = f.n, A = F(0, v + 3), B = F(1, v + 3); poly([A, B, [B[0] + nn[0] * 4, B[1] + nn[1] * 4 + 0], [A[0] + nn[0] * 4, A[1] + nn[1] * 4]], shade(s.timber, 0.04), 1.3); poly([[A[0] + nn[0] * 4, A[1] + nn[1] * 4], [B[0] + nn[0] * 4, B[1] + nn[1] * 4], [B[0] + nn[0] * 4, B[1] + nn[1] * 4 + 4], [A[0] + nn[0] * 4, A[1] + nn[1] * 4 + 4]], shade(s.timber, -0.08), 1.1); }
   ln([Wp, up(Wp, h)], 2, OUT); ln([S, up(S, h)], 2, OUT); ln([E, up(E, h)], 2, OUT);
+  // kępy liści i kwiatów przy podstawie murów: budynek wyrasta z ziemi (nie przy drzwiach)
+  { const rr = rng(s.seed * 313 + 7), spots = [[Wp, S, 0.12], [Wp, S, 0.82], [S, E, 0.18], [S, E, 0.9], [Wp, S, 0.5]]; for (const [a, b, t] of spots) { if (rr() < 0.3) continue; const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + 4]; if (Math.abs(t - (b === E ? 1 - s.doorU : s.doorU)) < 0.16 && ((b === E) === (s.doorFace === 'R'))) continue; leafClump(g, p[0], p[1], 0.7 + rr() * 0.5, rr, rr() < 0.7); } }
   // narożniki z kamienia
   if (!isStone) for (const p of [Wp, S, E]) for (let v = 0; v < h; v += 9) poly([[p[0] - 2.4, p[1] - v], [p[0] + 2.4, p[1] - v], [p[0] + 2.4, p[1] - v - 7], [p[0] - 2.4, p[1] - v - 7]], v % 18 ? shade(s.stone, 0.06) : shade(s.stone, -0.04), 0.9);
 
@@ -270,6 +272,9 @@ export function drawBuilding(g, X, Y, s) {
       ln([p0, p1], 1, 'rgba(60,22,8,.5)'); ln([[p0[0], p0[1] + 1.6], [p1[0], p1[1] + 1.6]], 1, 'rgba(255,220,170,.26)');
       const tn = Math.max(2, Math.round(dist(p0, p1) / 9)), q0 = lerp(A, D, Math.min(1, t + 0.5 / rows)), q1 = lerp(B, Cc, Math.min(1, t + 0.5 / rows));
       for (let j = 0; j < tn; j++) { const u = (j + (i % 2 ? 0.5 : 0)) / tn; if (u > 1) continue; ln([lerp(p0, p1, u), lerp(q0, q1, u)], 0.8, 'rgba(60,22,8,.32)'); }
+      // zaokrąglone końce dachówek i niejednakowe odcienie: dach jest malowany, a nie narysowany linijką
+      const ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+      for (let j = 0; j < tn; j++) { const u = (j + (i % 2 ? 1 : 0.5)) / tn, c = lerp(p0, p1, Math.min(1, u)), tone = (r() - 0.5) * 0.12; g.beginPath(); g.ellipse(c[0], c[1] - 0.5, dist(p0, p1) / tn / 2 + 0.3, 2.6, ang, 0, Math.PI); g.fillStyle = shade(rc, tone + (i % 2 ? 0.03 : -0.01)); g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1; g.lineWidth = 0.8; g.strokeStyle = 'rgba(60,22,8,.4)'; g.stroke(); }
     }
   }
   function thatchFringe(a, b) { if (!s.thatch) return; const n = Math.round(dist(a, b) / 4); const pts = [a]; for (let i = 1; i < n; i++) { const p = lerp(a, b, i / n); pts.push([p[0], p[1] + 2 + r() * 3.5]); } pts.push(b); ln(pts, 2.2, OUT); ln(pts, 1, mix(rc, '#ffffff', 0.2)); }

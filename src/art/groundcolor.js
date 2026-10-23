@@ -33,7 +33,7 @@ export function groundRGB(w, x, y) {
   else if (kind === K.dry) c = hslRgb(66 - 8 * n3, 0.42, 0.46 + 0.07 * (n3 - 0.5));
   else if (kind === K.sand) c = hslRgb(46 + 4 * n3, 0.46, 0.66 + 0.06 * (n2 - 0.5));
   else if (kind === K.road) c = hslRgb(36 + 5 * n3, 0.36, 0.58 + 0.07 * (n2 - 0.5));
-  else if (kind === K.plaza) { const st = hash2(seed + 77, Math.floor(x * 1.6), Math.floor(y * 1.6)); c = hslRgb(38, 0.1, 0.5 + 0.12 * st); }
+  else if (kind === K.plaza) c = hslRgb(36, 0.14, 0.3 + 0.05 * (n2 - 0.5));   // zaprawa między kocimi łbami (kamienie rysuje drawDecals)
   else if (kind === K.meadow) c = mix(grass, hslRgb(84, 0.58, 0.58), 0.55);
   else c = grass;
   return c;

@@ -71,6 +71,46 @@ export class WorldView {
     for (let j = 2; j < n - 2; j++) for (let i = 0; i < n; i++) { let v = 0; for (let d = -2; d <= 2; d++) v += tmp[(j + d) * n + i] * K[d + 2]; bl[j * n + i] = v / 9; }
     return { x0, y0, n, arr, bl };
   }
+  // detale gruntu: kocie łby na placu, kamienie i koleiny na drogach, kwiaty, koniczyna, paprocie, kamyki i źdźbła na brzegach ścieżek
+  drawDecals(g, tx, ty, z0, kind, ts, TINT) {
+    const w = this.w, K = w.KIND, P = (u, v) => this.proj(tx + u, ty + v, z0), h = (a, b = 0) => hash2(a * 7 + 3, tx * 13 + b, ty * 17 + b * 5);
+    const dk = (c) => rgbStr(ts > 0.02 ? [c[0] + (TINT[0] - c[0]) * ts, c[1] + (TINT[1] - c[1]) * ts, c[2] + (TINT[2] - c[2]) * ts] : c);
+    const stone = (u, v, r, col, hi, sd) => {
+      const pts = []; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, rr = r * (0.82 + 0.36 * hash2(sd + i, tx * 5 + Math.round(u * 100), ty * 3 + Math.round(v * 100))); pts.push(P(u + Math.cos(a) * rr, v + Math.sin(a) * rr)); }
+      const path = (dy) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1] + dy); for (let i = 1; i < 8; i++) g.lineTo(pts[i][0], pts[i][1] + dy); g.closePath(); };
+      path(1.6); g.fillStyle = dk([col[0] * 0.55, col[1] * 0.52, col[2] * 0.5]); g.fill();   // bok kamienia
+      path(0); g.fillStyle = dk(col); g.fill();
+      if (hi) { path(-0.1); g.strokeStyle = dk([Math.min(255, col[0] + 38), Math.min(255, col[1] + 36), Math.min(255, col[2] + 30)]); g.lineWidth = 0.9; g.stroke(); }
+    };
+    const near = (dx, dy) => { const nx = tx + dx, ny = ty + dy; return nx < 0 || ny < 0 || nx >= N || ny >= N ? -1 : w.cellKind[ny * N + nx]; };
+    if (kind === K.plaza) {
+      // kocie łby: zaprawa jest już w tle, na niej 3 x 3 kamienie o różnych odcieniach
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { const sd = i * 3 + j, u = (i + 0.5 + (h(sd, 1) - 0.5) * 0.3) / 3, v = (j + 0.5 + (h(sd, 2) - 0.5) * 0.3) / 3, t = h(sd, 3), c = [150 + 46 * t + 10 * h(sd, 4), 142 + 42 * t, 124 + 36 * t - 8 * h(sd, 5)]; stone(u, v, 0.15 + 0.035 * h(sd, 6), c, true, 50 + sd); }
+      return;
+    }
+    if (kind === K.road) {
+      for (let q = 0; q < 3; q++) if (h(10 + q) < 0.7) stone(0.14 + 0.72 * h(20 + q), 0.14 + 0.72 * h(30 + q), 0.05 + 0.05 * h(40 + q), [176 + 40 * h(50 + q), 156 + 34 * h(50 + q), 120 + 26 * h(50 + q)], true, 70 + q);
+      for (let q = 0; q < 6; q++) { const p = P(0.08 + 0.84 * h(60 + q), 0.08 + 0.84 * h(70 + q)); g.fillStyle = dk([120 + 50 * h(80 + q), 98 + 40 * h(80 + q), 70 + 30 * h(80 + q)]); g.beginPath(); g.ellipse(p[0], p[1], 1.6, 0.9, 0, 0, 7); g.fill(); }
+      // koleiny: dwie ciemniejsze smugi wzdłuż drogi
+      if (h(90) < 0.55) { const u = 0.3 + 0.4 * h(91), a = P(u, 0.05), b = P(u + 0.08, 0.95); g.strokeStyle = dk([100, 80, 56]); g.globalAlpha = 0.35; g.lineWidth = 2.2; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); g.globalAlpha = 1; }
+      // brzeg: trawa wchodzi na drogę
+      for (const [dx, dy, ed] of [[1, 0, 1], [-1, 0, 0], [0, 1, 1], [0, -1, 0]]) { const nk = near(dx, dy); if (nk < 0 || nk > K.moss) continue; g.lineCap = 'round'; g.lineWidth = 1.5; for (let q = 0; q < 4; q++) { const t = 0.1 + 0.8 * h(100 + q + (dx ? 0 : 10)), p = dx ? P(ed, t) : P(t, ed), bh = 4 + 4 * h(110 + q); g.strokeStyle = q % 2 ? '#5a9a3a' : '#8ac04a'; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + (h(120 + q) - 0.5) * 5, p[1] - bh); g.stroke(); } }
+      return;
+    }
+    if (kind <= K.moss || kind === K.dry) {
+      const moss = kind === K.moss;
+      // kępki liści (koniczyna i paproć) w dwóch odcieniach, żeby trawa nie była jednolitym dywanem
+      for (let q = 0; q < 2; q++) if (h(130 + q) < 0.45) { const p = P(0.15 + 0.7 * h(140 + q), 0.15 + 0.7 * h(150 + q)), fern = h(160 + q) < 0.4, cols = moss ? ['#2c5a30', '#4a8a46'] : ['#3a8a30', '#7ac04a'];
+        if (fern) { g.lineWidth = 1.3; g.lineCap = 'round'; for (let k = -3; k <= 3; k++) { g.strokeStyle = k % 2 ? cols[0] : cols[1]; g.beginPath(); g.moveTo(p[0], p[1]); g.quadraticCurveTo(p[0] + k * 3, p[1] - 8, p[0] + k * 5.4, p[1] - 5 + Math.abs(k)); g.stroke(); } }
+        else for (let k = 0; k < 3; k++) { g.fillStyle = dk(k % 2 ? [74, 140, 60] : [110, 176, 70]); g.beginPath(); g.ellipse(p[0] + (k - 1) * 3.2, p[1] - (k === 1 ? 2.6 : 0), 3, 2, 0, 0, 7); g.fill(); } }
+      // kwiaty (tylko na łąkach, rzadziej w lesie)
+      if (!moss && h(170) < 0.3) { const n = 1 + Math.floor(h(171) * 3), base = ['#fff6d0', '#ffd84a', '#f58ab0', '#b79af0', '#ffffff'][Math.floor(h(172) * 5)]; for (let k = 0; k < n; k++) { const p = P(0.15 + 0.7 * h(173 + k), 0.15 + 0.7 * h(180 + k)); g.fillStyle = dk([60, 110, 50]); g.fillRect(p[0] - 0.4, p[1] - 4, 0.8, 4); g.fillStyle = base; g.beginPath(); g.arc(p[0], p[1] - 5, 2, 0, 7); g.fill(); g.fillStyle = '#f0a820'; g.beginPath(); g.arc(p[0], p[1] - 5, 0.8, 0, 7); g.fill(); } }
+      // kamyki
+      if (h(190) < 0.16) stone(0.2 + 0.6 * h(191), 0.2 + 0.6 * h(192), 0.04 + 0.04 * h(193), [150 + 30 * h(194), 148 + 28 * h(194), 138 + 24 * h(194)], true, 200);
+      // brzeg trawy przy drodze i placu: drobne źdźbła i kamyki wchodzą na ścieżkę
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nk = near(dx, dy); if (nk !== K.road && nk !== K.plaza && nk !== K.sand) continue; for (let q = 0; q < 3; q++) { const t = 0.12 + 0.76 * h(210 + q + (dx ? 0 : 7)), e = dx > 0 || dy > 0 ? 0.94 : 0.06, p = dx ? P(e, t) : P(t, e); if (h(220 + q) < 0.35) stone(dx ? e : t, dx ? t : e, 0.03, [168, 160, 140], false, 230 + q); else { g.strokeStyle = q % 2 ? '#4a8a30' : '#9ac84a'; g.lineWidth = 1.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + (h(240 + q) - 0.5) * 4, p[1] - 5 - 3 * h(250 + q)); g.stroke(); } } }
+    }
+  }
   drawTile(g, tx, ty) {
     const w = this.w, k = ty * N + tx, z = this.cornersZ(tx, ty), P = (fx, fy, zz) => this.proj(tx + fx, ty + fy, zz), K = w.KIND, kind = w.cellKind[k];
     if (w.ramp[k]) return this.drawRamp(g, tx, ty, z);
@@ -83,6 +123,10 @@ export class WorldView {
       const sv = []; let lo = 9, hi = -9, sum = 0;
       for (let q = 0; q < R * R; q++) { const v = sg.bl[(siy + j * R + Math.floor(q / R)) * sn + six + i * R + (q % R)]; sv.push(v); lo = Math.min(lo, v); hi = Math.max(hi, v); sum += v; }
       tileShade += sum / (R * R);
+      // granice rodzajów gruntu: gdy kolor wyraźnie się zmienia w obrębie rombu, dzielimy go na 4 (gładsze krawędzie dróg, trawy i piasku)
+      const um = (u0 + u1) / 2, vm = (v0 + v1) / 2, cc = [groundRGB(w, tx + (u0 + um) / 2, ty + (v0 + vm) / 2), groundRGB(w, tx + (um + u1) / 2, ty + (v0 + vm) / 2), groundRGB(w, tx + (u0 + um) / 2, ty + (vm + v1) / 2), groundRGB(w, tx + (um + u1) / 2, ty + (vm + v1) / 2)];
+      let dc = 0; for (const c4 of cc) dc = Math.max(dc, Math.abs(c4[0] - col[0]), Math.abs(c4[1] - col[1]), Math.abs(c4[2] - col[2]));
+      if (dc > 14) { for (let q = 0; q < 4; q++) { const qi = q & 1, qj = q >> 1, shq = sg.bl[(siy + j * R + qj * (R >> 1) + (R >> 2)) * sn + six + i * R + qi * (R >> 1) + (R >> 2)]; g.fillStyle = mix(cc[q], shq); quad(qi ? um : u0, qj ? vm : v0, qi ? u1 : um, qj ? v1 : vm, zz); } continue; }
       if (hi - lo < 0.025) { g.fillStyle = mix(col, sum / (R * R)); quad(u0, v0, u1, v1, zz); continue; }
       for (let q = 0; q < R * R; q++) { const qi = q % R, qj = Math.floor(q / R); g.fillStyle = mix(col, sv[q]); quad(u0 + qi / (R * SUBN), v0 + qj / (R * SUBN), u0 + (qi + 1) / (R * SUBN), v0 + (qj + 1) / (R * SUBN), zz); }
     }
@@ -90,6 +134,7 @@ export class WorldView {
     // trawiaste kępki malarsko pokrywają równe powierzchnie
     if (kind <= K.moss || kind === K.dry) { let gc = kind === K.moss ? ['#2a4a2a', '#4a7a3a'] : ['#3a7a2a', '#8ab84a']; if (tileShade > 0.02) gc = gc.map((hx) => { const r = parseInt(hx.slice(1, 3), 16), gg2 = parseInt(hx.slice(3, 5), 16), bb = parseInt(hx.slice(5, 7), 16); return rgbStr([r + (TINT[0] - r) * tileShade, gg2 + (TINT[1] - gg2) * tileShade, bb + (TINT[2] - bb) * tileShade]); }); g.lineWidth = 1.4; g.lineCap = 'round';
       for (let t = 0; t < 5; t++) { const fx = 0.12 + 0.76 * hash2(21 + t, tx, ty), fy = 0.12 + 0.76 * hash2(31 + t, tx, ty), p = P(fx, fy, z[0]), h = 5 + 4 * hash2(41 + t, tx, ty); g.strokeStyle = t % 2 ? gc[0] : gc[1]; g.beginPath(); g.moveTo(p[0] - 2, p[1]); g.lineTo(p[0] - 3.5, p[1] - h); g.moveTo(p[0], p[1]); g.lineTo(p[0], p[1] - h - 2); g.moveTo(p[0] + 2, p[1]); g.lineTo(p[0] + 3.5, p[1] - h); g.stroke(); } }
+    this.drawDecals(g, tx, ty, z[0], kind, tileShade, TINT);
     // ściany skalne po stronie widocznej (+x i +y), tam gdzie sąsiad jest niżej
     for (const [dx, dy, side] of [[1, 0, 'R'], [0, 1, 'L']]) {
       const nx = tx + dx, ny = ty + dy; if (nx >= N || ny >= N) continue;

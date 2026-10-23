@@ -16,6 +16,21 @@ export function kit(g) {
   return { lerp, lg, path, poly, ln, blob, circ, ell };
 }
 
+// Kępa liści z kwiatami przy podstawie budowli, drzewa albo skały: kilka nachodzących na siebie listków w trzech odcieniach, cień pod spodem.
+// rnd to funkcja 0..1 (np. rng(ziarno)), sc skala.
+export function leafClump(g, x, y, sc, rnd, flowers = true) {
+  g.save(); g.translate(x, y); g.scale(sc, sc);
+  g.globalAlpha = 0.3; g.fillStyle = '#0a1204'; g.beginPath(); g.ellipse(3, 2, 15, 5, 0, 0, 7); g.fill(); g.globalAlpha = 1;
+  const cols = ['#2f6a2c', '#4a9a3a', '#86c24e'];
+  for (let layer = 0; layer < 3; layer++) for (let i = 0; i < 5 - layer; i++) {
+    const lx = (i - (4 - layer) / 2) * (7 - layer) + (rnd() - 0.5) * 3, ly = -layer * 3.4 - rnd() * 2, rx = 6.2 - layer * 0.8, ry = 4.4 - layer * 0.5, a = (rnd() - 0.5) * 0.9;
+    g.beginPath(); g.ellipse(lx, ly, rx, ry, a, 0, 7); g.fillStyle = cols[layer]; g.fill(); g.lineWidth = 0.9; g.strokeStyle = 'rgba(15,40,12,.55)'; g.stroke();
+    g.beginPath(); g.ellipse(lx - 1.2, ly - 1.2, rx * 0.5, ry * 0.4, a, 0, 7); g.fillStyle = 'rgba(255,255,200,.16)'; g.fill();
+  }
+  if (flowers) { const fc = ['#ffd84a', '#f58ab0', '#ffffff', '#b79af0', '#ff8a3a'][Math.floor(rnd() * 5)]; for (let i = 0; i < 4; i++) { const fx = (rnd() - 0.5) * 18, fy = -6 - rnd() * 6; g.fillStyle = fc; g.beginPath(); g.arc(fx, fy, 1.9, 0, 7); g.fill(); g.fillStyle = '#f0a820'; g.beginPath(); g.arc(fx, fy, 0.7, 0, 7); g.fill(); } }
+  g.restore();
+}
+
 // ---- rysowanie w płaszczyznach izometrycznych ----
 // Wszystko, co wisi na ścianie albo leży w świecie, musi być rysowane w płaszczyźnie swojej ściany, a nie wprost na ekran.
 // Płaszczyzna 'L' to ściana patrząca w lewo-dół (rozpięta wzdłuż osi x), 'R' patrząca w prawo-dół (rozpięta wzdłuż osi y).
